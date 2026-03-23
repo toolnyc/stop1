@@ -23,7 +23,7 @@ jobs:
           done
           # Issue #1: homepage responds 200
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:4321/)
-          echo "GET / → $STATUS"
+          echo "GET / -> $STATUS"
           [ "$STATUS" = "200" ] || (echo "FAIL: expected 200, got $STATUS" && exit 1)
     env:
       PUBLIC_SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL }}
