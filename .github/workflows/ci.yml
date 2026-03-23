@@ -3,8 +3,6 @@ on: [push, pull_request]
 jobs:
   build:
     runs-on: ubuntu-latest
-    # Skip if no package.json (doc-only or CI-only PRs before Issue #1)
-    if: hashFiles('package.json') != ''
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v3
