@@ -1,0 +1,109 @@
+---
+import Base from '@/layouts/Base.astro';
+
+const error = Astro.url.searchParams.get('error');
+---
+<Base title="Login — Stop One">
+  <main class="login-page">
+    <form method="POST" action="/api/admin/login" class="login-form">
+      <h1>Stop One</h1>
+      <p class="login-subtitle">Admin Login</p>
+
+      {error && <div class="login-error">{error}</div>}
+
+      <label>
+        <span>Email</span>
+        <input type="email" name="email" required autocomplete="email" />
+      </label>
+
+      <label>
+        <span>Password</span>
+        <input type="password" name="password" required autocomplete="current-password" />
+      </label>
+
+      <button type="submit">Sign In</button>
+    </form>
+  </main>
+</Base>
+
+<style>
+  .login-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100dvh;
+    padding: var(--space-4);
+  }
+
+  .login-form {
+    width: 100%;
+    max-width: 360px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .login-form h1 {
+    color: var(--color-accent);
+    font-size: 1.5rem;
+    text-align: center;
+  }
+
+  .login-subtitle {
+    text-align: center;
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+    margin-top: calc(-1 * var(--space-2));
+  }
+
+  .login-error {
+    background: color-mix(in srgb, var(--color-error) 15%, transparent);
+    border: 1px solid var(--color-error);
+    color: var(--color-error);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+  }
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  label span {
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+  }
+
+  input {
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    color: var(--color-text);
+    font-size: 1rem;
+  }
+
+  input:focus {
+    outline: none;
+    border-color: var(--color-accent);
+  }
+
+  button {
+    width: 100%;
+    padding: var(--space-2) var(--space-4);
+    background: var(--color-accent);
+    color: var(--color-bg);
+    border: none;
+    border-radius: var(--radius);
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+
+  button:hover {
+    opacity: 0.9;
+  }
+</style>
