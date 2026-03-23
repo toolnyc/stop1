@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@astrojs/vercel": "^8.0.0",
+    "@supabase/supabase-js": "^2.100.0",
     "astro": "^5.0.0"
   },
   "devDependencies": {
