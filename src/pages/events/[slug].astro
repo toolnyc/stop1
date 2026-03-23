@@ -1,5 +1,6 @@
 ---
 import Base from '@/layouts/Base.astro';
+import RsvpForm from '@/components/public/RsvpForm.astro';
 import { supabase } from '@/lib/supabase';
 
 const { slug } = Astro.params;
@@ -73,9 +74,7 @@ const timeEnd = event.time_end
       </div>
     )}
 
-    <div id="rsvp-section">
-      <!-- RsvpForm will be added in issue #13 -->
-    </div>
+    <RsvpForm slug={slug!} eventTitle={event.title} />
   </main>
 </Base>
 
