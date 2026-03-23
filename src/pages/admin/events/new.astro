@@ -1,0 +1,176 @@
+---
+import Admin from '@/layouts/Admin.astro';
+
+const error = Astro.url.searchParams.get('error');
+const fieldError = Astro.url.searchParams.get('field_error');
+---
+<Admin title="New Event — Stop One Admin">
+  <h1>New Event</h1>
+
+  {error && <div class="form-error">{error}</div>}
+  {fieldError && <div class="form-error">{fieldError}</div>}
+
+  <form method="POST" action="/api/admin/events/create" class="event-form">
+    <label>
+      <span>Title *</span>
+      <input type="text" name="title" required id="title-input" />
+    </label>
+
+    <label>
+      <span>Slug *</span>
+      <input type="text" name="slug" required id="slug-input" pattern="[a-z0-9-]+" title="Lowercase letters, numbers, and hyphens only" />
+      <small>Auto-generated from title. Lowercase letters, numbers, hyphens.</small>
+    </label>
+
+    <div class="form-row">
+      <label>
+        <span>Start Date/Time *</span>
+        <input type="datetime-local" name="date" required />
+      </label>
+      <label>
+        <span>End Date/Time</span>
+        <input type="datetime-local" name="time_end" />
+      </label>
+    </div>
+
+    <label>
+      <span>Venue Name</span>
+      <input type="text" name="venue_name" />
+    </label>
+
+    <label>
+      <span>Venue Address</span>
+      <input type="text" name="venue_address" />
+    </label>
+
+    <label>
+      <span>Description</span>
+      <textarea name="description" rows="4"></textarea>
+    </label>
+
+    <div class="form-row">
+      <label>
+        <span>Door Price *</span>
+        <input type="number" name="door_price" min="0" step="0.01" required value="0" />
+      </label>
+      <label>
+        <span>Capacity</span>
+        <input type="number" name="capacity" min="0" />
+      </label>
+    </div>
+
+    <label>
+      <span>Door PIN *</span>
+      <input type="text" name="door_pin" required inputmode="numeric" pattern="[0-9]+" title="Numbers only" />
+      <small>Used for door check-in authentication.</small>
+    </label>
+
+    <label>
+      <span>Status</span>
+      <select name="status">
+        <option value="draft">Draft</option>
+        <option value="published">Published</option>
+      </select>
+    </label>
+
+    <button type="submit">Create Event</button>
+  </form>
+</Admin>
+
+<script>
+  const titleInput = document.getElementById('title-input') as HTMLInputElement;
+  const slugInput = document.getElementById('slug-input') as HTMLInputElement;
+  let slugManuallyEdited = false;
+
+  slugInput?.addEventListener('input', () => {
+    slugManuallyEdited = true;
+  });
+
+  titleInput?.addEventListener('input', () => {
+    if (!slugManuallyEdited) {
+      slugInput.value = titleInput.value
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+    }
+  });
+</script>
+
+<style>
+  h1 { margin-bottom: var(--space-6); }
+
+  .form-error {
+    background: color-mix(in srgb, var(--color-error) 15%, transparent);
+    border: 1px solid var(--color-error);
+    color: var(--color-error);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    margin-bottom: var(--space-4);
+  }
+
+  .event-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    max-width: 600px;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+  }
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  label span {
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+  }
+
+  small {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+  }
+
+  input, textarea, select {
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    color: var(--color-text);
+    font-size: 1rem;
+  }
+
+  input:focus, textarea:focus, select:focus {
+    outline: none;
+    border-color: var(--color-accent);
+  }
+
+  textarea { resize: vertical; }
+
+  select {
+    appearance: none;
+    cursor: pointer;
+  }
+
+  button {
+    padding: var(--space-2) var(--space-4);
+    background: var(--color-accent);
+    color: var(--color-bg);
+    border: none;
+    border-radius: var(--radius);
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    align-self: flex-start;
+  }
+
+  button:hover { opacity: 0.9; }
+</style>
