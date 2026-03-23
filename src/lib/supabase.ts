@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import type { Database } from '@/types/database';
 
 const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_KEY;
@@ -9,12 +10,12 @@ if (!supabaseUrl) {
 }
 
 // Public client - uses anon key, respects RLS
-export const supabase = createClient(supabaseUrl, supabaseAnonKey || '');
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey || '');
 
 // Admin client - uses service role key, bypasses RLS
 // Only use server-side!
 export const supabaseAdmin = supabaseServiceKey
-  ? createClient(supabaseUrl, supabaseServiceKey, {
+  ? createClient<Database>(supabaseUrl, supabaseServiceKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
