@@ -1,0 +1,20 @@
+{
+  "name": "stop1",
+  "type": "module",
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "db:types": "supabase gen types typescript --project-id $SUPABASE_PROJECT_ID > src/types/database.ts",
+    "db:push": "supabase db push",
+    "db:new": "supabase migration new"
+  },
+  "dependencies": {
+    "@astrojs/vercel": "^8.0.0",
+    "astro": "^5.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}
