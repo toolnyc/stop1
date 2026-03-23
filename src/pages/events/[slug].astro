@@ -1,0 +1,125 @@
+---
+import Base from '@/layouts/Base.astro';
+import { supabase } from '@/lib/supabase';
+
+const { slug } = Astro.params;
+
+const { data: event, error } = await supabase
+  .from('events')
+  .select('*')
+  .eq('slug', slug!)
+  .eq('status', 'published')
+  .single();
+
+if (error || !event) {
+  return new Response(null, { status: 404, statusText: 'Not Found' });
+}
+
+const eventDate = new Date(event.date);
+const dateFormatted = eventDate.toLocaleDateString('en-US', {
+  weekday: 'long',
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+});
+const timeFormatted = eventDate.toLocaleTimeString('en-US', {
+  hour: 'numeric',
+  minute: '2-digit',
+});
+const timeEnd = event.time_end
+  ? new Date(event.time_end).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  : null;
+---
+<Base title={`${event.title} — Stop One`}>
+  <main class="event-page">
+    {event.flyer_url && (
+      <img src={event.flyer_url} alt={`${event.title} flyer`} class="event-flyer" />
+    )}
+
+    <h1 class="event-title">{event.title}</h1>
+
+    <div class="event-details">
+      <div class="event-detail">
+        <span class="detail-label">Date</span>
+        <span>{dateFormatted}</span>
+      </div>
+      <div class="event-detail">
+        <span class="detail-label">Time</span>
+        <span>{timeFormatted}{timeEnd ? ` – ${timeEnd}` : ''}</span>
+      </div>
+      {event.venue_name && (
+        <div class="event-detail">
+          <span class="detail-label">Venue</span>
+          <span>{event.venue_name}</span>
+        </div>
+      )}
+      {event.venue_address && (
+        <div class="event-detail">
+          <span class="detail-label">Address</span>
+          <span>{event.venue_address}</span>
+        </div>
+      )}
+      {Number(event.door_price) > 0 && (
+        <div class="event-detail">
+          <span class="detail-label">Door</span>
+          <span>${Number(event.door_price)}</span>
+        </div>
+      )}
+    </div>
+
+    {event.description && (
+      <div class="event-description">
+        <p>{event.description}</p>
+      </div>
+    )}
+
+    <div id="rsvp-section">
+      <!-- RsvpForm will be added in issue #13 -->
+    </div>
+  </main>
+</Base>
+
+<style>
+  .event-page {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: var(--space-6) var(--space-4);
+  }
+
+  .event-flyer {
+    width: 100%;
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--space-6);
+  }
+
+  .event-title {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: var(--space-6);
+    color: var(--color-accent);
+  }
+
+  .event-details {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-bottom: var(--space-6);
+  }
+
+  .event-detail {
+    display: flex;
+    gap: var(--space-3);
+  }
+
+  .detail-label {
+    color: var(--color-text-muted);
+    min-width: 80px;
+    font-size: 0.875rem;
+  }
+
+  .event-description {
+    color: var(--color-text-muted);
+    line-height: 1.7;
+    margin-bottom: var(--space-6);
+  }
+</style>
