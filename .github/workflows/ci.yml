@@ -3,6 +3,8 @@ on: [push, pull_request]
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Skip if no package.json (doc-only or CI-only PRs before Issue #1)
+    if: hashFiles('package.json') != ''
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v3
@@ -11,6 +13,9 @@ jobs:
         with: { node-version: '20', cache: 'pnpm' }
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+      # TODO Issue #1: Add smoke test step here.
+      # Use `pnpm dev` (not `pnpm preview` — @astrojs/vercel doesn't support astro preview).
+      # Background the dev server, sleep 5, then run curl checks from the issue's Verification section.
     env:
       PUBLIC_SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL }}
       PUBLIC_SUPABASE_KEY: ${{ secrets.PUBLIC_SUPABASE_KEY }}
