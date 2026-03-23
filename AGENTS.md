@@ -35,6 +35,13 @@ Every PR must pass:
 3. No JS console errors on page load
 4. Mobile layout at 390px viewport
 
+## Pull Request Instructions
+
+- Title format: `feat: <short description> (#N)` where N is the issue number
+- After opening the PR, enable auto-merge (squash) so it merges automatically when CI passes
+- Do not request a review — CI green = ready to merge
+- Close the issue in the PR body with `Closes #N`
+
 ## Deeper Context
 
 - [docs/architecture.md](docs/architecture.md) — Directory structure, naming conventions, Astro patterns
