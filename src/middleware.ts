@@ -1,4 +1,5 @@
 import { defineMiddleware } from 'astro:middleware';
+import { createHmac } from 'node:crypto';
 import { supabaseAdmin } from './lib/supabase';
 
 export const onRequest = defineMiddleware(async (context, next) => {
@@ -56,6 +57,25 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
   } else if (isAdminRoute) {
     return context.redirect('/admin/login');
+  }
+
+  // Door auth: guard /door/[slug]/checkin and /door/[slug]/summary
+  const doorMatch = pathname.match(/^\/door\/([^/]+)\/(checkin|summary)/);
+  if (doorMatch) {
+    const doorSlug = doorMatch[1];
+    const cookieSecret = import.meta.env.COOKIE_SECRET;
+    const sig = context.cookies.get(`door_session_${doorSlug}`)?.value;
+
+    if (!cookieSecret || !sig) {
+      return context.redirect(`/door/${doorSlug}/pin`);
+    }
+
+    const expected = createHmac('sha256', cookieSecret).update(doorSlug).digest('hex');
+    if (sig !== expected) {
+      return context.redirect(`/door/${doorSlug}/pin`);
+    }
+
+    context.locals.doorSlug = doorSlug;
   }
 
   return next();

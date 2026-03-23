@@ -1,0 +1,17 @@
+---
+import { createHmac } from 'node:crypto';
+
+const { slug } = Astro.params;
+const cookieSecret = import.meta.env.COOKIE_SECRET;
+
+// Check if already authenticated
+const sig = Astro.cookies.get(`door_session_${slug}`)?.value;
+if (sig && cookieSecret) {
+  const expected = createHmac('sha256', cookieSecret).update(slug!).digest('hex');
+  if (sig === expected) {
+    return Astro.redirect(`/door/${slug}/checkin`);
+  }
+}
+
+return Astro.redirect(`/door/${slug}/pin`);
+---
