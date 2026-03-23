@@ -31,7 +31,7 @@ Recurring DIY party series platform. RSVP pages, door check-in app, and P&L budg
 |-------------|--------|------------------------------|-----------------|
 | Local       | any    | `localhost:4321`             | Development     |
 | Preview     | PR     | `stop1-git-*.vercel.app`     | CI verification |
-| Production  | `main` | `stopone.club`               | Live            |
+| Production  | `main` | `stop1.party`               | Live            |
 
 **Branch flow:** `feature/issue-N-*` → PR → CI passes → merge to `main`
 
@@ -51,8 +51,8 @@ pnpm db:new <n>   # Create migration (supabase migration new <n>)
 Copy `.env.example` to `.env.local`. Required keys:
 
 ```
-PUBLIC_SUPABASE_URL          PUBLIC_SUPABASE_ANON_KEY
-SUPABASE_SERVICE_KEY         SUPABASE_PROJECT_ID
+PUBLIC_SUPABASE_URL          PUBLIC_SUPABASE_KEY
+SUPABASE_SECRET_KEY         SUPABASE_PROJECT_ID
 COOKIE_SECRET                STRIPE_SECRET_KEY
 PUBLIC_STRIPE_PUBLISHABLE_KEY  RESEND_API_KEY
 EMAIL_FROM                   BLOB_READ_WRITE_TOKEN

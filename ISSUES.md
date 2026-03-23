@@ -54,11 +54,11 @@ curl -s -o /dev/null -w "%{http_code}" http://localhost:4321/  # 200
 
 **Dependencies:** `pnpm add @supabase/supabase-js`
 
-**Env vars used:** `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`
+**Env vars used:** `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_KEY`, `SUPABASE_SECRET_KEY`
 
 **Acceptance criteria:**
 - [ ] Both clients exported with correct TypeScript types (generic `Database` placeholder until #3)
-- [ ] `supabaseAdmin` is `null` when `SUPABASE_SERVICE_KEY` is missing (graceful degradation)
+- [ ] `supabaseAdmin` is `null` when `SUPABASE_SECRET_KEY` is missing (graceful degradation)
 - [ ] `pnpm build` exits 0
 
 **Verification:**
@@ -893,8 +893,8 @@ jobs:
       - run: pnpm build
     env:
       PUBLIC_SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL }}
-      PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.PUBLIC_SUPABASE_ANON_KEY }}
-      SUPABASE_SERVICE_KEY: placeholder
+      PUBLIC_SUPABASE_KEY: ${{ secrets.PUBLIC_SUPABASE_KEY }}
+      SUPABASE_SECRET_KEY: placeholder
       COOKIE_SECRET: placeholder-32-char-string-here
       STRIPE_SECRET_KEY: sk_test_placeholder
       PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_placeholder
@@ -935,7 +935,7 @@ git push origin feature/issue-27-ci
 ```bash
 # After merging to main:
 vercel --prod   # or let GitHub integration trigger
-curl -s -o /dev/null -w "%{http_code}" https://stopone.club/   # 200
+curl -s -o /dev/null -w "%{http_code}" https://stop1.party/   # 200
 ```
 
 ---

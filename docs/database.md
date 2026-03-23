@@ -41,10 +41,10 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/database';
 
 const url = import.meta.env.PUBLIC_SUPABASE_URL;
-const anonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
-const serviceKey = import.meta.env.SUPABASE_SERVICE_KEY;
+const anonKey = import.meta.env.PUBLIC_SUPABASE_KEY;
+const serviceKey = import.meta.env.SUPABASE_SECRET_KEY;
 
-// Public client — anon key, respects RLS. Use for public reads.
+// Public client — public key, respects RLS. Use for public reads.
 export const supabase = createClient<Database>(url, anonKey);
 
 // Admin client — service role, bypasses RLS. SERVER-SIDE ONLY.

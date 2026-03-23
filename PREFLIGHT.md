@@ -26,9 +26,9 @@ gh --version          # if missing: brew install gh && gh auth login
 
 ### 2a. Point nameservers to Vercel
 
-1. Log in to wherever you **registered** `stopone.club` (GoDaddy, Namecheap, Google Domains, etc.)
+1. Log in to wherever you **registered** `stop1.party` (GoDaddy, Namecheap, Google Domains, etc.)
 2. Find the nameserver settings for the domain
-3. In Vercel dashboard → **Domains** → Add `stopone.club` → choose **"Add nameservers"**
+3. In Vercel dashboard → **Domains** → Add `stop1.party` → choose **"Add nameservers"**
 4. Vercel gives you two nameservers, e.g.:
    ```
    ns1.vercel-dns.com
@@ -37,16 +37,16 @@ gh --version          # if missing: brew install gh && gh auth login
 5. Replace the existing nameservers (Cloudflare's) with Vercel's at your registrar
 6. Save — propagation takes 10 min to a few hours
 
-> Once propagated, Vercel controls all DNS for `stopone.club` and automatically
+> Once propagated, Vercel controls all DNS for `stop1.party` and automatically
 > handles the A record pointing to your deployment. No CNAME needed manually.
 
 ### 2b. ImprovMX — free email forwarding
 
-ImprovMX forwards `@stopone.club` emails to your personal Gmail. Free, works with any DNS.
+ImprovMX forwards `@stop1.party` emails to your personal Gmail. Free, works with any DNS.
 
-1. [improvmx.com](https://improvmx.com) → Sign up → **Add a domain** → `stopone.club`
+1. [improvmx.com](https://improvmx.com) → Sign up → **Add a domain** → `stop1.party`
 2. ImprovMX gives you two MX records to add
-3. In Vercel dashboard → Domains → `stopone.club` → **DNS Records** → Add:
+3. In Vercel dashboard → Domains → `stop1.party` → **DNS Records** → Add:
 
 | Type | Name | Value | Priority |
 |------|------|-------|----------|
@@ -60,11 +60,11 @@ ImprovMX forwards `@stopone.club` emails to your personal Gmail. Free, works wit
 | `hello` | your personal Gmail |
 | `admin` | your personal Gmail |
 
-5. Optional: enable **Catch-all** → your Gmail (catches anything else sent to `@stopone.club`)
+5. Optional: enable **Catch-all** → your Gmail (catches anything else sent to `@stop1.party`)
 
-**Test it:** send an email to `admin@stopone.club` — should arrive in your Gmail within a minute.
+**Test it:** send an email to `admin@stop1.party` — should arrive in your Gmail within a minute.
 
-### 2c. Gmail "Send As" *(optional — reply from @stopone.club)*
+### 2c. Gmail "Send As" *(optional — reply from @stop1.party)*
 
 > Come back after step 5 (Resend) — you need the API key first.
 
@@ -73,7 +73,7 @@ Gmail → Settings → Accounts → **Add another email address**
 | Field | Value |
 |-------|-------|
 | Name | Stop One |
-| Email | `hello@stopone.club` |
+| Email | `hello@stop1.party` |
 | SMTP host | `smtp.resend.com` |
 | Port | `587` (TLS) |
 | Username | `resend` |
@@ -114,8 +114,8 @@ GitHub → repo → **Settings → Branches → Add branch protection rule** for
 | Env var | Where to find it |
 |---------|-----------------|
 | `PUBLIC_SUPABASE_URL` | Settings → API → Project URL |
-| `PUBLIC_SUPABASE_ANON_KEY` | Settings → API → Project API keys |
-| `SUPABASE_SERVICE_KEY` ⚠️ | Settings → API → Project API keys (reveal) |
+| `PUBLIC_SUPABASE_KEY` | Settings → API → Project API keys |
+| `SUPABASE_SECRET_KEY` ⚠️ | Settings → API → Project API keys (reveal) |
 | `SUPABASE_PROJECT_ID` | URL bar: `supabase.com/project/`**`<this-part>`** |
 
 ```bash
@@ -125,7 +125,7 @@ supabase link --project-ref <SUPABASE_PROJECT_ID>
 
 **Create admin user:**
 Supabase → Authentication → Users → **Add user**
-Email: `admin@stopone.club` · set a strong password → save it
+Email: `admin@stop1.party` · set a strong password → save it
 
 ---
 
@@ -134,8 +134,8 @@ Email: `admin@stopone.club` · set a strong password → save it
 Handles RSVP confirmations + day-of reminders. Separate from the team forwarding inbox.
 
 1. [resend.com](https://resend.com) → Sign up
-2. Dashboard → **Domains → Add Domain** → `stopone.club`
-3. Resend gives you DNS records. Add them in **Vercel dashboard → Domains → stopone.club → DNS Records**:
+2. Dashboard → **Domains → Add Domain** → `stop1.party`
+3. Resend gives you DNS records. Add them in **Vercel dashboard → Domains → stop1.party → DNS Records**:
 
 | Type | Name | Content | Notes |
 |------|------|---------|-------|
@@ -149,7 +149,7 @@ Handles RSVP confirmations + day-of reminders. Separate from the team forwarding
 
 **Save:**
 - `RESEND_API_KEY` = key from above
-- `EMAIL_FROM` = `noreply@stopone.club`
+- `EMAIL_FROM` = `noreply@stop1.party`
 
 ---
 
@@ -181,7 +181,7 @@ vercel link
 cat .vercel/project.json   # note orgId + projectId for step 12
 ```
 
-Vercel dashboard → stop1 → **Settings → Domains** → confirm `stopone.club` is connected
+Vercel dashboard → stop1 → **Settings → Domains** → confirm `stop1.party` is connected
 (it should already be there from step 2 — just verify the deployment is assigned to it).
 
 ---
@@ -214,8 +214,8 @@ After step 8, `.env.local` has `BLOB_READ_WRITE_TOKEN` pre-filled. Add the rest:
 
 ```
 PUBLIC_SUPABASE_URL=https://xxxxxxxxxxxx.supabase.co
-PUBLIC_SUPABASE_ANON_KEY=eyJhbGc...
-SUPABASE_SERVICE_KEY=eyJhbGc...
+PUBLIC_SUPABASE_KEY=eyJhbGc...
+SUPABASE_SECRET_KEY=eyJhbGc...
 SUPABASE_PROJECT_ID=xxxxxxxxxxxx
 
 COOKIE_SECRET=<64-char hex from step 9>
@@ -224,7 +224,7 @@ STRIPE_SECRET_KEY=sk_test_...
 PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
 
 RESEND_API_KEY=re_...
-EMAIL_FROM=noreply@stopone.club
+EMAIL_FROM=noreply@stop1.party
 
 BLOB_READ_WRITE_TOKEN=vercel_blob_rw_...
 
@@ -246,8 +246,8 @@ grep -E "^[A-Z]" .env.local | grep -v "^#" | wc -l   # should be >= 9
 
 ```bash
 vercel env add PUBLIC_SUPABASE_URL
-vercel env add PUBLIC_SUPABASE_ANON_KEY
-vercel env add SUPABASE_SERVICE_KEY
+vercel env add PUBLIC_SUPABASE_KEY
+vercel env add SUPABASE_SECRET_KEY
 vercel env add SUPABASE_PROJECT_ID
 vercel env add COOKIE_SECRET
 vercel env add STRIPE_SECRET_KEY
@@ -271,7 +271,7 @@ GitHub → stop1 repo → **Settings → Secrets and variables → Actions**
 | `VERCEL_ORG_ID` | `cat .vercel/project.json` → `orgId` |
 | `VERCEL_PROJECT_ID` | `cat .vercel/project.json` → `projectId` |
 | `PUBLIC_SUPABASE_URL` | `.env.local` |
-| `PUBLIC_SUPABASE_ANON_KEY` | `.env.local` |
+| `PUBLIC_SUPABASE_KEY` | `.env.local` |
 | `SUPABASE_PROJECT_ID` | `.env.local` |
 
 ---
@@ -355,15 +355,15 @@ VALUES (
 
 **Domain & Email**
 - [ ] Nameservers changed to Vercel at registrar
-- [ ] `stopone.club` added and verified in Vercel Domains
+- [ ] `stop1.party` added and verified in Vercel Domains
 - [ ] ImprovMX set up — MX records added in Vercel DNS, aliases created
-- [ ] Test email to `admin@stopone.club` arrives in Gmail
+- [ ] Test email to `admin@stop1.party` arrives in Gmail
 - [ ] Resend domain verified (green checkmark)
-- [ ] *(optional)* Gmail Send As for `hello@stopone.club`
+- [ ] *(optional)* Gmail Send As for `hello@stop1.party`
 
 **Accounts & Services**
 - [ ] Supabase project created, CLI linked
-- [ ] Supabase admin user created (`admin@stopone.club`)
+- [ ] Supabase admin user created (`admin@stop1.party`)
 - [ ] Vercel project created, domain connected, CLI linked
 - [ ] Vercel Blob store created and connected
 - [ ] Stripe test mode keys obtained
