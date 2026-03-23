@@ -31,9 +31,11 @@ git push -u origin feature/issue-N-slug
 
 Every PR must pass:
 1. `pnpm build` exits 0 (zero TypeScript errors)
-2. Browser checks listed in the issue's **Verification** section
+2. The **Smoke test** step in `.github/workflows/ci.yml` passes
 3. No JS console errors on page load
 4. Mobile layout at 390px viewport
+
+**Extend the smoke test for every issue you work on.** Add the curl checks from the issue's **Verification** section to the `Smoke test` step in `ci.yml`. This is not optional — CI must validate the feature works, not just that it compiles.
 
 ## Pull Request Instructions
 

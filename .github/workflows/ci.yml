@@ -11,6 +11,16 @@ jobs:
         with: { node-version: '20', cache: 'pnpm' }
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+      - name: Smoke test
+        run: |
+          pnpm preview &
+          SERVER_PID=$!
+          sleep 5
+          # Verify server is up and key pages respond
+          curl -sf http://localhost:4321/ -o /dev/null || (echo "FAIL: homepage" && kill $SERVER_PID && exit 1)
+          curl -sf http://localhost:4321/admin/login -o /dev/null || (echo "FAIL: /admin/login" && kill $SERVER_PID && exit 1)
+          echo "PASS: smoke test"
+          kill $SERVER_PID
     env:
       PUBLIC_SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL }}
       PUBLIC_SUPABASE_KEY: ${{ secrets.PUBLIC_SUPABASE_KEY }}
