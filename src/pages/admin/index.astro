@@ -1,0 +1,157 @@
+---
+import Admin from '@/layouts/Admin.astro';
+import { supabaseAdmin } from '@/lib/supabase';
+
+if (!supabaseAdmin) {
+  return new Response('Server configuration error', { status: 500 });
+}
+
+// Fetch all events with RSVP counts
+const { data: events, error } = await supabaseAdmin
+  .from('events')
+  .select('*, rsvps(count)')
+  .order('date', { ascending: false });
+
+if (error) {
+  console.error('Failed to fetch events:', error);
+}
+
+const eventList = events ?? [];
+
+function formatDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+function statusColor(status: string) {
+  switch (status) {
+    case 'published': return 'var(--color-success)';
+    case 'draft': return 'var(--color-warning)';
+    case 'archived': return 'var(--color-text-muted)';
+    default: return 'var(--color-text-muted)';
+  }
+}
+---
+<Admin title="Events — Stop One Admin">
+  <div class="dashboard-header">
+    <h1>Events</h1>
+    <a href="/admin/events/new" class="btn-new">New Event</a>
+  </div>
+
+  {eventList.length === 0 ? (
+    <p class="empty">No events yet. Create your first event to get started.</p>
+  ) : (
+    <div class="event-list">
+      {eventList.map((event) => {
+        const rsvpCount = (event.rsvps as unknown as { count: number }[])?.[0]?.count ?? 0;
+        return (
+          <a href={`/admin/events/${event.slug}`} class="event-row">
+            <div class="event-info">
+              <span class="event-title">{event.title}</span>
+              <span class="event-date">{formatDate(event.date)}</span>
+            </div>
+            <div class="event-meta">
+              <span class="rsvp-count">{rsvpCount} RSVPs</span>
+              <span class="status-badge" style={`color: ${statusColor(event.status)}`}>
+                {event.status}
+              </span>
+            </div>
+          </a>
+        );
+      })}
+    </div>
+  )}
+</Admin>
+
+<style>
+  .dashboard-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-6);
+  }
+
+  .dashboard-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .btn-new {
+    display: inline-block;
+    padding: var(--space-2) var(--space-4);
+    background: var(--color-accent);
+    color: var(--color-bg);
+    text-decoration: none;
+    border-radius: var(--radius);
+    font-weight: 600;
+    font-size: 0.875rem;
+  }
+
+  .btn-new:hover {
+    opacity: 0.9;
+  }
+
+  .empty {
+    color: var(--color-text-muted);
+    text-align: center;
+    padding: var(--space-10) 0;
+  }
+
+  .event-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    background: var(--color-border);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .event-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-surface);
+    text-decoration: none;
+    color: var(--color-text);
+    transition: background-color 0.1s;
+  }
+
+  .event-row:hover {
+    background: var(--color-surface-raised);
+  }
+
+  .event-info {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .event-title {
+    font-weight: 600;
+  }
+
+  .event-date {
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+  }
+
+  .event-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    font-size: 0.875rem;
+  }
+
+  .rsvp-count {
+    color: var(--color-text-muted);
+  }
+
+  .status-badge {
+    text-transform: capitalize;
+    font-weight: 500;
+  }
+</style>
