@@ -35,7 +35,7 @@ Every PR must pass:
 3. No JS console errors on page load
 4. Mobile layout at 390px viewport
 
-**Extend the smoke test for every issue you work on.** Add the curl checks from the issue's **Verification** section to the `Smoke test` step in `ci.yml`. This is not optional — CI must validate the feature works, not just that it compiles.
+**Issue #1 must add the first smoke test step.** Use `pnpm dev` (NOT `pnpm preview` — `@astrojs/vercel` doesn't support `astro preview`). Background the dev server, `sleep 5`, then run curl checks. Every subsequent issue adds its own curl checks to the same step.
 
 ## Pull Request Instructions
 
