@@ -1,0 +1,276 @@
+---
+import Admin from '@/layouts/Admin.astro';
+import { supabaseAdmin } from '@/lib/supabase';
+
+if (!supabaseAdmin) {
+  return new Response('Server configuration error', { status: 500 });
+}
+
+const { slug } = Astro.params;
+const error = Astro.url.searchParams.get('error');
+const success = Astro.url.searchParams.get('success');
+
+const { data: event, error: fetchError } = await supabaseAdmin
+  .from('events')
+  .select('*')
+  .eq('slug', slug!)
+  .single();
+
+if (fetchError || !event) {
+  return Astro.redirect('/admin');
+}
+
+function formatDatetimeLocal(dateStr: string | null) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  return d.toISOString().slice(0, 16);
+}
+---
+<Admin title={`${event.title} — Edit`}>
+  <div class="edit-layout">
+    <nav class="sidebar">
+      <a href={`/admin/events/${slug}`} class="sidebar-link active">Edit</a>
+      <a href={`/admin/events/${slug}/rsvps`} class="sidebar-link">RSVPs</a>
+      <a href={`/door/${slug}`} class="sidebar-link" target="_blank">Door ↗</a>
+      <a href={`/admin/events/${slug}/budget`} class="sidebar-link">Budget</a>
+      <a href={`/admin/events/${slug}/collaborators`} class="sidebar-link">Collaborators</a>
+    </nav>
+
+    <div class="edit-content">
+      <h1>Edit: {event.title}</h1>
+
+      {error && <div class="form-error">{error}</div>}
+      {success && <div class="form-success">{success}</div>}
+
+      <form method="POST" action={`/api/admin/events/${slug}/update`} class="event-form">
+        <label>
+          <span>Title *</span>
+          <input type="text" name="title" required value={event.title} />
+        </label>
+
+        <label>
+          <span>Slug</span>
+          <input type="text" value={event.slug} disabled />
+          <small>Slug cannot be changed after creation.</small>
+        </label>
+
+        <div class="form-row">
+          <label>
+            <span>Start Date/Time *</span>
+            <input type="datetime-local" name="date" required value={formatDatetimeLocal(event.date)} />
+          </label>
+          <label>
+            <span>End Date/Time</span>
+            <input type="datetime-local" name="time_end" value={formatDatetimeLocal(event.time_end)} />
+          </label>
+        </div>
+
+        <label>
+          <span>Venue Name</span>
+          <input type="text" name="venue_name" value={event.venue_name ?? ''} />
+        </label>
+
+        <label>
+          <span>Venue Address</span>
+          <input type="text" name="venue_address" value={event.venue_address ?? ''} />
+        </label>
+
+        <label>
+          <span>Description</span>
+          <textarea name="description" rows="4">{event.description ?? ''}</textarea>
+        </label>
+
+        <div class="form-row">
+          <label>
+            <span>Door Price *</span>
+            <input type="number" name="door_price" min="0" step="0.01" required value={event.door_price} />
+          </label>
+          <label>
+            <span>Capacity</span>
+            <input type="number" name="capacity" min="0" value={event.capacity ?? ''} />
+          </label>
+        </div>
+
+        <label>
+          <span>Door PIN</span>
+          <input type="text" name="door_pin" inputmode="numeric" pattern="[0-9]*" placeholder="Leave blank to keep current PIN" />
+          <small>Leave blank to keep existing PIN.</small>
+        </label>
+
+        <label>
+          <span>Status</span>
+          <select name="status">
+            <option value="draft" selected={event.status === 'draft'}>Draft</option>
+            <option value="published" selected={event.status === 'published'}>Published</option>
+          </select>
+        </label>
+
+        <div class="form-actions">
+          <button type="submit">Save Changes</button>
+        </div>
+      </form>
+
+      {event.status !== 'archived' && (
+        <form method="POST" action={`/api/admin/events/${slug}/archive`} class="archive-form">
+          <button type="submit" class="btn-archive">Archive Event</button>
+        </form>
+      )}
+    </div>
+  </div>
+</Admin>
+
+<style>
+  .edit-layout {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: var(--space-6);
+  }
+
+  @media (max-width: 640px) {
+    .edit-layout {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .sidebar-link {
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius);
+    color: var(--color-text-muted);
+    text-decoration: none;
+    font-size: 0.875rem;
+  }
+
+  .sidebar-link:hover {
+    background: var(--color-surface);
+    color: var(--color-text);
+  }
+
+  .sidebar-link.active {
+    background: var(--color-surface);
+    color: var(--color-accent);
+  }
+
+  .edit-content h1 {
+    font-size: 1.5rem;
+    margin-bottom: var(--space-6);
+  }
+
+  .form-error {
+    background: color-mix(in srgb, var(--color-error) 15%, transparent);
+    border: 1px solid var(--color-error);
+    color: var(--color-error);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    margin-bottom: var(--space-4);
+  }
+
+  .form-success {
+    background: color-mix(in srgb, var(--color-success) 15%, transparent);
+    border: 1px solid var(--color-success);
+    color: var(--color-success);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    margin-bottom: var(--space-4);
+  }
+
+  .event-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    max-width: 600px;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+  }
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  label span {
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+  }
+
+  small {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+  }
+
+  input, textarea, select {
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    color: var(--color-text);
+    font-size: 1rem;
+  }
+
+  input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  input:focus, textarea:focus, select:focus {
+    outline: none;
+    border-color: var(--color-accent);
+  }
+
+  textarea { resize: vertical; }
+
+  select {
+    appearance: none;
+    cursor: pointer;
+  }
+
+  .form-actions {
+    display: flex;
+    gap: var(--space-3);
+  }
+
+  button {
+    padding: var(--space-2) var(--space-4);
+    background: var(--color-accent);
+    color: var(--color-bg);
+    border: none;
+    border-radius: var(--radius);
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+
+  button:hover { opacity: 0.9; }
+
+  .archive-form {
+    margin-top: var(--space-8);
+    padding-top: var(--space-6);
+    border-top: 1px solid var(--color-border);
+    max-width: 600px;
+  }
+
+  .btn-archive {
+    background: transparent;
+    color: var(--color-error);
+    border: 1px solid var(--color-error);
+    font-weight: 500;
+    font-size: 0.875rem;
+  }
+
+  .btn-archive:hover {
+    background: color-mix(in srgb, var(--color-error) 15%, transparent);
+  }
+</style>
