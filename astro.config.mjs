@@ -1,8 +1,5 @@
 import { defineConfig } from 'astro/config';
-import { createRequire } from 'module';
 import vercel from '@astrojs/vercel';
-
-const require = createRequire(import.meta.url);
 
 export default defineConfig({
   output: 'server',
@@ -11,15 +8,9 @@ export default defineConfig({
   vite: {
     ssr: {
       // Bundle Supabase + tslib into server chunks so the Vercel NFT bundler
-      // doesn't need to trace them (it misses tslib's ESM entry → runtime crash)
+      // doesn't need to trace them (NFT misses tslib's ESM entry → runtime crash).
+      // Requires node-linker=hoisted in .npmrc so Rollup can resolve tslib.
       noExternal: ['@supabase/supabase-js', 'tslib'],
-    },
-    resolve: {
-      // Explicit alias so Rollup resolves tslib from the project root,
-      // not from inside pnpm's nested .pnpm store (which fails on Vercel)
-      alias: {
-        tslib: require.resolve('tslib'),
-      },
     },
   },
 });
