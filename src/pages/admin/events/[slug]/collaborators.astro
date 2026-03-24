@@ -113,48 +113,47 @@ const origin = Astro.url.origin;
 </script>
 
 <style>
-  .edit-layout { display: grid; grid-template-columns: 180px 1fr; gap: var(--space-8); }
+  .edit-layout { display: grid; grid-template-columns: 180px 1fr; gap: var(--space-2xl); }
   @media (max-width: 640px) {
-    .edit-layout { grid-template-columns: 1fr; gap: var(--space-4); }
-    .sidebar { flex-direction: row !important; overflow-x: auto; gap: var(--space-1) !important; padding-bottom: var(--space-2); border-bottom: 1px solid var(--color-border); }
+    .edit-layout { grid-template-columns: 1fr; gap: var(--space-md); }
+    .sidebar { flex-direction: row !important; overflow-x: auto; gap: var(--space-xs) !important; padding-bottom: var(--space-sm); border-bottom: var(--border); }
     .sidebar-link { white-space: nowrap; }
   }
 
-  .sidebar { display: flex; flex-direction: column; gap: var(--space-1); }
-  .sidebar-link { padding: var(--space-2) var(--space-3); border-radius: var(--radius); color: var(--color-text-muted); text-decoration: none; font-size: 0.875rem; font-weight: 500; transition: background var(--transition), color var(--transition); }
-  .sidebar-link:hover { background: var(--color-surface); color: var(--color-text); }
+  .sidebar { display: flex; flex-direction: column; gap: var(--space-xs); }
+  .sidebar-link { padding: var(--space-sm) var(--space-sm); color: var(--color-muted); text-decoration: none; font-size: 0.875rem; font-weight: var(--weight-medium); transition: background var(--transition), color var(--transition); }
+  .sidebar-link:hover { background: var(--color-surface); color: var(--color-fg); }
   .sidebar-link.active { background: var(--color-surface); color: var(--color-accent); }
   .sidebar-link.external::after { content: ' ↗'; opacity: 0.5; }
 
-  .edit-content h1 { font-size: 1.5rem; letter-spacing: -0.02em; margin-bottom: var(--space-4); }
+  .edit-content h1 { font-size: 1.5rem; letter-spacing: var(--tracking-tight); margin-bottom: var(--space-md); }
 
-  .alert { margin-bottom: var(--space-4); }
+  .alert { margin-bottom: var(--space-md); }
 
   .total-pct {
     font-size: 0.875rem;
-    color: var(--color-text-muted);
-    margin-bottom: var(--space-5);
+    color: var(--color-muted);
+    margin-bottom: var(--space-lg);
   }
 
-  .pct-warn { color: var(--color-warning); font-weight: 600; }
+  .pct-warn { color: var(--color-warning); font-weight: var(--weight-medium); }
 
   .collab-list {
     display: flex;
     flex-direction: column;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
+    border: var(--border);
     overflow: hidden;
-    margin-bottom: var(--space-8);
+    margin-bottom: var(--space-2xl);
   }
 
   .collab-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: var(--space-4) var(--space-5);
+    padding: var(--space-md) var(--space-lg);
     background: var(--color-surface);
-    gap: var(--space-3);
-    border-bottom: 1px solid var(--color-border);
+    gap: var(--space-sm);
+    border-bottom: var(--border);
   }
 
   .collab-row:last-child { border-bottom: none; }
@@ -162,30 +161,29 @@ const origin = Astro.url.origin;
   .collab-info {
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
+    gap: var(--space-xs);
   }
 
-  .collab-name { font-weight: 600; }
+  .collab-name { font-weight: var(--weight-medium); }
   .collab-email { font-size: 0.8125rem; }
 
   .collab-meta {
     display: flex;
     align-items: center;
-    gap: var(--space-3);
+    gap: var(--space-sm);
     font-size: 0.875rem;
     flex-shrink: 0;
     flex-wrap: wrap;
   }
 
-  .collab-pct { font-size: 0.8125rem; color: var(--color-text-muted); }
+  .collab-pct { font-size: 0.8125rem; color: var(--color-muted); }
 
   .btn-icon-remove {
     background: transparent;
-    border: 1px solid var(--color-border);
+    border: var(--border-width) solid var(--color-border);
     color: var(--color-error);
     width: 28px;
     height: 28px;
-    border-radius: var(--radius);
     cursor: pointer;
     font-size: 1.125rem;
     padding: 0;
@@ -203,16 +201,16 @@ const origin = Astro.url.origin;
   .add-form {
     display: flex;
     flex-direction: column;
-    gap: var(--space-5);
+    gap: var(--space-lg);
     max-width: 600px;
   }
 
-  .add-form h2 { font-size: 1.125rem; font-weight: 600; }
+  .add-form h2 { font-size: 1.125rem; font-weight: var(--weight-bold); }
 
   .form-row {
     display: grid;
     grid-template-columns: 1fr 1fr auto;
-    gap: var(--space-3);
+    gap: var(--space-sm);
   }
 
   @media (max-width: 640px) {

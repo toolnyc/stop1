@@ -42,9 +42,9 @@ const totalRevenue = cashTotal + cardTotal;
 ---
 <Base title={`Summary — ${event.title}`}>
   <meta http-equiv="refresh" content="30" slot="head" />
-  <main class="summary-page">
+  <main class="summary-page dark-ctx">
     <h1>{event.title}</h1>
-    <p class="subtitle">Door Summary</p>
+    <p class="subtitle">[Door Summary]</p>
 
     <div class="stats-grid">
       <div class="stat-card">
@@ -79,7 +79,7 @@ const totalRevenue = cashTotal + cardTotal;
       </div>
     </div>
 
-    <p class="refresh-note">Auto-refreshes every 30s</p>
+    <p class="refresh-note">[Auto-refreshes every 30s]</p>
     <a href={`/door/${slug}/checkin`} class="back-link">&larr; Back to Check-in</a>
   </main>
 </Base>
@@ -88,76 +88,79 @@ const totalRevenue = cashTotal + cardTotal;
   .summary-page {
     max-width: 480px;
     margin: 0 auto;
-    padding: var(--space-8) var(--space-4);
+    padding: var(--space-2xl) var(--space-md);
     text-align: center;
+    background: var(--color-bg);
+    color: var(--color-fg);
+    min-height: 100dvh;
   }
 
   h1 {
     font-size: 1.375rem;
-    letter-spacing: -0.02em;
-    margin-bottom: var(--space-1);
+    letter-spacing: var(--tracking-tight);
+    margin-bottom: var(--space-xs);
   }
 
   .subtitle {
-    color: var(--color-text-muted);
-    margin-bottom: var(--space-8);
-    font-size: 0.875rem;
+    color: var(--color-muted);
+    margin-bottom: var(--space-2xl);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
   }
 
   .stats-grid {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
-    gap: var(--space-3);
-    margin-bottom: var(--space-8);
+    gap: var(--space-sm);
+    margin-bottom: var(--space-2xl);
   }
 
   .stat-card {
     background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    padding: var(--space-5) var(--space-3);
+    border: var(--border-width) solid var(--color-border);
+    padding: var(--space-lg) var(--space-sm);
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
+    gap: var(--space-sm);
   }
 
   .stat-value {
     font-size: 2.25rem;
-    font-weight: 700;
+    font-weight: var(--weight-bold);
     line-height: 1;
   }
 
   .stat-label {
     font-size: 0.6875rem;
-    color: var(--color-text-muted);
+    color: var(--color-muted);
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-weight: 600;
+    letter-spacing: var(--tracking-wide);
+    font-weight: var(--weight-medium);
   }
 
   .revenue-section {
     text-align: left;
-    margin-bottom: var(--space-6);
+    margin-bottom: var(--space-lg);
   }
 
   .revenue-section h2 {
     font-size: 1rem;
-    font-weight: 600;
-    margin-bottom: var(--space-3);
+    font-weight: var(--weight-bold);
+    margin-bottom: var(--space-sm);
   }
 
   .revenue-table {
     background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
+    border: var(--border-width) solid var(--color-border);
     overflow: hidden;
   }
 
   .revenue-row {
     display: flex;
     justify-content: space-between;
-    padding: var(--space-3) var(--space-4);
-    border-bottom: 1px solid var(--color-border);
+    padding: var(--space-sm) var(--space-md);
+    border-bottom: var(--border-width) solid var(--color-border);
     font-size: 0.9375rem;
   }
 
@@ -166,26 +169,26 @@ const totalRevenue = cashTotal + cardTotal;
   }
 
   .revenue-row.total {
-    font-weight: 700;
+    font-weight: var(--weight-bold);
     background: color-mix(in srgb, var(--color-accent) 8%, transparent);
   }
 
   .refresh-note {
     font-size: 0.6875rem;
-    color: var(--color-text-muted);
-    margin-bottom: var(--space-3);
+    color: var(--color-muted);
+    margin-bottom: var(--space-sm);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: var(--tracking-wide);
   }
 
   .back-link {
-    color: var(--color-text-muted);
+    color: var(--color-muted);
     font-size: 0.875rem;
     text-decoration: none;
     transition: color var(--transition);
   }
 
   .back-link:hover {
-    color: var(--color-text);
+    color: var(--color-fg);
   }
 </style>

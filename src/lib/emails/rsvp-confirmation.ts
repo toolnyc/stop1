@@ -25,17 +25,20 @@ export function rsvpConfirmationEmail(
     subject: `You're on the list for ${event.title}!`,
     text: `Hi ${name}, you're confirmed for ${event.title} on ${dateFormatted} at ${timeFormatted} at ${venue}. See you there!`,
     html: `
-      <div style="font-family: system-ui, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 16px;">
-        <h1 style="color: #e8ff00; font-size: 24px;">You're on the list!</h1>
-        <p>Hi <strong>${name}</strong>,</p>
-        <p>You're confirmed for <strong>${event.title}</strong>.</p>
-        <table style="margin: 24px 0; font-size: 14px;">
-          <tr><td style="color: #888; padding-right: 16px;">Date</td><td>${dateFormatted}</td></tr>
-          <tr><td style="color: #888; padding-right: 16px;">Time</td><td>${timeFormatted}</td></tr>
-          <tr><td style="color: #888; padding-right: 16px;">Venue</td><td>${venue}</td></tr>
+      <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 16px; background-color: #f0ebe4; color: #1a1714;">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <span style="display: inline-block; background: #cd2e2a; color: #f0ebe4; font-weight: bold; font-size: 18px; padding: 6px 12px; letter-spacing: -0.03em;">S1</span>
+        </div>
+        <h1 style="color: #cd2e2a; font-size: 24px; font-weight: 700; letter-spacing: -0.03em; margin: 0 0 16px;">You're on the list!</h1>
+        <p style="margin: 0 0 8px;">Hi <strong>${name}</strong>,</p>
+        <p style="margin: 0 0 24px;">You're confirmed for <strong>${event.title}</strong>.</p>
+        <table style="margin: 0 0 24px; font-size: 14px; border-collapse: collapse;">
+          <tr><td style="color: #6b6560; padding: 4px 16px 4px 0; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; font-weight: 500;">Date</td><td style="padding: 4px 0;">${dateFormatted}</td></tr>
+          <tr><td style="color: #6b6560; padding: 4px 16px 4px 0; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; font-weight: 500;">Time</td><td style="padding: 4px 0;">${timeFormatted}</td></tr>
+          <tr><td style="color: #6b6560; padding: 4px 16px 4px 0; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; font-weight: 500;">Venue</td><td style="padding: 4px 0;">${venue}</td></tr>
         </table>
-        <p>See you there!</p>
-        <p style="color: #888; font-size: 12px; margin-top: 32px;">— Stop One</p>
+        <p style="margin: 0 0 8px;">See you there!</p>
+        <p style="color: #6b6560; font-size: 12px; margin-top: 32px; border-top: 1px solid #d0c9c1; padding-top: 16px;">&mdash; Stop One</p>
       </div>
     `,
   };

@@ -21,10 +21,10 @@ if (error || !event) {
 const pinError = Astro.url.searchParams.get('error');
 ---
 <Base title={`Door — ${event.title}`}>
-  <main class="pin-page">
+  <main class="pin-page dark-ctx">
     <div class="pin-card">
       <h1>{event.title}</h1>
-      <p class="pin-subtitle">Door PIN</p>
+      <p class="pin-subtitle">[Door PIN]</p>
 
       {pinError && <div class="alert alert-error">{pinError}</div>}
 
@@ -52,7 +52,9 @@ const pinError = Astro.url.searchParams.get('error');
     align-items: center;
     justify-content: center;
     min-height: 100dvh;
-    padding: var(--space-4);
+    padding: var(--space-md);
+    background: var(--color-bg);
+    color: var(--color-fg);
   }
 
   .pin-card {
@@ -61,49 +63,50 @@ const pinError = Astro.url.searchParams.get('error');
     text-align: center;
     display: flex;
     flex-direction: column;
-    gap: var(--space-5);
+    gap: var(--space-lg);
   }
 
   .pin-card h1 {
     color: var(--color-accent);
     font-size: 1.5rem;
-    letter-spacing: -0.02em;
+    letter-spacing: var(--tracking-tight);
   }
 
   .pin-subtitle {
-    color: var(--color-text-muted);
-    margin-top: calc(-1 * var(--space-3));
+    color: var(--color-muted);
+    margin-top: calc(-1 * var(--space-sm));
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
   }
 
   .pin-form {
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
+    gap: var(--space-md);
   }
 
   .pin-input {
     width: 100%;
     min-height: 64px;
-    padding: var(--space-4);
+    padding: var(--space-md);
     background: var(--color-surface);
     border: 2px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    color: var(--color-text);
+    color: var(--color-fg);
     font-size: 2rem;
     text-align: center;
     letter-spacing: 0.5em;
     font-family: var(--font-mono);
-    transition: border-color var(--transition), box-shadow var(--transition);
+    transition: border-color var(--transition);
   }
 
   .pin-input:focus {
     outline: none;
     border-color: var(--color-accent);
-    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-accent) 15%, transparent);
   }
 
   .btn-lg {
-    padding: 14px var(--space-5);
+    padding: 14px var(--space-lg);
     font-size: 1.0625rem;
   }
 </style>

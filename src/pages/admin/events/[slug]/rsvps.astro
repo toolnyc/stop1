@@ -139,20 +139,20 @@ if (exportCsv) {
   .edit-layout {
     display: grid;
     grid-template-columns: 180px 1fr;
-    gap: var(--space-8);
+    gap: var(--space-2xl);
   }
 
   @media (max-width: 640px) {
     .edit-layout {
       grid-template-columns: 1fr;
-      gap: var(--space-4);
+      gap: var(--space-md);
     }
     .sidebar {
       flex-direction: row !important;
       overflow-x: auto;
-      gap: var(--space-1) !important;
-      padding-bottom: var(--space-2);
-      border-bottom: 1px solid var(--color-border);
+      gap: var(--space-xs) !important;
+      padding-bottom: var(--space-sm);
+      border-bottom: var(--border);
     }
     .sidebar-link { white-space: nowrap; }
   }
@@ -160,20 +160,19 @@ if (exportCsv) {
   .sidebar {
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
+    gap: var(--space-xs);
   }
 
   .sidebar-link {
-    padding: var(--space-2) var(--space-3);
-    border-radius: var(--radius);
-    color: var(--color-text-muted);
+    padding: var(--space-sm) var(--space-sm);
+    color: var(--color-muted);
     text-decoration: none;
     font-size: 0.875rem;
-    font-weight: 500;
+    font-weight: var(--weight-medium);
     transition: background var(--transition), color var(--transition);
   }
 
-  .sidebar-link:hover { background: var(--color-surface); color: var(--color-text); }
+  .sidebar-link:hover { background: var(--color-surface); color: var(--color-fg); }
   .sidebar-link.active { background: var(--color-surface); color: var(--color-accent); }
   .sidebar-link.external::after { content: ' ↗'; opacity: 0.5; }
 
@@ -181,32 +180,31 @@ if (exportCsv) {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: var(--space-5);
+    margin-bottom: var(--space-lg);
   }
 
   .rsvp-header h1 {
     font-size: 1.5rem;
-    letter-spacing: -0.02em;
+    letter-spacing: var(--tracking-tight);
   }
 
   .count {
-    color: var(--color-text-muted);
-    font-weight: 400;
+    color: var(--color-muted);
+    font-weight: var(--weight-regular);
   }
 
   .filter-input {
-    margin-bottom: var(--space-4);
+    margin-bottom: var(--space-md);
   }
 
   .empty {
     text-align: center;
-    padding: var(--space-10) 0;
+    padding: var(--space-3xl) 0;
   }
 
   .table-wrap {
     overflow-x: auto;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
+    border: var(--border);
   }
 
   .rsvp-table {
@@ -217,11 +215,13 @@ if (exportCsv) {
 
   .rsvp-table th {
     text-align: left;
-    padding: var(--space-3) var(--space-4);
-    border-bottom: 1px solid var(--color-border);
-    color: var(--color-text-muted);
-    font-weight: 500;
-    font-size: 0.8125rem;
+    padding: var(--space-sm) var(--space-md);
+    border-bottom: var(--border);
+    color: var(--color-muted);
+    font-weight: var(--weight-medium);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
     background: var(--color-surface);
   }
 
@@ -231,18 +231,18 @@ if (exportCsv) {
     transition: color var(--transition);
   }
 
-  .sortable:hover { color: var(--color-text); }
+  .sortable:hover { color: var(--color-fg); }
 
   .rsvp-table td {
-    padding: var(--space-3) var(--space-4);
-    border-bottom: 1px solid var(--color-border);
+    padding: var(--space-sm) var(--space-md);
+    border-bottom: var(--border);
   }
 
   .rsvp-table tbody tr:last-child td {
     border-bottom: none;
   }
 
-  .td-name { font-weight: 500; }
-  .td-email { color: var(--color-text-muted); }
-  .td-time { white-space: nowrap; font-size: 0.8125rem; color: var(--color-text-muted); }
+  .td-name { font-weight: var(--weight-medium); }
+  .td-email { color: var(--color-muted); }
+  .td-time { white-space: nowrap; font-size: 0.8125rem; color: var(--color-muted); }
 </style>
