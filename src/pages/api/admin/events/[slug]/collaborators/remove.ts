@@ -1,8 +1,9 @@
-import type { APIRoute } from 'astro';
 import { supabaseAdmin } from '@/lib/supabase';
+import { withLogging } from '@/lib/api';
 
-export const POST: APIRoute = async ({ params, request, cookies, redirect }) => {
+export const POST = withLogging(async ({ params, request, cookies, redirect, log }) => {
   if (!supabaseAdmin) {
+    log.error('supabase_admin_missing');
     return new Response('Server configuration error', { status: 500 });
   }
 
@@ -17,7 +18,6 @@ export const POST: APIRoute = async ({ params, request, cookies, redirect }) => 
     return redirect(`/admin/events/${slug}/collaborators?error=${encodeURIComponent('Missing collaborator ID')}`);
   }
 
-  // Check for existing expenses
   const { count } = await supabaseAdmin
     .from('expenses')
     .select('id', { count: 'exact', head: true })
@@ -33,9 +33,10 @@ export const POST: APIRoute = async ({ params, request, cookies, redirect }) => 
     .eq('id', collaboratorId);
 
   if (error) {
-    console.error('Failed to remove collaborator:', error);
+    log.error('collaborator.remove_failed', { slug, collaboratorId, error: error.message });
     return redirect(`/admin/events/${slug}/collaborators?error=${encodeURIComponent('Failed to remove collaborator')}`);
   }
 
+  log.info('collaborator.removed', { slug, collaboratorId });
   return redirect(`/admin/events/${slug}/collaborators?success=${encodeURIComponent('Collaborator removed')}`);
-};
+});

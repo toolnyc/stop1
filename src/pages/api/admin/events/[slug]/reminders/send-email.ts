@@ -1,13 +1,17 @@
-import type { APIRoute } from 'astro';
 import { supabaseAdmin } from '@/lib/supabase';
 import { resend } from '@/lib/resend';
 import { dayOfReminderEmail } from '@/lib/emails/day-of-reminder';
+import { withLogging } from '@/lib/api';
+import { trackCall, maskEmail } from '@/lib/track';
 
-export const POST: APIRoute = async ({ params, cookies, redirect }) => {
+const JSON_HEADERS = { 'Content-Type': 'application/json' };
+
+export const POST = withLogging(async ({ params, cookies, log }) => {
   if (!supabaseAdmin) {
+    log.error('supabase_admin_missing');
     return new Response(JSON.stringify({ error: 'Server configuration error' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: JSON_HEADERS,
     });
   }
 
@@ -15,13 +19,12 @@ export const POST: APIRoute = async ({ params, cookies, redirect }) => {
   if (!accessToken) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
-      headers: { 'Content-Type': 'application/json' },
+      headers: JSON_HEADERS,
     });
   }
 
   const { slug } = params;
 
-  // Look up event
   const { data: event } = await supabaseAdmin
     .from('events')
     .select('id, title, date, venue_name, venue_address, reminder_email_sent_at')
@@ -29,30 +32,30 @@ export const POST: APIRoute = async ({ params, cookies, redirect }) => {
     .single();
 
   if (!event) {
+    log.warn('event_not_found', { slug });
     return new Response(JSON.stringify({ error: 'Event not found' }), {
       status: 404,
-      headers: { 'Content-Type': 'application/json' },
+      headers: JSON_HEADERS,
     });
   }
 
-  // Already sent check
   if (event.reminder_email_sent_at) {
     return new Response(JSON.stringify({
       error: `Already sent on ${new Date(event.reminder_email_sent_at).toLocaleDateString()}`,
     }), {
       status: 409,
-      headers: { 'Content-Type': 'application/json' },
+      headers: JSON_HEADERS,
     });
   }
 
   if (!resend) {
+    log.error('resend_not_configured');
     return new Response(JSON.stringify({ error: 'Email not configured' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: JSON_HEADERS,
     });
   }
 
-  // Get RSVPs with email addresses (email is now nullable)
   const { data: rsvps } = await supabaseAdmin
     .from('rsvps')
     .select('name, email')
@@ -63,21 +66,26 @@ export const POST: APIRoute = async ({ params, cookies, redirect }) => {
   let sent = 0;
   let failed = 0;
 
-  // Send emails in parallel batches
+  log.info('reminders.email_batch_start', { slug, total: rsvpList.length });
+
   const promises = rsvpList.map(async (rsvp) => {
-    try {
-      const emailData = dayOfReminderEmail(rsvp.name, rsvp.email, event);
-      await resend.emails.send(emailData);
-      sent++;
-    } catch (err) {
-      console.error(`[resend] Failed to send to ${rsvp.email}:`, err);
-      failed++;
-    }
+    const emailData = dayOfReminderEmail(rsvp.name, rsvp.email, event);
+    const result = await trackCall({
+      service: 'resend',
+      action: 'send-reminder-email',
+      meta: { to: maskEmail(rsvp.email), slug },
+      log,
+      fn: () => resend.emails.send(emailData),
+    });
+
+    if (result.ok) sent++;
+    else failed++;
   });
 
   await Promise.all(promises);
 
-  // Mark as sent
+  log.info('reminders.email_batch_done', { slug, sent, failed, total: rsvpList.length });
+
   await supabaseAdmin
     .from('events')
     .update({ reminder_email_sent_at: new Date().toISOString() })
@@ -85,6 +93,6 @@ export const POST: APIRoute = async ({ params, cookies, redirect }) => {
 
   return new Response(JSON.stringify({ success: true, sent, failed }), {
     status: 200,
-    headers: { 'Content-Type': 'application/json' },
+    headers: JSON_HEADERS,
   });
-};
+});

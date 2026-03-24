@@ -1,11 +1,14 @@
-import type { APIRoute } from 'astro';
 import { supabaseAdmin } from '@/lib/supabase';
+import { withLogging } from '@/lib/api';
 
-export const POST: APIRoute = async ({ params, request }) => {
+const JSON_HEADERS = { 'Content-Type': 'application/json' };
+
+export const POST = withLogging(async ({ params, request, log }) => {
   if (!supabaseAdmin) {
+    log.error('supabase_admin_missing');
     return new Response(JSON.stringify({ error: 'Server configuration error' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: JSON_HEADERS,
     });
   }
 
@@ -16,11 +19,10 @@ export const POST: APIRoute = async ({ params, request }) => {
   if (!amount || amount <= 0) {
     return new Response(JSON.stringify({ error: 'Amount is required' }), {
       status: 400,
-      headers: { 'Content-Type': 'application/json' },
+      headers: JSON_HEADERS,
     });
   }
 
-  // Look up event
   const { data: event } = await supabaseAdmin
     .from('events')
     .select('id')
@@ -28,13 +30,13 @@ export const POST: APIRoute = async ({ params, request }) => {
     .single();
 
   if (!event) {
+    log.warn('event_not_found', { slug });
     return new Response(JSON.stringify({ error: 'Event not found' }), {
       status: 404,
-      headers: { 'Content-Type': 'application/json' },
+      headers: JSON_HEADERS,
     });
   }
 
-  // Insert door payment
   const { data, error } = await supabaseAdmin
     .from('door_payments')
     .insert({
@@ -48,14 +50,13 @@ export const POST: APIRoute = async ({ params, request }) => {
     .single();
 
   if (error) {
-    console.error('Cash payment error:', error);
+    log.error('payment.cash_failed', { slug, error: error.message, code: error.code });
     return new Response(JSON.stringify({ error: 'Failed to record payment' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: JSON_HEADERS,
     });
   }
 
-  // Mark arrived if rsvpId provided
   if (rsvpId) {
     await supabaseAdmin
       .from('rsvps')
@@ -64,8 +65,10 @@ export const POST: APIRoute = async ({ params, request }) => {
       .eq('event_id', event.id);
   }
 
+  log.info('payment.cash_recorded', { slug, paymentId: data.id });
+
   return new Response(JSON.stringify({ success: true, payment: data }), {
     status: 201,
-    headers: { 'Content-Type': 'application/json' },
+    headers: JSON_HEADERS,
   });
-};
+});

@@ -1,10 +1,11 @@
-import type { APIRoute } from 'astro';
 import { supabaseAdmin } from '@/lib/supabase';
 import bcrypt from 'bcryptjs';
 import { createHmac } from 'node:crypto';
+import { withLogging } from '@/lib/api';
 
-export const POST: APIRoute = async ({ params, request, cookies, redirect }) => {
+export const POST = withLogging(async ({ params, request, cookies, redirect, log }) => {
   if (!supabaseAdmin) {
+    log.error('supabase_admin_missing');
     return new Response('Server configuration error', { status: 500 });
   }
 
@@ -12,10 +13,10 @@ export const POST: APIRoute = async ({ params, request, cookies, redirect }) => 
   const cookieSecret = import.meta.env.COOKIE_SECRET;
 
   if (!cookieSecret) {
+    log.error('cookie_secret_missing');
     return new Response('Server configuration error: missing COOKIE_SECRET', { status: 500 });
   }
 
-  // Get PIN from form or JSON
   let pin: string;
   const contentType = request.headers.get('content-type') || '';
   if (contentType.includes('application/json')) {
@@ -36,7 +37,6 @@ export const POST: APIRoute = async ({ params, request, cookies, redirect }) => 
     });
   }
 
-  // Look up event
   const { data: event, error } = await supabaseAdmin
     .from('events')
     .select('door_pin')
@@ -44,15 +44,16 @@ export const POST: APIRoute = async ({ params, request, cookies, redirect }) => 
     .single();
 
   if (error || !event || !event.door_pin) {
+    log.warn('event_not_found', { slug });
     return new Response(JSON.stringify({ error: 'Event not found' }), {
       status: 404,
       headers: { 'Content-Type': 'application/json' },
     });
   }
 
-  // Compare PIN
   const valid = await bcrypt.compare(pin, event.door_pin);
   if (!valid) {
+    log.warn('door.pin_invalid', { slug });
     if (!contentType.includes('application/json')) {
       return redirect(`/door/${slug}/pin?error=${encodeURIComponent('Incorrect PIN')}`);
     }
@@ -62,15 +63,16 @@ export const POST: APIRoute = async ({ params, request, cookies, redirect }) => 
     });
   }
 
-  // Set door session cookie
   const sig = createHmac('sha256', cookieSecret).update(slug!).digest('hex');
   cookies.set(`door_session_${slug}`, sig, {
     path: `/door/${slug}`,
     httpOnly: true,
     secure: import.meta.env.PROD,
     sameSite: 'strict',
-    maxAge: 60 * 60 * 12, // 12 hours
+    maxAge: 60 * 60 * 12,
   });
+
+  log.info('door.authenticated', { slug });
 
   if (!contentType.includes('application/json')) {
     return redirect(`/door/${slug}/checkin`);
@@ -80,4 +82,4 @@ export const POST: APIRoute = async ({ params, request, cookies, redirect }) => 
     status: 200,
     headers: { 'Content-Type': 'application/json' },
   });
-};
+});

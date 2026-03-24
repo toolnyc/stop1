@@ -1,16 +1,16 @@
-import type { APIRoute } from 'astro';
 import { supabaseAdmin } from '@/lib/supabase';
 import bcrypt from 'bcryptjs';
+import { withLogging } from '@/lib/api';
 
-export const POST: APIRoute = async ({ request, cookies, redirect }) => {
+export const POST = withLogging(async ({ request, cookies, redirect, log }) => {
   if (!supabaseAdmin) {
+    log.error('supabase_admin_missing');
     return new Response(JSON.stringify({ error: 'Server configuration error' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
   }
 
-  // Verify auth
   const accessToken = cookies.get('sb-access-token')?.value;
   if (!accessToken) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -31,7 +31,6 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 
   const { title, slug, date, time_end, venue_name, venue_address, description, door_price, door_pin, capacity, status } = body;
 
-  // Validation
   const errors: string[] = [];
   if (!title) errors.push('Title is required');
   if (!slug) errors.push('Slug is required');
@@ -48,7 +47,6 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     });
   }
 
-  // Hash door PIN
   const doorPinHash = await bcrypt.hash(door_pin, 10);
 
   const { data, error } = await supabaseAdmin
@@ -79,7 +77,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
         headers: { 'Content-Type': 'application/json' },
       });
     }
-    console.error('Failed to create event:', error);
+    log.error('event.create_failed', { slug, error: error.message, code: error.code });
     if (!contentType.includes('application/json')) {
       return redirect(`/admin/events/new?error=${encodeURIComponent('Failed to create event')}`);
     }
@@ -89,6 +87,8 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     });
   }
 
+  log.info('event.created', { slug: data.slug });
+
   if (!contentType.includes('application/json')) {
     return redirect(`/admin/events/${data.slug}`);
   }
@@ -97,4 +97,4 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     status: 201,
     headers: { 'Content-Type': 'application/json' },
   });
-};
+});

@@ -1,9 +1,11 @@
-import type { APIRoute } from 'astro';
 import { supabaseAdmin } from '@/lib/supabase';
 import { uploadReceipt } from '@/lib/blob';
+import { withLogging } from '@/lib/api';
+import { trackCall } from '@/lib/track';
 
-export const POST: APIRoute = async ({ request, locals, redirect }) => {
+export const POST = withLogging(async ({ request, locals, redirect, log }) => {
   if (!supabaseAdmin) {
+    log.error('supabase_admin_missing');
     return new Response('Server configuration error', { status: 500 });
   }
 
@@ -18,7 +20,6 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
   const receipt = formData.get('receipt') as File | null;
 
   if (!description || !amount) {
-    // Find the invite token to redirect back
     const { data: collab } = await supabaseAdmin
       .from('collaborators')
       .select('invite_token')
@@ -38,7 +39,20 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
         .single();
       return redirect(`/collaborate/${collab?.invite_token}/expenses?error=${encodeURIComponent('Receipt must be under 10MB')}`);
     }
-    receiptUrl = await uploadReceipt(receipt, collaborator.id);
+
+    const uploadResult = await trackCall({
+      service: 'blob',
+      action: 'upload-receipt',
+      meta: { collaboratorId: collaborator.id, size: receipt.size },
+      log,
+      fn: () => uploadReceipt(receipt, collaborator.id),
+    });
+
+    if (uploadResult.ok) {
+      receiptUrl = uploadResult.data;
+    } else {
+      log.error('expense.receipt_upload_failed', { error: uploadResult.error });
+    }
   }
 
   const { error } = await supabaseAdmin
@@ -51,7 +65,6 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
       receipt_url: receiptUrl,
     });
 
-  // Get invite token for redirect
   const { data: collab } = await supabaseAdmin
     .from('collaborators')
     .select('invite_token')
@@ -60,9 +73,10 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
   const token = collab?.invite_token ?? '';
 
   if (error) {
-    console.error('Expense add error:', error);
+    log.error('expense.add_failed', { collaboratorId: collaborator.id, error: error.message });
     return redirect(`/collaborate/${token}/expenses?error=${encodeURIComponent('Failed to add expense')}`);
   }
 
+  log.info('expense.added', { collaboratorId: collaborator.id, amount });
   return redirect(`/collaborate/${token}/expenses?success=${encodeURIComponent('Expense added')}`);
-};
+});

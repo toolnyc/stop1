@@ -1,12 +1,16 @@
-import type { APIRoute } from 'astro';
 import { supabaseAdmin } from '@/lib/supabase';
 import { stripe } from '@/lib/stripe';
+import { withLogging } from '@/lib/api';
+import { trackCall } from '@/lib/track';
 
-export const POST: APIRoute = async ({ params, request }) => {
+const JSON_HEADERS = { 'Content-Type': 'application/json' };
+
+export const POST = withLogging(async ({ params, request, log }) => {
   if (!supabaseAdmin || !stripe) {
+    log.error('config_missing', { supabase: !!supabaseAdmin, stripe: !!stripe });
     return new Response(JSON.stringify({ error: 'Server configuration error' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: JSON_HEADERS,
     });
   }
 
@@ -14,7 +18,6 @@ export const POST: APIRoute = async ({ params, request }) => {
   const body = await request.json();
   const { rsvpId } = body;
 
-  // Look up event
   const { data: event } = await supabaseAdmin
     .from('events')
     .select('id, door_price, slug')
@@ -22,27 +25,41 @@ export const POST: APIRoute = async ({ params, request }) => {
     .single();
 
   if (!event) {
+    log.warn('event_not_found', { slug });
     return new Response(JSON.stringify({ error: 'Event not found' }), {
       status: 404,
-      headers: { 'Content-Type': 'application/json' },
+      headers: JSON_HEADERS,
     });
   }
 
-  const amount = Math.round(Number(event.door_price) * 100); // cents
+  const amount = Math.round(Number(event.door_price) * 100);
 
-  const intent = await stripe.paymentIntents.create({
-    amount,
-    currency: 'usd',
-    automatic_payment_methods: { enabled: true },
-    metadata: {
-      event_id: event.id,
-      slug: event.slug,
-      rsvp_id: rsvpId || '',
-    },
+  const result = await trackCall({
+    service: 'stripe',
+    action: 'create-payment-intent',
+    meta: { slug, amount, rsvpId: rsvpId || null },
+    log,
+    fn: () => stripe.paymentIntents.create({
+      amount,
+      currency: 'usd',
+      automatic_payment_methods: { enabled: true },
+      metadata: {
+        event_id: event.id,
+        slug: event.slug,
+        rsvp_id: rsvpId || '',
+      },
+    }),
   });
 
-  return new Response(JSON.stringify({ clientSecret: intent.client_secret }), {
+  if (!result.ok) {
+    return new Response(JSON.stringify({ error: 'Failed to create payment' }), {
+      status: 500,
+      headers: JSON_HEADERS,
+    });
+  }
+
+  return new Response(JSON.stringify({ clientSecret: result.data.client_secret }), {
     status: 200,
-    headers: { 'Content-Type': 'application/json' },
+    headers: JSON_HEADERS,
   });
-};
+});

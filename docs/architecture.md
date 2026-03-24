@@ -18,6 +18,9 @@ src/
 │   ├── resend.ts       # Resend client
 │   ├── blob.ts         # Vercel Blob upload helper
 │   ├── auth.ts         # bcryptjs PIN hashing, HMAC cookie signing
+│   ├── logger.ts       # Structured logger (JSON in prod, pretty in dev)
+│   ├── api.ts          # withLogging() API route wrapper
+│   ├── track.ts        # trackCall() external service tracker
 │   └── utils.ts        # slugify, formatCurrency, formatDate
 ├── pages/
 │   ├── index.astro                         # Redirect to next event or landing
@@ -83,27 +86,36 @@ if (!event) return Astro.redirect('/404');
 ```
 
 ### API routes
-Every API route exports typed handlers. Return JSON with explicit `Content-Type`:
+Every API route uses `withLogging()` for structured request/error logging:
 
 ```typescript
-import type { APIRoute } from 'astro';
+import { withLogging } from '@/lib/api';
 
-export const POST: APIRoute = async ({ request, cookies }) => {
-  try {
-    const body = await request.json();
-    // validate → query → respond
-    return new Response(JSON.stringify({ success: true }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  } catch (err) {
-    console.error('[api/route-name]', err);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-};
+export const POST = withLogging(async ({ request, cookies, log }) => {
+  const body = await request.json();
+  log.info('action_name', { key: 'value' });
+  // validate → query → respond
+  return new Response(JSON.stringify({ success: true }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+  // Unhandled errors are automatically caught, logged, and returned as 500
+});
+```
+
+External service calls use `trackCall()` for attempt/success/failure logging:
+
+```typescript
+import { trackCall, maskPhone } from '@/lib/track';
+
+const result = await trackCall({
+  service: 'twilio',
+  action: 'send-rsvp-sms',
+  meta: { to: maskPhone(phone) },
+  log,
+  fn: () => twilioClient.messages.create({ to, from, body }),
+});
+if (!result.ok) log.error('sms_failed', { error: result.error });
 ```
 
 ### Middleware (`src/middleware.ts`)

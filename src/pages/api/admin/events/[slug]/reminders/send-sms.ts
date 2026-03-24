@@ -1,12 +1,15 @@
-import type { APIRoute } from 'astro';
 import { supabaseAdmin } from '@/lib/supabase';
 import { sendSms } from '@/lib/sms';
+import { withLogging } from '@/lib/api';
 
-export const POST: APIRoute = async ({ params, cookies }) => {
+const JSON_HEADERS = { 'Content-Type': 'application/json' };
+
+export const POST = withLogging(async ({ params, cookies, log }) => {
   if (!supabaseAdmin) {
+    log.error('supabase_admin_missing');
     return new Response(JSON.stringify({ error: 'Server configuration error' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: JSON_HEADERS,
     });
   }
 
@@ -14,7 +17,7 @@ export const POST: APIRoute = async ({ params, cookies }) => {
   if (!accessToken) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
-      headers: { 'Content-Type': 'application/json' },
+      headers: JSON_HEADERS,
     });
   }
 
@@ -27,9 +30,10 @@ export const POST: APIRoute = async ({ params, cookies }) => {
     .single();
 
   if (!event) {
+    log.warn('event_not_found', { slug });
     return new Response(JSON.stringify({ error: 'Event not found' }), {
       status: 404,
-      headers: { 'Content-Type': 'application/json' },
+      headers: JSON_HEADERS,
     });
   }
 
@@ -38,7 +42,7 @@ export const POST: APIRoute = async ({ params, cookies }) => {
       error: `Already sent on ${new Date(event.reminder_sms_sent_at).toLocaleDateString()}`,
     }), {
       status: 409,
-      headers: { 'Content-Type': 'application/json' },
+      headers: JSON_HEADERS,
     });
   }
 
@@ -56,21 +60,28 @@ export const POST: APIRoute = async ({ params, cookies }) => {
   const body = `Tonight! ${event.title} @ ${venue}, ${time}. See you there 🖤`;
 
   let sent = 0;
-  let skipped = 0;
+  let failed = 0;
+
+  log.info('reminders.sms_batch_start', { slug, total: rsvpList.length });
 
   for (const rsvp of rsvpList) {
-    const ok = await sendSms(rsvp.phone!, body);
-    if (ok) sent++;
-    else skipped++;
+    const result = await sendSms(rsvp.phone!, body, {
+      action: 'send-reminder-sms',
+      log,
+    });
+    if (result.ok) sent++;
+    else failed++;
   }
+
+  log.info('reminders.sms_batch_done', { slug, sent, failed, total: rsvpList.length });
 
   await supabaseAdmin
     .from('events')
     .update({ reminder_sms_sent_at: new Date().toISOString() })
     .eq('id', event.id);
 
-  return new Response(JSON.stringify({ success: true, sent, skipped }), {
+  return new Response(JSON.stringify({ success: true, sent, skipped: failed }), {
     status: 200,
-    headers: { 'Content-Type': 'application/json' },
+    headers: JSON_HEADERS,
   });
-};
+});

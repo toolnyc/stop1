@@ -1,8 +1,9 @@
-import type { APIRoute } from 'astro';
 import { supabaseAdmin } from '@/lib/supabase';
+import { withLogging } from '@/lib/api';
 
-export const POST: APIRoute = async ({ params, request, cookies, redirect }) => {
+export const POST = withLogging(async ({ params, request, cookies, redirect, log }) => {
   if (!supabaseAdmin) {
+    log.error('supabase_admin_missing');
     return new Response('Server configuration error', { status: 500 });
   }
 
@@ -19,7 +20,6 @@ export const POST: APIRoute = async ({ params, request, cookies, redirect }) => 
     return redirect(`/admin/events/${slug}/collaborators?error=${encodeURIComponent('Name and email are required')}`);
   }
 
-  // Look up event
   const { data: event } = await supabaseAdmin
     .from('events')
     .select('id')
@@ -38,9 +38,10 @@ export const POST: APIRoute = async ({ params, request, cookies, redirect }) => 
     });
 
   if (error) {
-    console.error('Failed to add collaborator:', error);
+    log.error('collaborator.add_failed', { slug, error: error.message, code: error.code });
     return redirect(`/admin/events/${slug}/collaborators?error=${encodeURIComponent('Failed to add collaborator')}`);
   }
 
+  log.info('collaborator.added', { slug, email: email.split('@')[0] + '@***' });
   return redirect(`/admin/events/${slug}/collaborators?success=${encodeURIComponent('Collaborator added')}`);
-};
+});

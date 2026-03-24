@@ -1,6 +1,7 @@
 import { defineMiddleware } from 'astro:middleware';
 import { createHmac } from 'node:crypto';
 import { supabaseAdmin } from './lib/supabase';
+import { log } from './lib/logger';
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const { pathname } = context.url;
@@ -20,6 +21,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
           });
 
           if (refreshError || !refreshData.session) {
+            log.warn('auth.refresh_failed', { path: pathname, error: refreshError?.message });
             context.cookies.delete('sb-access-token', { path: '/' });
             context.cookies.delete('sb-refresh-token', { path: '/' });
             if (isAdminRoute) {
@@ -50,7 +52,10 @@ export const onRequest = defineMiddleware(async (context, next) => {
         context.locals.user = user;
       }
     } catch (err) {
-      console.error('Auth middleware error:', err);
+      log.error('auth.middleware_error', {
+        path: pathname,
+        error: err instanceof Error ? err.message : String(err),
+      });
       if (isAdminRoute) {
         return context.redirect('/admin/login');
       }
@@ -72,6 +77,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
     const expected = createHmac('sha256', cookieSecret).update(doorSlug).digest('hex');
     if (sig !== expected) {
+      log.warn('door.invalid_signature', { slug: doorSlug });
       return context.redirect(`/door/${doorSlug}/pin`);
     }
 
@@ -97,14 +103,15 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
     const expectedSig = createHmac('sha256', cookieSecret).update(payload).digest('hex');
     if (sig !== expectedSig) {
-      const token = collabMatch[1];
-      return context.redirect(`/collaborate/${token}`);
+      log.warn('collab.invalid_signature', { path: pathname });
+      return context.redirect(`/collaborate/${collabMatch[1]}`);
     }
 
     try {
       const data = JSON.parse(Buffer.from(payload, 'base64').toString());
       context.locals.collaborator = { id: data.id, eventId: data.eventId };
     } catch {
+      log.warn('collab.payload_parse_failed', { path: pathname });
       const token = collabMatch[1];
       return context.redirect(`/collaborate/${token}`);
     }

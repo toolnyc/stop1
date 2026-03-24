@@ -1,8 +1,9 @@
-import type { APIRoute } from 'astro';
 import { supabaseAdmin } from '@/lib/supabase';
+import { withLogging } from '@/lib/api';
 
-export const POST: APIRoute = async ({ request, locals, redirect }) => {
+export const POST = withLogging(async ({ request, locals, redirect, log }) => {
   if (!supabaseAdmin) {
+    log.error('supabase_admin_missing');
     return new Response('Server configuration error', { status: 500 });
   }
 
@@ -14,7 +15,6 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
   const formData = await request.formData();
   const expenseId = formData.get('expense_id') as string;
 
-  // Get invite token for redirect
   const { data: collab } = await supabaseAdmin
     .from('collaborators')
     .select('invite_token')
@@ -26,7 +26,6 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     return redirect(`/collaborate/${token}/expenses?error=${encodeURIComponent('Missing expense ID')}`);
   }
 
-  // Check if any payouts exist for this event
   const { count } = await supabaseAdmin
     .from('payouts')
     .select('id', { count: 'exact', head: true })
@@ -36,7 +35,6 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     return redirect(`/collaborate/${token}/expenses?error=${encodeURIComponent('Cannot delete expenses after payouts have been recorded')}`);
   }
 
-  // Only delete own expenses
   const { error } = await supabaseAdmin
     .from('expenses')
     .delete()
@@ -44,9 +42,10 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     .eq('collaborator_id', collaborator.id);
 
   if (error) {
-    console.error('Expense delete error:', error);
+    log.error('expense.delete_failed', { collaboratorId: collaborator.id, expenseId, error: error.message });
     return redirect(`/collaborate/${token}/expenses?error=${encodeURIComponent('Failed to delete expense')}`);
   }
 
+  log.info('expense.deleted', { collaboratorId: collaborator.id, expenseId });
   return redirect(`/collaborate/${token}/expenses?success=${encodeURIComponent('Expense deleted')}`);
-};
+});
