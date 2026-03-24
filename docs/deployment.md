@@ -19,16 +19,21 @@ Key settings beyond the defaults:
 
 | Setting | Purpose |
 |---------|---------|
-| `vite.ssr.noExternal: ['@supabase/supabase-js', 'tslib']` | Bundles Supabase + tslib into server chunks so NFT doesn't need to trace them |
+| `vite.ssr.noExternal: ['@supabase/supabase-js', '@supabase/auth-js', ...]` | Bundles all `@supabase/*` sub-packages + tslib into server chunks so NFT doesn't need to trace them. **Must list every sub-package individually** — `@supabase/supabase-js` alone is not enough because Vite treats sub-packages as separate externals |
 | `image.service: noop` | Disables sharp image service (no pages use `<Image>`) — avoids bundling sharp into the function |
+
+### Pre-build validation
+
+`scripts/verify-deploy-config.mjs` runs automatically before every build (via the `prebuild` npm script). It checks that `.npmrc` and `astro.config.mjs` contain the required settings. If a merge strips these files, the build fails immediately with a clear error instead of deploying a broken function.
 
 ### Build cache
 
 If a deploy succeeds (status "Ready") but returns 500 at runtime, or if `.npmrc`/lockfile changes aren't being picked up:
 
-1. Set `VERCEL_FORCE_NO_BUILD_CACHE=1` as a Vercel env var for the target environment
-2. Trigger a redeploy
-3. Remove the env var after the deploy succeeds
+- **CLI deploys:** use `vercel --prod --force` to skip the build cache
+- **Git-triggered deploys:** set `VERCEL_FORCE_NO_BUILD_CACHE=1` as a Vercel env var, trigger a redeploy, then remove the env var
+
+Note: `VERCEL_FORCE_NO_BUILD_CACHE` does **not** work for CLI deploys — only `--force` bypasses the cache in that case.
 
 ### Node.js version
 

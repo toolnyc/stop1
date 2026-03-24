@@ -11,7 +11,16 @@ export default defineConfig({
       // Bundle Supabase + tslib into server chunks so the Vercel NFT bundler
       // doesn't need to trace them (NFT misses tslib's ESM entry → runtime crash).
       // Requires node-linker=hoisted in .npmrc so Rollup can resolve tslib.
-      noExternal: ['@supabase/supabase-js', 'tslib'],
+      noExternal: [
+        '@supabase/supabase-js',
+        '@supabase/auth-js',
+        '@supabase/functions-js',
+        '@supabase/postgrest-js',
+        '@supabase/realtime-js',
+        '@supabase/storage-js',
+        '@supabase/phoenix',
+        'tslib',
+      ],
     },
   },
 });
