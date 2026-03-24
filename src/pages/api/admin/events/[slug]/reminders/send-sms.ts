@@ -42,15 +42,14 @@ export const POST: APIRoute = async ({ params, cookies }) => {
     });
   }
 
-  // Get opt-in RSVPs with phone numbers
+  // Get opt-in RSVPs (phone is now NOT NULL)
   const { data: rsvps } = await supabaseAdmin
     .from('rsvps')
     .select('name, phone')
     .eq('event_id', event.id)
-    .eq('sms_opt_in', true)
-    .not('phone', 'is', null);
+    .eq('sms_opt_in', true);
 
-  const rsvpList = (rsvps ?? []).filter(r => r.phone && r.phone.trim());
+  const rsvpList = rsvps ?? [];
 
   const time = new Date(event.date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   const venue = event.venue_name || 'TBA';

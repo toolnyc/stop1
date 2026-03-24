@@ -260,33 +260,33 @@ export type Database = {
         Row: {
           arrived_at: string | null
           created_at: string
-          email: string
+          email: string | null
           event_id: string
           id: string
           name: string
-          phone: string | null
+          phone: string
           sms_opt_in: boolean
           walk_in: boolean
         }
         Insert: {
           arrived_at?: string | null
           created_at?: string
-          email: string
+          email?: string | null
           event_id: string
           id?: string
           name: string
-          phone?: string | null
+          phone: string
           sms_opt_in?: boolean
           walk_in?: boolean
         }
         Update: {
           arrived_at?: string | null
           created_at?: string
-          email?: string
+          email?: string | null
           event_id?: string
           id?: string
           name?: string
-          phone?: string | null
+          phone?: string
           sms_opt_in?: boolean
           walk_in?: boolean
         }

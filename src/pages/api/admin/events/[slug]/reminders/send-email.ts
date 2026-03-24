@@ -52,11 +52,12 @@ export const POST: APIRoute = async ({ params, cookies, redirect }) => {
     });
   }
 
-  // Get all RSVPs
+  // Get RSVPs with email addresses (email is now nullable)
   const { data: rsvps } = await supabaseAdmin
     .from('rsvps')
     .select('name, email')
-    .eq('event_id', event.id);
+    .eq('event_id', event.id)
+    .not('email', 'is', null);
 
   const rsvpList = rsvps ?? [];
   let sent = 0;

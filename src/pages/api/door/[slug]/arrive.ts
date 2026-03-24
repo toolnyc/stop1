@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { supabaseAdmin } from '@/lib/supabase';
+import { normalizePhone } from '@/lib/phone';
 
 export const POST: APIRoute = async ({ params, request }) => {
   if (!supabaseAdmin) {
@@ -11,7 +12,7 @@ export const POST: APIRoute = async ({ params, request }) => {
 
   const { slug } = params;
   const body = await request.json();
-  const { rsvpId, name, email } = body;
+  const { rsvpId, name, phone: rawPhone } = body;
 
   // Look up event
   const { data: event } = await supabaseAdmin
@@ -29,12 +30,15 @@ export const POST: APIRoute = async ({ params, request }) => {
 
   // Walk-in: create RSVP + mark arrived
   if (!rsvpId && name) {
+    const phone = rawPhone ? normalizePhone(rawPhone) : null;
     const { data: newRsvp, error: insertError } = await supabaseAdmin
       .from('rsvps')
       .insert({
         event_id: event.id,
         name: name.trim(),
-        email: (email || `walkin-${Date.now()}@stop1.party`).trim().toLowerCase(),
+        email: null,
+        phone: phone || `+0000000${Date.now()}`,
+        sms_opt_in: !!phone,
         walk_in: true,
         arrived_at: new Date().toISOString(),
       })

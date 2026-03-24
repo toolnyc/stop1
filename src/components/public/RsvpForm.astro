@@ -17,18 +17,18 @@ const { slug, eventTitle } = Astro.props;
     </label>
 
     <label>
-      <span>Email *</span>
-      <input type="email" name="email" required autocomplete="email" placeholder="you@example.com" />
+      <span>Phone *</span>
+      <input type="tel" name="phone" id="rsvp-phone" required autocomplete="tel" placeholder="(555) 123-4567" />
     </label>
 
     <label>
-      <span>Phone</span>
-      <input type="tel" name="phone" id="rsvp-phone" autocomplete="tel" placeholder="Optional" />
+      <span>Email</span>
+      <input type="email" name="email" autocomplete="email" placeholder="Optional — for email updates" />
     </label>
 
-    <label id="sms-opt-in-label" class="sms-label" style="display:none">
+    <label class="sms-label">
       <div class="checkbox-row">
-        <input type="checkbox" name="sms_opt_in" value="true" />
+        <input type="checkbox" name="sms_opt_in" value="true" checked />
         <span class="checkbox-text">Text me event reminders</span>
       </div>
     </label>
@@ -41,13 +41,7 @@ const { slug, eventTitle } = Astro.props;
   const form = document.getElementById('rsvp-form') as HTMLFormElement;
   const fields = document.getElementById('rsvp-fields')!;
   const message = document.getElementById('rsvp-message')!;
-  const phone = document.getElementById('rsvp-phone') as HTMLInputElement;
-  const smsLabel = document.getElementById('sms-opt-in-label')!;
   const submitBtn = document.getElementById('rsvp-submit') as HTMLButtonElement;
-
-  phone?.addEventListener('input', () => {
-    smsLabel.style.display = phone.value.trim() ? 'block' : 'none';
-  });
 
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -57,8 +51,8 @@ const { slug, eventTitle } = Astro.props;
     const formData = new FormData(form);
     const data = {
       name: formData.get('name') as string,
-      email: formData.get('email') as string,
       phone: (formData.get('phone') as string) || '',
+      email: (formData.get('email') as string) || '',
       sms_opt_in: formData.get('sms_opt_in') === 'true',
     };
 
@@ -74,7 +68,7 @@ const { slug, eventTitle } = Astro.props;
       if (res.ok) {
         fields.style.display = 'none';
         message.className = 'rsvp-message alert alert-success';
-        message.innerHTML = `<strong>You're on the list, ${data.name}!</strong><br><span class="confirm-sub">Check your email for confirmation.</span>`;
+        message.innerHTML = `<strong>You're on the list, ${data.name}!</strong><br><span class="confirm-sub">Check your texts for confirmation.</span>`;
         message.style.display = 'block';
       } else {
         message.className = 'rsvp-message alert alert-error';
