@@ -6,14 +6,16 @@ const error = Astro.url.searchParams.get('error');
 <Base title="Login — Stop One">
   <main class="login-page">
     <form method="POST" action="/api/admin/login" class="login-form">
-      <h1>Stop One</h1>
-      <p class="login-subtitle">Admin Login</p>
+      <div class="login-header">
+        <h1>Stop One</h1>
+        <p class="login-subtitle">Admin</p>
+      </div>
 
-      {error && <div class="login-error">{error}</div>}
+      {error && <div class="alert alert-error">{error}</div>}
 
       <label>
         <span>Email</span>
-        <input type="email" name="email" required autocomplete="email" />
+        <input type="email" name="email" required autocomplete="email" placeholder="you@example.com" />
       </label>
 
       <label>
@@ -21,7 +23,7 @@ const error = Astro.url.searchParams.get('error');
         <input type="password" name="password" required autocomplete="current-password" />
       </label>
 
-      <button type="submit">Sign In</button>
+      <button type="submit" class="btn btn-primary btn-block">Sign In</button>
     </form>
   </main>
 </Base>
@@ -40,70 +42,23 @@ const error = Astro.url.searchParams.get('error');
     max-width: 360px;
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
+    gap: var(--space-5);
   }
 
-  .login-form h1 {
-    color: var(--color-accent);
-    font-size: 1.5rem;
+  .login-header {
     text-align: center;
+    margin-bottom: var(--space-2);
+  }
+
+  .login-header h1 {
+    color: var(--color-accent);
+    font-size: 1.75rem;
+    letter-spacing: -0.02em;
   }
 
   .login-subtitle {
-    text-align: center;
     color: var(--color-text-muted);
     font-size: 0.875rem;
-    margin-top: calc(-1 * var(--space-2));
-  }
-
-  .login-error {
-    background: color-mix(in srgb, var(--color-error) 15%, transparent);
-    border: 1px solid var(--color-error);
-    color: var(--color-error);
-    padding: var(--space-2) var(--space-3);
-    border-radius: var(--radius);
-    font-size: 0.875rem;
-  }
-
-  label {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-  }
-
-  label span {
-    font-size: 0.875rem;
-    color: var(--color-text-muted);
-  }
-
-  input {
-    width: 100%;
-    padding: var(--space-2) var(--space-3);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius);
-    color: var(--color-text);
-    font-size: 1rem;
-  }
-
-  input:focus {
-    outline: none;
-    border-color: var(--color-accent);
-  }
-
-  button {
-    width: 100%;
-    padding: var(--space-2) var(--space-4);
-    background: var(--color-accent);
-    color: var(--color-bg);
-    border: none;
-    border-radius: var(--radius);
-    font-weight: 600;
-    font-size: 1rem;
-    cursor: pointer;
-  }
-
-  button:hover {
-    opacity: 0.9;
+    margin-top: var(--space-1);
   }
 </style>

@@ -16,24 +16,20 @@ const { data: event } = await supabaseAdmin
 
 if (!event) return new Response(null, { status: 404 });
 
-// Arrived count
 const { count: arrivedCount } = await supabaseAdmin
   .from('rsvps')
   .select('id', { count: 'exact', head: true })
   .eq('event_id', event.id)
   .not('arrived_at', 'is', null);
 
-// Walk-in count
 const { count: walkinCount } = await supabaseAdmin
   .from('rsvps')
   .select('id', { count: 'exact', head: true })
   .eq('event_id', event.id)
   .eq('walk_in', true);
 
-// RSVP arrived (non walk-in)
 const rsvpArrived = (arrivedCount ?? 0) - (walkinCount ?? 0);
 
-// Payments
 const { data: payments } = await supabaseAdmin
   .from('door_payments')
   .select('amount, method')
@@ -52,22 +48,22 @@ const totalRevenue = cashTotal + cardTotal;
 
     <div class="stats-grid">
       <div class="stat-card">
-        <span class="stat-value">{arrivedCount ?? 0}</span>
-        <span class="stat-label">Total Arrived</span>
+        <span class="stat-value mono">{arrivedCount ?? 0}</span>
+        <span class="stat-label">Total</span>
       </div>
       <div class="stat-card">
-        <span class="stat-value">{rsvpArrived}</span>
+        <span class="stat-value mono">{rsvpArrived}</span>
         <span class="stat-label">RSVPs</span>
       </div>
       <div class="stat-card">
-        <span class="stat-value">{walkinCount ?? 0}</span>
+        <span class="stat-value mono">{walkinCount ?? 0}</span>
         <span class="stat-label">Walk-ins</span>
       </div>
     </div>
 
     <div class="revenue-section">
       <h2>Revenue</h2>
-      <div class="revenue-grid">
+      <div class="revenue-table">
         <div class="revenue-row">
           <span>Cash</span>
           <span class="mono">${cashTotal.toFixed(2)}</span>
@@ -83,8 +79,8 @@ const totalRevenue = cashTotal + cardTotal;
       </div>
     </div>
 
-    <p class="refresh-note">Auto-refreshes every 30 seconds</p>
-    <a href={`/door/${slug}/checkin`} class="back-link">← Back to Check-in</a>
+    <p class="refresh-note">Auto-refreshes every 30s</p>
+    <a href={`/door/${slug}/checkin`} class="back-link">&larr; Back to Check-in</a>
   </main>
 </Base>
 
@@ -92,12 +88,21 @@ const totalRevenue = cashTotal + cardTotal;
   .summary-page {
     max-width: 480px;
     margin: 0 auto;
-    padding: var(--space-6) var(--space-4);
+    padding: var(--space-8) var(--space-4);
     text-align: center;
   }
 
-  h1 { color: var(--color-accent); margin-bottom: var(--space-1); }
-  .subtitle { color: var(--color-text-muted); margin-bottom: var(--space-8); }
+  h1 {
+    font-size: 1.375rem;
+    letter-spacing: -0.02em;
+    margin-bottom: var(--space-1);
+  }
+
+  .subtitle {
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-8);
+    font-size: 0.875rem;
+  }
 
   .stats-grid {
     display: grid;
@@ -110,23 +115,24 @@ const totalRevenue = cashTotal + cardTotal;
     background: var(--color-surface);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
-    padding: var(--space-4);
+    padding: var(--space-5) var(--space-3);
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
+    gap: var(--space-2);
   }
 
   .stat-value {
-    font-size: 2rem;
+    font-size: 2.25rem;
     font-weight: 700;
-    font-family: var(--font-mono);
+    line-height: 1;
   }
 
   .stat-label {
-    font-size: 0.75rem;
+    font-size: 0.6875rem;
     color: var(--color-text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.08em;
+    font-weight: 600;
   }
 
   .revenue-section {
@@ -135,14 +141,15 @@ const totalRevenue = cashTotal + cardTotal;
   }
 
   .revenue-section h2 {
-    font-size: 1.125rem;
+    font-size: 1rem;
+    font-weight: 600;
     margin-bottom: var(--space-3);
   }
 
-  .revenue-grid {
+  .revenue-table {
     background: var(--color-surface);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius);
+    border-radius: var(--radius-lg);
     overflow: hidden;
   }
 
@@ -151,25 +158,34 @@ const totalRevenue = cashTotal + cardTotal;
     justify-content: space-between;
     padding: var(--space-3) var(--space-4);
     border-bottom: 1px solid var(--color-border);
+    font-size: 0.9375rem;
   }
 
-  .revenue-row:last-child { border-bottom: none; }
+  .revenue-row:last-child {
+    border-bottom: none;
+  }
 
   .revenue-row.total {
     font-weight: 700;
-    background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+    background: color-mix(in srgb, var(--color-accent) 8%, transparent);
   }
 
-  .mono { font-family: var(--font-mono); }
-
   .refresh-note {
-    font-size: 0.75rem;
+    font-size: 0.6875rem;
     color: var(--color-text-muted);
-    margin-bottom: var(--space-4);
+    margin-bottom: var(--space-3);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
   }
 
   .back-link {
     color: var(--color-text-muted);
     font-size: 0.875rem;
+    text-decoration: none;
+    transition: color var(--transition);
+  }
+
+  .back-link:hover {
+    color: var(--color-text);
   }
 </style>

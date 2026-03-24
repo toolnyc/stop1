@@ -16,7 +16,6 @@ const { data: event } = await supabaseAdmin
 
 if (!event) return Astro.redirect('/admin');
 
-// Income
 const { data: payments } = await supabaseAdmin
   .from('door_payments')
   .select('amount, method')
@@ -27,7 +26,6 @@ const cashTotal = paymentList.filter(p => p.method === 'cash').reduce((s, p) => 
 const cardTotal = paymentList.filter(p => p.method === 'card').reduce((s, p) => s + Number(p.amount), 0);
 const revenue = cashTotal + cardTotal;
 
-// Expenses grouped by collaborator
 const { data: collaborators } = await supabaseAdmin
   .from('collaborators')
   .select('id, name, payout_pct')
@@ -45,7 +43,6 @@ const { data: expenses } = await supabaseAdmin
 const expenseList = expenses ?? [];
 const totalExpenses = expenseList.reduce((s, e) => s + Number(e.amount), 0);
 
-// Payouts
 const { data: payouts } = await supabaseAdmin
   .from('payouts')
   .select('id, collaborator_id, amount, method, paid_at')
@@ -54,10 +51,8 @@ const { data: payouts } = await supabaseAdmin
 
 const payoutList = payouts ?? [];
 
-// P&L
 const profit = revenue - totalExpenses;
 
-// Per-collaborator calculations
 type CollabSummary = {
   id: string;
   name: string;
@@ -96,13 +91,22 @@ function fmt(n: number) { return `$${n.toFixed(2)}`; }
     <nav class="sidebar">
       <a href={`/admin/events/${slug}`} class="sidebar-link">Edit</a>
       <a href={`/admin/events/${slug}/rsvps`} class="sidebar-link">RSVPs</a>
-      <a href={`/door/${slug}`} class="sidebar-link" target="_blank">Door ↗</a>
+      <a href={`/door/${slug}`} class="sidebar-link external" target="_blank">Door</a>
       <a href={`/admin/events/${slug}/budget`} class="sidebar-link active">Budget</a>
       <a href={`/admin/events/${slug}/collaborators`} class="sidebar-link">Collaborators</a>
     </nav>
 
     <div class="edit-content">
       <h1>Budget</h1>
+
+      <!-- Profit card -->
+      <div class="profit-card">
+        <div class="profit-inner">
+          <span class="profit-label">Net Profit</span>
+          <span class:list={['profit-value', 'mono', { negative: profit < 0 }]}>{fmt(profit)}</span>
+        </div>
+        <p class="profit-formula text-muted">{fmt(revenue)} revenue &minus; {fmt(totalExpenses)} expenses</p>
+      </div>
 
       <!-- Income -->
       <section class="section">
@@ -119,13 +123,13 @@ function fmt(n: number) { return `$${n.toFixed(2)}`; }
         <h2>Expenses</h2>
         {collabSummaries.map(c => (
           <div class="collab-expenses">
-            <h3>{c.name} ({fmt(c.expenseTotal)})</h3>
+            <h3>{c.name} <span class="text-muted">({fmt(c.expenseTotal)})</span></h3>
             {c.expenses.map(e => (
               <div class="expense-line">
                 <span>{e.description}</span>
                 <span class="expense-right">
                   <span class="mono">{fmt(Number(e.amount))}</span>
-                  {e.receipt_url && <a href={e.receipt_url} target="_blank" class="receipt">Receipt</a>}
+                  {e.receipt_url && <a href={e.receipt_url} target="_blank" class="receipt-link">Receipt</a>}
                 </span>
               </div>
             ))}
@@ -136,31 +140,28 @@ function fmt(n: number) { return `$${n.toFixed(2)}`; }
         </div>
       </section>
 
-      <!-- P&L -->
-      <section class="section profit-section">
-        <div class="profit-box">
-          <span class="profit-label">Profit</span>
-          <span class="profit-value" class:list={[{ negative: profit < 0 }]}>{fmt(profit)}</span>
-        </div>
-        <p class="profit-formula">Revenue ({fmt(revenue)}) − Expenses ({fmt(totalExpenses)})</p>
-      </section>
-
       <!-- Payouts -->
       <section class="section">
         <h2>Payouts</h2>
         {collabSummaries.map(c => (
-          <div class="collab-payout">
+          <div class="collab-payout card">
             <div class="payout-header">
-              <span>{c.name} ({c.payout_pct}%)</span>
-              <span class="mono">Owed: {fmt(c.owed)} | Paid: {fmt(c.paid)} | Balance: {fmt(c.balance)}</span>
+              <span class="payout-name">{c.name} <span class="text-muted">({c.payout_pct}%)</span></span>
+              <div class="payout-summary mono">
+                <span>Owed {fmt(c.owed)}</span>
+                <span class="text-muted">/</span>
+                <span>Paid {fmt(c.paid)}</span>
+                <span class="text-muted">/</span>
+                <span class:list={[{ 'text-accent': c.balance > 0 }]}>Bal {fmt(c.balance)}</span>
+              </div>
             </div>
             {c.payouts.map(p => (
               <div class="payout-line">
                 <span>{fmt(Number(p.amount))} via {p.method}</span>
-                <span class="payout-date">{new Date(p.paid_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                <span class="text-muted">{new Date(p.paid_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
               </div>
             ))}
-            <a href={`/admin/events/${slug}/budget?record_payout=${c.id}`} class="btn-record">Record Payout</a>
+            <a href={`/admin/events/${slug}/budget?record_payout=${c.id}`} class="btn btn-secondary btn-sm">Record Payout</a>
           </div>
         ))}
       </section>
@@ -169,45 +170,54 @@ function fmt(n: number) { return `$${n.toFixed(2)}`; }
 </Admin>
 
 <style>
-  .edit-layout { display: grid; grid-template-columns: 180px 1fr; gap: var(--space-6); }
-  @media (max-width: 640px) { .edit-layout { grid-template-columns: 1fr; } }
+  .edit-layout { display: grid; grid-template-columns: 180px 1fr; gap: var(--space-8); }
+  @media (max-width: 640px) {
+    .edit-layout { grid-template-columns: 1fr; gap: var(--space-4); }
+    .sidebar { flex-direction: row !important; overflow-x: auto; gap: var(--space-1) !important; padding-bottom: var(--space-2); border-bottom: 1px solid var(--color-border); }
+    .sidebar-link { white-space: nowrap; }
+  }
 
   .sidebar { display: flex; flex-direction: column; gap: var(--space-1); }
-  .sidebar-link { padding: var(--space-2) var(--space-3); border-radius: var(--radius); color: var(--color-text-muted); text-decoration: none; font-size: 0.875rem; }
+  .sidebar-link { padding: var(--space-2) var(--space-3); border-radius: var(--radius); color: var(--color-text-muted); text-decoration: none; font-size: 0.875rem; font-weight: 500; transition: background var(--transition), color var(--transition); }
   .sidebar-link:hover { background: var(--color-surface); color: var(--color-text); }
   .sidebar-link.active { background: var(--color-surface); color: var(--color-accent); }
+  .sidebar-link.external::after { content: ' ↗'; opacity: 0.5; }
 
-  .edit-content h1 { font-size: 1.5rem; margin-bottom: var(--space-6); }
+  .edit-content h1 { font-size: 1.5rem; letter-spacing: -0.02em; margin-bottom: var(--space-6); }
+
+  .profit-card {
+    text-align: center;
+    background: var(--color-surface);
+    border: 2px solid var(--color-accent);
+    border-radius: var(--radius-lg);
+    padding: var(--space-8) var(--space-6);
+    margin-bottom: var(--space-8);
+  }
+
+  .profit-inner { display: flex; flex-direction: column; gap: var(--space-2); }
+  .profit-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted); font-weight: 600; }
+  .profit-value { font-size: 2.5rem; font-weight: 700; color: var(--color-success); line-height: 1; }
+  .profit-value.negative { color: var(--color-error); }
+  .profit-formula { font-size: 0.8125rem; margin-top: var(--space-3); }
 
   .section { margin-bottom: var(--space-8); }
-  .section h2 { font-size: 1.125rem; margin-bottom: var(--space-3); }
+  .section h2 { font-size: 1.125rem; font-weight: 600; margin-bottom: var(--space-4); }
 
-  .data-table { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); overflow: hidden; }
-  .data-row { display: flex; justify-content: space-between; padding: var(--space-2) var(--space-4); border-bottom: 1px solid var(--color-border); font-size: 0.875rem; }
+  .data-table { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden; }
+  .data-row { display: flex; justify-content: space-between; padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-border); font-size: 0.9375rem; }
   .data-row:last-child { border-bottom: none; }
-  .data-row.total { font-weight: 700; background: color-mix(in srgb, var(--color-accent) 8%, transparent); }
+  .data-row.total { font-weight: 700; background: color-mix(in srgb, var(--color-accent) 6%, transparent); }
 
-  .mono { font-family: var(--font-mono); }
+  .collab-expenses { margin-bottom: var(--space-5); }
+  .collab-expenses h3 { font-size: 0.875rem; font-weight: 600; margin-bottom: var(--space-2); }
 
-  .collab-expenses { margin-bottom: var(--space-4); }
-  .collab-expenses h3 { font-size: 0.875rem; color: var(--color-text-muted); margin-bottom: var(--space-2); }
-
-  .expense-line { display: flex; justify-content: space-between; padding: var(--space-1) 0; font-size: 0.875rem; }
+  .expense-line { display: flex; justify-content: space-between; padding: var(--space-2) 0; font-size: 0.875rem; }
   .expense-right { display: flex; gap: var(--space-3); align-items: center; }
-  .receipt { font-size: 0.75rem; color: var(--color-accent); }
+  .receipt-link { font-size: 0.75rem; color: var(--color-accent); text-decoration: none; }
 
-  .profit-section { text-align: center; }
-  .profit-box { background: var(--color-surface); border: 2px solid var(--color-accent); border-radius: var(--radius-lg); padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-2); }
-  .profit-label { font-size: 0.875rem; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
-  .profit-value { font-size: 2.5rem; font-weight: 700; font-family: var(--font-mono); color: var(--color-success); }
-  .profit-value.negative { color: var(--color-error); }
-  .profit-formula { font-size: 0.75rem; color: var(--color-text-muted); margin-top: var(--space-2); }
-
-  .collab-payout { margin-bottom: var(--space-4); padding: var(--space-3); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); }
-  .payout-header { display: flex; justify-content: space-between; font-size: 0.875rem; margin-bottom: var(--space-2); flex-wrap: wrap; gap: var(--space-2); }
-  .payout-line { display: flex; justify-content: space-between; font-size: 0.875rem; padding: var(--space-1) 0; color: var(--color-text-muted); }
-  .payout-date { font-size: 0.75rem; }
-
-  .btn-record { display: inline-block; margin-top: var(--space-2); padding: var(--space-1) var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius); color: var(--color-text-muted); text-decoration: none; font-size: 0.75rem; }
-  .btn-record:hover { border-color: var(--color-accent); color: var(--color-accent); }
+  .collab-payout { margin-bottom: var(--space-4); }
+  .payout-header { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.875rem; margin-bottom: var(--space-3); flex-wrap: wrap; gap: var(--space-2); }
+  .payout-name { font-weight: 600; }
+  .payout-summary { display: flex; gap: var(--space-2); font-size: 0.8125rem; }
+  .payout-line { display: flex; justify-content: space-between; font-size: 0.875rem; padding: var(--space-1) 0; }
 </style>
