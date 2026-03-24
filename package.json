@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "scripts": {
     "dev": "astro dev",
+    "prebuild": "node scripts/verify-deploy-config.mjs",
     "build": "astro build",
     "preview": "astro preview",
     "db:types": "supabase gen types typescript --project-id $SUPABASE_PROJECT_ID > src/types/database.ts",
