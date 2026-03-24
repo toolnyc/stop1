@@ -1,0 +1,204 @@
+---
+import Base from '@/layouts/Base.astro';
+import { supabaseAdmin } from '@/lib/supabase';
+
+if (!supabaseAdmin) {
+  return new Response('Server configuration error', { status: 500 });
+}
+
+const { token } = Astro.params;
+const collaborator = Astro.locals.collaborator;
+
+if (!collaborator) {
+  return Astro.redirect(`/collaborate/${token}`);
+}
+
+// Get collaborator details and event
+const { data: collab } = await supabaseAdmin
+  .from('collaborators')
+  .select('name, event_id')
+  .eq('id', collaborator.id)
+  .single();
+
+if (!collab) return Astro.redirect(`/collaborate/${token}`);
+
+const { data: event } = await supabaseAdmin
+  .from('events')
+  .select('title')
+  .eq('id', collab.event_id)
+  .single();
+
+// Get expenses for this collaborator only
+const { data: expenses } = await supabaseAdmin
+  .from('expenses')
+  .select('*')
+  .eq('collaborator_id', collaborator.id)
+  .order('created_at', { ascending: false });
+
+const expenseList = expenses ?? [];
+const total = expenseList.reduce((sum, e) => sum + Number(e.amount), 0);
+
+const error = Astro.url.searchParams.get('error');
+const success = Astro.url.searchParams.get('success');
+---
+<Base title={`Expenses — ${event?.title ?? 'Event'}`}>
+  <main class="expenses-page">
+    <h1>{event?.title}</h1>
+    <p class="subtitle">Expenses for {collab.name}</p>
+
+    {error && <div class="msg error">{error}</div>}
+    {success && <div class="msg success">{success}</div>}
+
+    <form
+      method="POST"
+      action="/api/collaborators/expenses/add"
+      enctype="multipart/form-data"
+      class="add-form"
+    >
+      <h2>Add Expense</h2>
+      <label>
+        <span>Description *</span>
+        <input type="text" name="description" required />
+      </label>
+      <label>
+        <span>Amount ($) *</span>
+        <input type="number" name="amount" min="0.01" step="0.01" required />
+      </label>
+      <label>
+        <span>Receipt (optional, max 10MB)</span>
+        <input type="file" name="receipt" accept="image/*,application/pdf" />
+      </label>
+      <button type="submit">Add Expense</button>
+    </form>
+
+    <div class="expense-list">
+      <h2>Your Expenses (${total.toFixed(2)})</h2>
+      {expenseList.length === 0 ? (
+        <p class="empty">No expenses yet.</p>
+      ) : (
+        expenseList.map((e) => (
+          <div class="expense-row">
+            <div class="expense-info">
+              <span class="expense-desc">{e.description}</span>
+              <span class="expense-date">{new Date(e.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+            </div>
+            <div class="expense-actions">
+              <span class="expense-amount">${Number(e.amount).toFixed(2)}</span>
+              {e.receipt_url && (
+                <a href={e.receipt_url} target="_blank" class="receipt-link">Receipt</a>
+              )}
+              <form method="POST" action="/api/collaborators/expenses/delete" style="display:inline">
+                <input type="hidden" name="expense_id" value={e.id} />
+                <button type="submit" class="btn-delete">×</button>
+              </form>
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  </main>
+</Base>
+
+<style>
+  .expenses-page {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: var(--space-6) var(--space-4);
+  }
+
+  h1 { color: var(--color-accent); margin-bottom: var(--space-1); }
+  .subtitle { color: var(--color-text-muted); margin-bottom: var(--space-6); }
+
+  .msg {
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    margin-bottom: var(--space-4);
+  }
+  .msg.error { background: color-mix(in srgb, var(--color-error) 15%, transparent); border: 1px solid var(--color-error); color: var(--color-error); }
+  .msg.success { background: color-mix(in srgb, var(--color-success) 15%, transparent); border: 1px solid var(--color-success); color: var(--color-success); }
+
+  .add-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    margin-bottom: var(--space-8);
+    padding: var(--space-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+  }
+
+  .add-form h2 { font-size: 1.125rem; }
+
+  label { display: flex; flex-direction: column; gap: var(--space-1); }
+  label span { font-size: 0.875rem; color: var(--color-text-muted); }
+
+  input[type="text"], input[type="number"] {
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    color: var(--color-text);
+    font-size: 1rem;
+  }
+
+  input:focus { outline: none; border-color: var(--color-accent); }
+
+  input[type="file"] {
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+  }
+
+  .add-form button {
+    padding: var(--space-2) var(--space-4);
+    background: var(--color-accent);
+    color: var(--color-bg);
+    border: none;
+    border-radius: var(--radius);
+    font-weight: 600;
+    cursor: pointer;
+    align-self: flex-start;
+  }
+
+  .expense-list h2 { font-size: 1.125rem; margin-bottom: var(--space-3); }
+  .empty { color: var(--color-text-muted); }
+
+  .expense-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-3);
+    border-bottom: 1px solid var(--color-border);
+    gap: var(--space-3);
+  }
+
+  .expense-info { display: flex; flex-direction: column; gap: 2px; }
+  .expense-desc { font-weight: 500; }
+  .expense-date { font-size: 0.75rem; color: var(--color-text-muted); }
+
+  .expense-actions { display: flex; align-items: center; gap: var(--space-3); flex-shrink: 0; }
+  .expense-amount { font-weight: 600; font-family: var(--font-mono); }
+
+  .receipt-link {
+    font-size: 0.75rem;
+    color: var(--color-accent);
+    text-decoration: none;
+  }
+
+  .btn-delete {
+    background: transparent;
+    border: 1px solid var(--color-border);
+    color: var(--color-error);
+    width: 24px;
+    height: 24px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 0.875rem;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+</style>
