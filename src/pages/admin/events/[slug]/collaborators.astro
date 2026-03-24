@@ -33,7 +33,7 @@ const origin = Astro.url.origin;
     <nav class="sidebar">
       <a href={`/admin/events/${slug}`} class="sidebar-link">Edit</a>
       <a href={`/admin/events/${slug}/rsvps`} class="sidebar-link">RSVPs</a>
-      <a href={`/door/${slug}`} class="sidebar-link" target="_blank">Door ↗</a>
+      <a href={`/door/${slug}`} class="sidebar-link external" target="_blank">Door</a>
       <a href={`/admin/events/${slug}/budget`} class="sidebar-link">Budget</a>
       <a href={`/admin/events/${slug}/collaborators`} class="sidebar-link active">Collaborators</a>
     </nav>
@@ -41,11 +41,11 @@ const origin = Astro.url.origin;
     <div class="edit-content">
       <h1>Collaborators</h1>
 
-      {error && <div class="form-error">{error}</div>}
-      {success && <div class="form-success">{success}</div>}
+      {error && <div class="alert alert-error">{error}</div>}
+      {success && <div class="alert alert-success">{success}</div>}
 
-      <div class="total-pct" class:list={[{ warn: totalPct > 100 }]}>
-        Total payout: {totalPct}%
+      <div class:list={['total-pct', { warn: totalPct > 100 }]}>
+        Total payout: <span class="mono">{totalPct}%</span>
         {totalPct > 100 && <span class="pct-warn"> (exceeds 100%)</span>}
       </div>
 
@@ -55,23 +55,22 @@ const origin = Astro.url.origin;
             <div class="collab-row">
               <div class="collab-info">
                 <span class="collab-name">{c.name}</span>
-                <span class="collab-email">{c.email}</span>
+                <span class="collab-email text-muted">{c.email}</span>
               </div>
               <div class="collab-meta">
-                <span class="collab-pct">{c.payout_pct}%</span>
-                <span class={`collab-status ${c.accepted_at ? 'accepted' : 'pending'}`}>
+                <span class="collab-pct mono">{c.payout_pct}%</span>
+                <span class={`badge ${c.accepted_at ? 'badge-success' : 'badge-warning'}`}>
                   {c.accepted_at ? 'Accepted' : 'Pending'}
                 </span>
                 <button
-                  class="copy-link"
+                  class="btn btn-secondary btn-sm copy-link"
                   data-link={`${origin}/collaborate/${c.invite_token}`}
-                  title="Copy invite link"
                 >
                   Copy Link
                 </button>
                 <form method="POST" action={`/api/admin/events/${slug}/collaborators/remove`} style="display:inline">
                   <input type="hidden" name="collaborator_id" value={c.id} />
-                  <button type="submit" class="btn-remove" title="Remove collaborator">×</button>
+                  <button type="submit" class="btn-icon-remove" title="Remove">&times;</button>
                 </form>
               </div>
             </div>
@@ -79,23 +78,23 @@ const origin = Astro.url.origin;
         </div>
       )}
 
-      <form method="POST" action={`/api/admin/events/${slug}/collaborators/add`} class="add-form">
+      <form method="POST" action={`/api/admin/events/${slug}/collaborators/add`} class="add-form card">
         <h2>Add Collaborator</h2>
         <div class="form-row">
           <label>
             <span>Name *</span>
-            <input type="text" name="name" required />
+            <input type="text" name="name" required placeholder="DJ Name" />
           </label>
           <label>
             <span>Email *</span>
-            <input type="email" name="email" required />
+            <input type="email" name="email" required placeholder="dj@example.com" />
           </label>
           <label>
             <span>Payout % *</span>
             <input type="number" name="payout_pct" min="0" max="100" step="0.01" required value="0" />
           </label>
         </div>
-        <button type="submit">Add</button>
+        <button type="submit" class="btn btn-primary">Add</button>
       </form>
     </div>
   </div>
@@ -114,82 +113,51 @@ const origin = Astro.url.origin;
 </script>
 
 <style>
-  .edit-layout {
-    display: grid;
-    grid-template-columns: 180px 1fr;
-    gap: var(--space-6);
-  }
-
+  .edit-layout { display: grid; grid-template-columns: 180px 1fr; gap: var(--space-8); }
   @media (max-width: 640px) {
-    .edit-layout { grid-template-columns: 1fr; }
+    .edit-layout { grid-template-columns: 1fr; gap: var(--space-4); }
+    .sidebar { flex-direction: row !important; overflow-x: auto; gap: var(--space-1) !important; padding-bottom: var(--space-2); border-bottom: 1px solid var(--color-border); }
+    .sidebar-link { white-space: nowrap; }
   }
 
-  .sidebar {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-  }
-
-  .sidebar-link {
-    padding: var(--space-2) var(--space-3);
-    border-radius: var(--radius);
-    color: var(--color-text-muted);
-    text-decoration: none;
-    font-size: 0.875rem;
-  }
-
+  .sidebar { display: flex; flex-direction: column; gap: var(--space-1); }
+  .sidebar-link { padding: var(--space-2) var(--space-3); border-radius: var(--radius); color: var(--color-text-muted); text-decoration: none; font-size: 0.875rem; font-weight: 500; transition: background var(--transition), color var(--transition); }
   .sidebar-link:hover { background: var(--color-surface); color: var(--color-text); }
   .sidebar-link.active { background: var(--color-surface); color: var(--color-accent); }
+  .sidebar-link.external::after { content: ' ↗'; opacity: 0.5; }
 
-  .edit-content h1 { font-size: 1.5rem; margin-bottom: var(--space-4); }
+  .edit-content h1 { font-size: 1.5rem; letter-spacing: -0.02em; margin-bottom: var(--space-4); }
 
-  .form-error {
-    background: color-mix(in srgb, var(--color-error) 15%, transparent);
-    border: 1px solid var(--color-error);
-    color: var(--color-error);
-    padding: var(--space-2) var(--space-3);
-    border-radius: var(--radius);
-    font-size: 0.875rem;
-    margin-bottom: var(--space-4);
-  }
-
-  .form-success {
-    background: color-mix(in srgb, var(--color-success) 15%, transparent);
-    border: 1px solid var(--color-success);
-    color: var(--color-success);
-    padding: var(--space-2) var(--space-3);
-    border-radius: var(--radius);
-    font-size: 0.875rem;
-    margin-bottom: var(--space-4);
-  }
+  .alert { margin-bottom: var(--space-4); }
 
   .total-pct {
     font-size: 0.875rem;
     color: var(--color-text-muted);
-    margin-bottom: var(--space-4);
+    margin-bottom: var(--space-5);
   }
 
-  .pct-warn { color: var(--color-warning); }
+  .pct-warn { color: var(--color-warning); font-weight: 600; }
 
   .collab-list {
     display: flex;
     flex-direction: column;
-    gap: 1px;
-    background: var(--color-border);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius);
+    border-radius: var(--radius-lg);
     overflow: hidden;
-    margin-bottom: var(--space-6);
+    margin-bottom: var(--space-8);
   }
 
   .collab-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: var(--space-3) var(--space-4);
+    padding: var(--space-4) var(--space-5);
     background: var(--color-surface);
     gap: var(--space-3);
+    border-bottom: 1px solid var(--color-border);
   }
+
+  .collab-row:last-child { border-bottom: none; }
 
   .collab-info {
     display: flex;
@@ -198,7 +166,7 @@ const origin = Astro.url.origin;
   }
 
   .collab-name { font-weight: 600; }
-  .collab-email { font-size: 0.875rem; color: var(--color-text-muted); }
+  .collab-email { font-size: 0.8125rem; }
 
   .collab-meta {
     display: flex;
@@ -206,25 +174,12 @@ const origin = Astro.url.origin;
     gap: var(--space-3);
     font-size: 0.875rem;
     flex-shrink: 0;
+    flex-wrap: wrap;
   }
 
-  .collab-pct { color: var(--color-text-muted); }
-  .collab-status.accepted { color: var(--color-success); }
-  .collab-status.pending { color: var(--color-warning); }
+  .collab-pct { font-size: 0.8125rem; color: var(--color-text-muted); }
 
-  .copy-link {
-    background: transparent;
-    border: 1px solid var(--color-border);
-    color: var(--color-text-muted);
-    padding: var(--space-1) var(--space-2);
-    border-radius: var(--radius);
-    font-size: 0.75rem;
-    cursor: pointer;
-  }
-
-  .copy-link:hover { border-color: var(--color-text-muted); color: var(--color-text); }
-
-  .btn-remove {
+  .btn-icon-remove {
     background: transparent;
     border: 1px solid var(--color-border);
     color: var(--color-error);
@@ -232,23 +187,27 @@ const origin = Astro.url.origin;
     height: 28px;
     border-radius: var(--radius);
     cursor: pointer;
-    font-size: 1rem;
+    font-size: 1.125rem;
     padding: 0;
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: border-color var(--transition), background var(--transition);
   }
 
-  .btn-remove:hover { border-color: var(--color-error); background: color-mix(in srgb, var(--color-error) 15%, transparent); }
+  .btn-icon-remove:hover {
+    border-color: var(--color-error);
+    background: color-mix(in srgb, var(--color-error) 12%, transparent);
+  }
 
   .add-form {
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
+    gap: var(--space-5);
     max-width: 600px;
   }
 
-  .add-form h2 { font-size: 1.125rem; }
+  .add-form h2 { font-size: 1.125rem; font-weight: 600; }
 
   .form-row {
     display: grid;
@@ -258,36 +217,5 @@ const origin = Astro.url.origin;
 
   @media (max-width: 640px) {
     .form-row { grid-template-columns: 1fr; }
-  }
-
-  label {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-  }
-
-  label span { font-size: 0.875rem; color: var(--color-text-muted); }
-
-  input {
-    width: 100%;
-    padding: var(--space-2) var(--space-3);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius);
-    color: var(--color-text);
-    font-size: 1rem;
-  }
-
-  input:focus { outline: none; border-color: var(--color-accent); }
-
-  .add-form > button {
-    padding: var(--space-2) var(--space-4);
-    background: var(--color-accent);
-    color: var(--color-bg);
-    border: none;
-    border-radius: var(--radius);
-    font-weight: 600;
-    cursor: pointer;
-    align-self: flex-start;
   }
 </style>
