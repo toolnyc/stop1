@@ -78,5 +78,37 @@ export const onRequest = defineMiddleware(async (context, next) => {
     context.locals.doorSlug = doorSlug;
   }
 
+  // Collaborator auth: guard /collaborate/*/expenses
+  const collabMatch = pathname.match(/^\/collaborate\/([^/]+)\/expenses/);
+  if (collabMatch) {
+    const cookieSecret = import.meta.env.COOKIE_SECRET;
+    const collabCookie = context.cookies.get('collab_session')?.value;
+
+    if (!cookieSecret || !collabCookie) {
+      const token = collabMatch[1];
+      return context.redirect(`/collaborate/${token}`);
+    }
+
+    const [payload, sig] = collabCookie.split('.');
+    if (!payload || !sig) {
+      const token = collabMatch[1];
+      return context.redirect(`/collaborate/${token}`);
+    }
+
+    const expectedSig = createHmac('sha256', cookieSecret).update(payload).digest('hex');
+    if (sig !== expectedSig) {
+      const token = collabMatch[1];
+      return context.redirect(`/collaborate/${token}`);
+    }
+
+    try {
+      const data = JSON.parse(Buffer.from(payload, 'base64').toString());
+      context.locals.collaborator = { id: data.id, eventId: data.eventId };
+    } catch {
+      const token = collabMatch[1];
+      return context.redirect(`/collaborate/${token}`);
+    }
+  }
+
   return next();
 });
