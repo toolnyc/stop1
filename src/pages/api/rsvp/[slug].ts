@@ -1,5 +1,7 @@
 import type { APIRoute } from 'astro';
 import { supabaseAdmin } from '@/lib/supabase';
+import { resend } from '@/lib/resend';
+import { rsvpConfirmationEmail } from '@/lib/emails/rsvp-confirmation';
 
 export const POST: APIRoute = async ({ params, request }) => {
   if (!supabaseAdmin) {
@@ -14,7 +16,7 @@ export const POST: APIRoute = async ({ params, request }) => {
   // Look up event
   const { data: event, error: eventError } = await supabaseAdmin
     .from('events')
-    .select('id, status')
+    .select('id, status, title, date, venue_name')
     .eq('slug', slug!)
     .eq('status', 'published')
     .single();
@@ -84,8 +86,11 @@ export const POST: APIRoute = async ({ params, request }) => {
     });
   }
 
-  // TODO: fire-and-forget email via Resend (issue #24)
-  console.log(`RSVP confirmation: ${name} (${email}) for event ${slug}`);
+  // Fire-and-forget email via Resend
+  if (resend) {
+    const emailData = rsvpConfirmationEmail(name.trim(), email.trim().toLowerCase(), event);
+    resend.emails.send(emailData).catch(err => console.error('[resend]', err));
+  }
 
   return new Response(JSON.stringify({ success: true, rsvp: data }), {
     status: 201,
