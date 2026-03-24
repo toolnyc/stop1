@@ -147,12 +147,19 @@ import { Resend } from 'resend';
 export const resend = new Resend(import.meta.env.RESEND_API_KEY);
 ```
 
-**Rule:** Email failures must never fail the primary action. Always fire-and-forget:
+**Rule:** Email failures must never fail the primary action. Use fire-and-forget with `trackCall`:
 
 ```typescript
-// Fire-and-forget pattern
-resend.emails.send({ ... }).catch(err => console.error('[resend]', err));
-// return your primary response immediately
+// Tracked fire-and-forget pattern
+trackCall({
+  service: 'resend',
+  action: 'send-rsvp-confirmation',
+  meta: { to: maskEmail(email), slug },
+  log,
+  fn: () => resend.emails.send(emailData),
+}).then(result => {
+  if (!result.ok) log.error('rsvp.email_failed', { error: result.error });
+});
 ```
 
 RSVP confirmation template (`src/lib/emails/rsvp-confirmation.ts`):

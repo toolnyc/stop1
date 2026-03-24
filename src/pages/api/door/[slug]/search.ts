@@ -1,18 +1,20 @@
-import type { APIRoute } from 'astro';
 import { supabaseAdmin } from '@/lib/supabase';
+import { withLogging } from '@/lib/api';
 
-export const GET: APIRoute = async ({ params, url }) => {
+const JSON_HEADERS = { 'Content-Type': 'application/json' };
+
+export const GET = withLogging(async ({ params, url, log }) => {
   if (!supabaseAdmin) {
+    log.error('supabase_admin_missing');
     return new Response(JSON.stringify({ error: 'Server configuration error' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: JSON_HEADERS,
     });
   }
 
   const { slug } = params;
   const q = url.searchParams.get('q') || '';
 
-  // Look up event
   const { data: event } = await supabaseAdmin
     .from('events')
     .select('id')
@@ -20,9 +22,10 @@ export const GET: APIRoute = async ({ params, url }) => {
     .single();
 
   if (!event) {
+    log.warn('event_not_found', { slug });
     return new Response(JSON.stringify({ error: 'Event not found' }), {
       status: 404,
-      headers: { 'Content-Type': 'application/json' },
+      headers: JSON_HEADERS,
     });
   }
 
@@ -35,7 +38,6 @@ export const GET: APIRoute = async ({ params, url }) => {
 
   if (q.trim()) {
     const trimmed = q.trim();
-    // If query starts with digits or +, search by phone; otherwise search by name
     if (/^[+\d]/.test(trimmed)) {
       query = query.ilike('phone', `%${trimmed}%`);
     } else {
@@ -46,15 +48,15 @@ export const GET: APIRoute = async ({ params, url }) => {
   const { data, error } = await query;
 
   if (error) {
-    console.error('Search error:', error);
+    log.error('search.failed', { slug, error: error.message });
     return new Response(JSON.stringify({ error: 'Search failed' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: JSON_HEADERS,
     });
   }
 
   return new Response(JSON.stringify(data ?? []), {
     status: 200,
-    headers: { 'Content-Type': 'application/json' },
+    headers: JSON_HEADERS,
   });
-};
+});

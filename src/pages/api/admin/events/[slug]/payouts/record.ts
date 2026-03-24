@@ -1,11 +1,14 @@
-import type { APIRoute } from 'astro';
 import { supabaseAdmin } from '@/lib/supabase';
+import { withLogging } from '@/lib/api';
 
-export const POST: APIRoute = async ({ params, request, cookies, redirect }) => {
+const JSON_HEADERS = { 'Content-Type': 'application/json' };
+
+export const POST = withLogging(async ({ params, request, cookies, redirect, log }) => {
   if (!supabaseAdmin) {
+    log.error('supabase_admin_missing');
     return new Response(JSON.stringify({ error: 'Server configuration error' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: JSON_HEADERS,
     });
   }
 
@@ -13,7 +16,7 @@ export const POST: APIRoute = async ({ params, request, cookies, redirect }) => 
   if (!accessToken) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
-      headers: { 'Content-Type': 'application/json' },
+      headers: JSON_HEADERS,
     });
   }
 
@@ -41,13 +44,12 @@ export const POST: APIRoute = async ({ params, request, cookies, redirect }) => 
     if (contentType.includes('application/json')) {
       return new Response(JSON.stringify({ error: 'collaboratorId, amount, and method are required' }), {
         status: 400,
-        headers: { 'Content-Type': 'application/json' },
+        headers: JSON_HEADERS,
       });
     }
     return redirect(`/admin/events/${slug}/budget?error=${encodeURIComponent('Missing required fields')}`);
   }
 
-  // Look up event
   const { data: event } = await supabaseAdmin
     .from('events')
     .select('id')
@@ -55,9 +57,10 @@ export const POST: APIRoute = async ({ params, request, cookies, redirect }) => 
     .single();
 
   if (!event) {
+    log.warn('event_not_found', { slug });
     return new Response(JSON.stringify({ error: 'Event not found' }), {
       status: 404,
-      headers: { 'Content-Type': 'application/json' },
+      headers: JSON_HEADERS,
     });
   }
 
@@ -75,22 +78,24 @@ export const POST: APIRoute = async ({ params, request, cookies, redirect }) => 
     .single();
 
   if (error) {
-    console.error('Payout record error:', error);
+    log.error('payout.record_failed', { slug, collaboratorId, error: error.message });
     if (contentType.includes('application/json')) {
       return new Response(JSON.stringify({ error: 'Failed to record payout' }), {
         status: 500,
-        headers: { 'Content-Type': 'application/json' },
+        headers: JSON_HEADERS,
       });
     }
     return redirect(`/admin/events/${slug}/budget?error=${encodeURIComponent('Failed to record payout')}`);
   }
 
+  log.info('payout.recorded', { slug, payoutId: data.id, collaboratorId, amount });
+
   if (contentType.includes('application/json')) {
     return new Response(JSON.stringify({ success: true, payout: data }), {
       status: 201,
-      headers: { 'Content-Type': 'application/json' },
+      headers: JSON_HEADERS,
     });
   }
 
   return redirect(`/admin/events/${slug}/budget`);
-};
+});

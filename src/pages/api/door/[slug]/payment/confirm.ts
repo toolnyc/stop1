@@ -1,12 +1,16 @@
-import type { APIRoute } from 'astro';
 import { supabaseAdmin } from '@/lib/supabase';
 import { stripe } from '@/lib/stripe';
+import { withLogging } from '@/lib/api';
+import { trackCall } from '@/lib/track';
 
-export const POST: APIRoute = async ({ params, request }) => {
+const JSON_HEADERS = { 'Content-Type': 'application/json' };
+
+export const POST = withLogging(async ({ params, request, log }) => {
   if (!supabaseAdmin || !stripe) {
+    log.error('config_missing', { supabase: !!supabaseAdmin, stripe: !!stripe });
     return new Response(JSON.stringify({ error: 'Server configuration error' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: JSON_HEADERS,
     });
   }
 
@@ -17,20 +21,33 @@ export const POST: APIRoute = async ({ params, request }) => {
   if (!paymentIntentId) {
     return new Response(JSON.stringify({ error: 'Payment intent ID required' }), {
       status: 400,
-      headers: { 'Content-Type': 'application/json' },
+      headers: JSON_HEADERS,
     });
   }
 
-  // Verify payment intent
-  const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
-  if (intent.status !== 'succeeded') {
+  const verifyResult = await trackCall({
+    service: 'stripe',
+    action: 'verify-payment-intent',
+    meta: { paymentIntentId },
+    log,
+    fn: () => stripe.paymentIntents.retrieve(paymentIntentId),
+  });
+
+  if (!verifyResult.ok) {
+    return new Response(JSON.stringify({ error: 'Failed to verify payment' }), {
+      status: 500,
+      headers: JSON_HEADERS,
+    });
+  }
+
+  if (verifyResult.data.status !== 'succeeded') {
+    log.warn('payment.not_succeeded', { paymentIntentId, status: verifyResult.data.status });
     return new Response(JSON.stringify({ error: 'Payment not succeeded' }), {
       status: 400,
-      headers: { 'Content-Type': 'application/json' },
+      headers: JSON_HEADERS,
     });
   }
 
-  // Look up event
   const { data: event } = await supabaseAdmin
     .from('events')
     .select('id, door_price')
@@ -38,13 +55,13 @@ export const POST: APIRoute = async ({ params, request }) => {
     .single();
 
   if (!event) {
+    log.warn('event_not_found', { slug });
     return new Response(JSON.stringify({ error: 'Event not found' }), {
       status: 404,
-      headers: { 'Content-Type': 'application/json' },
+      headers: JSON_HEADERS,
     });
   }
 
-  // Insert door payment
   const { data, error } = await supabaseAdmin
     .from('door_payments')
     .insert({
@@ -59,14 +76,13 @@ export const POST: APIRoute = async ({ params, request }) => {
     .single();
 
   if (error) {
-    console.error('Card payment record error:', error);
+    log.error('payment.record_failed', { slug, error: error.message, code: error.code });
     return new Response(JSON.stringify({ error: 'Failed to record payment' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: JSON_HEADERS,
     });
   }
 
-  // Mark arrived if rsvpId provided
   if (rsvpId) {
     await supabaseAdmin
       .from('rsvps')
@@ -75,8 +91,10 @@ export const POST: APIRoute = async ({ params, request }) => {
       .eq('event_id', event.id);
   }
 
+  log.info('payment.card_recorded', { slug, paymentId: data.id });
+
   return new Response(JSON.stringify({ success: true, payment: data }), {
     status: 201,
-    headers: { 'Content-Type': 'application/json' },
+    headers: JSON_HEADERS,
   });
-};
+});

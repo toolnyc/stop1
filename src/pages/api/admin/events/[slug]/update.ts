@@ -1,9 +1,10 @@
-import type { APIRoute } from 'astro';
 import { supabaseAdmin } from '@/lib/supabase';
 import bcrypt from 'bcryptjs';
+import { withLogging } from '@/lib/api';
 
-export const POST: APIRoute = async ({ params, request, cookies, redirect }) => {
+export const POST = withLogging(async ({ params, request, cookies, redirect, log }) => {
   if (!supabaseAdmin) {
+    log.error('supabase_admin_missing');
     return new Response('Server configuration error', { status: 500 });
   }
 
@@ -43,7 +44,6 @@ export const POST: APIRoute = async ({ params, request, cookies, redirect }) => 
     updated_at: new Date().toISOString(),
   };
 
-  // Only update door_pin if a new one was provided
   if (door_pin && door_pin.trim()) {
     updates.door_pin = await bcrypt.hash(door_pin.trim(), 10);
   }
@@ -54,9 +54,10 @@ export const POST: APIRoute = async ({ params, request, cookies, redirect }) => 
     .eq('slug', slug!);
 
   if (error) {
-    console.error('Failed to update event:', error);
+    log.error('event.update_failed', { slug, error: error.message, code: error.code });
     return redirect(`/admin/events/${slug}?error=${encodeURIComponent('Failed to update event')}`);
   }
 
+  log.info('event.updated', { slug });
   return redirect(`/admin/events/${slug}?success=${encodeURIComponent('Event updated')}`);
-};
+});

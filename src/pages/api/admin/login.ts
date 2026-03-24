@@ -1,8 +1,9 @@
-import type { APIRoute } from 'astro';
 import { supabaseAdmin } from '@/lib/supabase';
+import { withLogging } from '@/lib/api';
 
-export const POST: APIRoute = async ({ request, cookies, redirect }) => {
+export const POST = withLogging(async ({ request, cookies, redirect, log }) => {
   if (!supabaseAdmin) {
+    log.error('supabase_admin_missing');
     return new Response(JSON.stringify({ error: 'Server configuration error' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
@@ -24,7 +25,6 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   }
 
   if (!email || !password) {
-    // Form submission → redirect back with error
     if (!contentType.includes('application/json')) {
       return redirect('/admin/login?error=Email and password are required');
     }
@@ -37,6 +37,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const { data, error } = await supabaseAdmin.auth.signInWithPassword({ email, password });
 
   if (error || !data.session) {
+    log.warn('login.failed', { email: email.split('@')[0] + '@***' });
     if (!contentType.includes('application/json')) {
       return redirect('/admin/login?error=Invalid email or password');
     }
@@ -53,7 +54,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     httpOnly: true,
     secure: isSecure,
     sameSite: 'lax',
-    maxAge: 60 * 60 * 24, // 1 day
+    maxAge: 60 * 60 * 24,
   });
 
   cookies.set('sb-refresh-token', data.session.refresh_token, {
@@ -61,8 +62,10 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     httpOnly: true,
     secure: isSecure,
     sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 7, // 7 days
+    maxAge: 60 * 60 * 24 * 7,
   });
+
+  log.info('login.success');
 
   if (!contentType.includes('application/json')) {
     return redirect('/admin');
@@ -72,4 +75,4 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     status: 200,
     headers: { 'Content-Type': 'application/json' },
   });
-};
+});

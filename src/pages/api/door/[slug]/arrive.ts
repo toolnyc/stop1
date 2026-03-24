@@ -1,12 +1,15 @@
-import type { APIRoute } from 'astro';
 import { supabaseAdmin } from '@/lib/supabase';
 import { normalizePhone } from '@/lib/phone';
+import { withLogging } from '@/lib/api';
 
-export const POST: APIRoute = async ({ params, request }) => {
+const JSON_HEADERS = { 'Content-Type': 'application/json' };
+
+export const POST = withLogging(async ({ params, request, log }) => {
   if (!supabaseAdmin) {
+    log.error('supabase_admin_missing');
     return new Response(JSON.stringify({ error: 'Server configuration error' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: JSON_HEADERS,
     });
   }
 
@@ -22,9 +25,10 @@ export const POST: APIRoute = async ({ params, request }) => {
     .single();
 
   if (!event) {
+    log.warn('event_not_found', { slug });
     return new Response(JSON.stringify({ error: 'Event not found' }), {
       status: 404,
-      headers: { 'Content-Type': 'application/json' },
+      headers: JSON_HEADERS,
     });
   }
 
@@ -46,16 +50,17 @@ export const POST: APIRoute = async ({ params, request }) => {
       .single();
 
     if (insertError) {
-      console.error('Walk-in insert error:', insertError);
+      log.error('walkin.insert_failed', { slug, error: insertError.message, code: insertError.code });
       return new Response(JSON.stringify({ error: 'Failed to add walk-in' }), {
         status: 500,
-        headers: { 'Content-Type': 'application/json' },
+        headers: JSON_HEADERS,
       });
     }
 
+    log.info('walkin.created', { slug, rsvpId: newRsvp.id });
     return new Response(JSON.stringify({ success: true, rsvp: newRsvp }), {
       status: 201,
-      headers: { 'Content-Type': 'application/json' },
+      headers: JSON_HEADERS,
     });
   }
 
@@ -68,21 +73,22 @@ export const POST: APIRoute = async ({ params, request }) => {
       .eq('event_id', event.id);
 
     if (error) {
-      console.error('Arrive error:', error);
+      log.error('arrive.update_failed', { slug, rsvpId, error: error.message });
       return new Response(JSON.stringify({ error: 'Failed to mark arrived' }), {
         status: 500,
-        headers: { 'Content-Type': 'application/json' },
+        headers: JSON_HEADERS,
       });
     }
 
+    log.info('arrive.marked', { slug, rsvpId });
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
-      headers: { 'Content-Type': 'application/json' },
+      headers: JSON_HEADERS,
     });
   }
 
   return new Response(JSON.stringify({ error: 'rsvpId or name required' }), {
     status: 400,
-    headers: { 'Content-Type': 'application/json' },
+    headers: JSON_HEADERS,
   });
-};
+});

@@ -1,8 +1,9 @@
-import type { APIRoute } from 'astro';
 import { supabaseAdmin } from '@/lib/supabase';
+import { withLogging } from '@/lib/api';
 
-export const POST: APIRoute = async ({ params, cookies, redirect }) => {
+export const POST = withLogging(async ({ params, cookies, redirect, log }) => {
   if (!supabaseAdmin) {
+    log.error('supabase_admin_missing');
     return new Response('Server configuration error', { status: 500 });
   }
 
@@ -19,9 +20,10 @@ export const POST: APIRoute = async ({ params, cookies, redirect }) => {
     .eq('slug', slug!);
 
   if (error) {
-    console.error('Failed to archive event:', error);
+    log.error('event.archive_failed', { slug, error: error.message });
     return redirect(`/admin/events/${slug}?error=${encodeURIComponent('Failed to archive event')}`);
   }
 
+  log.info('event.archived', { slug });
   return redirect('/admin');
-};
+});
