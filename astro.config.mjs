@@ -1,5 +1,8 @@
 import { defineConfig } from 'astro/config';
+import { createRequire } from 'module';
 import vercel from '@astrojs/vercel';
+
+const require = createRequire(import.meta.url);
 
 export default defineConfig({
   output: 'server',
@@ -12,9 +15,11 @@ export default defineConfig({
       noExternal: ['@supabase/supabase-js', 'tslib'],
     },
     resolve: {
-      // Force tslib resolution from project root so Rollup can find it
-      // inside pnpm's strict isolated node_modules on Vercel
-      dedupe: ['tslib'],
+      // Explicit alias so Rollup resolves tslib from the project root,
+      // not from inside pnpm's nested .pnpm store (which fails on Vercel)
+      alias: {
+        tslib: require.resolve('tslib'),
+      },
     },
   },
 });
