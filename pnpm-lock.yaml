@@ -32,6 +32,9 @@ importers:
       stripe:
         specifier: ^20.4.1
         version: 20.4.1(@types/node@25.5.0)
+      tslib:
+        specifier: ^2.8.1
+        version: 2.8.1
       twilio:
         specifier: ^5.13.0
         version: 5.13.0
