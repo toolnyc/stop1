@@ -1,0 +1,175 @@
+---
+import Base from '@/layouts/Base.astro';
+import { supabaseAdmin } from '@/lib/supabase';
+
+if (!supabaseAdmin) {
+  return new Response('Server configuration error', { status: 500 });
+}
+
+const { slug } = Astro.params;
+
+const { data: event } = await supabaseAdmin
+  .from('events')
+  .select('id, title')
+  .eq('slug', slug!)
+  .single();
+
+if (!event) return new Response(null, { status: 404 });
+
+// Arrived count
+const { count: arrivedCount } = await supabaseAdmin
+  .from('rsvps')
+  .select('id', { count: 'exact', head: true })
+  .eq('event_id', event.id)
+  .not('arrived_at', 'is', null);
+
+// Walk-in count
+const { count: walkinCount } = await supabaseAdmin
+  .from('rsvps')
+  .select('id', { count: 'exact', head: true })
+  .eq('event_id', event.id)
+  .eq('walk_in', true);
+
+// RSVP arrived (non walk-in)
+const rsvpArrived = (arrivedCount ?? 0) - (walkinCount ?? 0);
+
+// Payments
+const { data: payments } = await supabaseAdmin
+  .from('door_payments')
+  .select('amount, method')
+  .eq('event_id', event.id);
+
+const paymentList = payments ?? [];
+const cashTotal = paymentList.filter(p => p.method === 'cash').reduce((s, p) => s + Number(p.amount), 0);
+const cardTotal = paymentList.filter(p => p.method === 'card').reduce((s, p) => s + Number(p.amount), 0);
+const totalRevenue = cashTotal + cardTotal;
+---
+<Base title={`Summary — ${event.title}`}>
+  <meta http-equiv="refresh" content="30" slot="head" />
+  <main class="summary-page">
+    <h1>{event.title}</h1>
+    <p class="subtitle">Door Summary</p>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <span class="stat-value">{arrivedCount ?? 0}</span>
+        <span class="stat-label">Total Arrived</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value">{rsvpArrived}</span>
+        <span class="stat-label">RSVPs</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value">{walkinCount ?? 0}</span>
+        <span class="stat-label">Walk-ins</span>
+      </div>
+    </div>
+
+    <div class="revenue-section">
+      <h2>Revenue</h2>
+      <div class="revenue-grid">
+        <div class="revenue-row">
+          <span>Cash</span>
+          <span class="mono">${cashTotal.toFixed(2)}</span>
+        </div>
+        <div class="revenue-row">
+          <span>Card</span>
+          <span class="mono">${cardTotal.toFixed(2)}</span>
+        </div>
+        <div class="revenue-row total">
+          <span>Total</span>
+          <span class="mono">${totalRevenue.toFixed(2)}</span>
+        </div>
+      </div>
+    </div>
+
+    <p class="refresh-note">Auto-refreshes every 30 seconds</p>
+    <a href={`/door/${slug}/checkin`} class="back-link">← Back to Check-in</a>
+  </main>
+</Base>
+
+<style>
+  .summary-page {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: var(--space-6) var(--space-4);
+    text-align: center;
+  }
+
+  h1 { color: var(--color-accent); margin-bottom: var(--space-1); }
+  .subtitle { color: var(--color-text-muted); margin-bottom: var(--space-8); }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: var(--space-3);
+    margin-bottom: var(--space-8);
+  }
+
+  .stat-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    font-family: var(--font-mono);
+  }
+
+  .stat-label {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .revenue-section {
+    text-align: left;
+    margin-bottom: var(--space-6);
+  }
+
+  .revenue-section h2 {
+    font-size: 1.125rem;
+    margin-bottom: var(--space-3);
+  }
+
+  .revenue-grid {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .revenue-row {
+    display: flex;
+    justify-content: space-between;
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .revenue-row:last-child { border-bottom: none; }
+
+  .revenue-row.total {
+    font-weight: 700;
+    background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  }
+
+  .mono { font-family: var(--font-mono); }
+
+  .refresh-note {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-4);
+  }
+
+  .back-link {
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+  }
+</style>
