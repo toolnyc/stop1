@@ -22,6 +22,7 @@ Recurring DIY party series platform. RSVP pages, door check-in app, and P&L budg
 | Database & Supabase      | [docs/database.md](docs/database.md)       |
 | Auth, Stripe, Blob patterns | [docs/patterns.md](docs/patterns.md)    |
 | Verification approach    | [docs/verification.md](docs/verification.md) |
+| Deployment & Vercel      | [docs/deployment.md](docs/deployment.md)     |
 | Issue list + epics       | [ISSUES.md](ISSUES.md)                     |
 | Pre-flight setup         | [PREFLIGHT.md](PREFLIGHT.md)               |
 

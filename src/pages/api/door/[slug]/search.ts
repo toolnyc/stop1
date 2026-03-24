@@ -34,7 +34,13 @@ export const GET: APIRoute = async ({ params, url }) => {
     .limit(20);
 
   if (q.trim()) {
-    query = query.ilike('name', `%${q.trim()}%`);
+    const trimmed = q.trim();
+    // If query starts with digits or +, search by phone; otherwise search by name
+    if (/^[+\d]/.test(trimmed)) {
+      query = query.ilike('phone', `%${trimmed}%`);
+    } else {
+      query = query.ilike('name', `%${trimmed}%`);
+    }
   }
 
   const { data, error } = await query;

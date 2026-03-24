@@ -17,19 +17,19 @@ const { slug, eventTitle } = Astro.props;
     </label>
 
     <label>
-      <span>Email *</span>
-      <input type="email" name="email" required />
+      <span>Phone *</span>
+      <input type="tel" name="phone" id="rsvp-phone" required autocomplete="tel" placeholder="(555) 123-4567" />
     </label>
 
     <label>
-      <span>Phone</span>
-      <input type="tel" name="phone" id="rsvp-phone" />
+      <span>Email</span>
+      <input type="email" name="email" autocomplete="email" placeholder="Optional — for email updates" />
     </label>
 
-    <label id="sms-opt-in-label" style="display:none">
+    <label class="sms-label">
       <div class="checkbox-row">
-        <input type="checkbox" name="sms_opt_in" value="true" />
-        <span>Send me SMS reminders</span>
+        <input type="checkbox" name="sms_opt_in" value="true" checked />
+        <span>Text me event reminders</span>
       </div>
     </label>
 
@@ -41,13 +41,7 @@ const { slug, eventTitle } = Astro.props;
   const form = document.getElementById('rsvp-form') as HTMLFormElement;
   const fields = document.getElementById('rsvp-fields')!;
   const message = document.getElementById('rsvp-message')!;
-  const phone = document.getElementById('rsvp-phone') as HTMLInputElement;
-  const smsLabel = document.getElementById('sms-opt-in-label')!;
   const submitBtn = document.getElementById('rsvp-submit') as HTMLButtonElement;
-
-  phone?.addEventListener('input', () => {
-    smsLabel.style.display = phone.value.trim() ? 'block' : 'none';
-  });
 
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -57,8 +51,8 @@ const { slug, eventTitle } = Astro.props;
     const formData = new FormData(form);
     const data = {
       name: formData.get('name') as string,
-      email: formData.get('email') as string,
       phone: (formData.get('phone') as string) || '',
+      email: (formData.get('email') as string) || '',
       sms_opt_in: formData.get('sms_opt_in') === 'true',
     };
 
@@ -74,7 +68,7 @@ const { slug, eventTitle } = Astro.props;
       if (res.ok) {
         fields.style.display = 'none';
         message.className = 'rsvp-message success';
-        message.textContent = `You're on the list, ${data.name}!`;
+        message.innerHTML = `You're on the list, ${data.name}! Check your texts for confirmation.`;
         message.style.display = 'block';
       } else {
         message.className = 'rsvp-message error';

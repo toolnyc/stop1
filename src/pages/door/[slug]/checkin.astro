@@ -32,7 +32,7 @@ const { count: arrivedCount } = await supabaseAdmin
     <input
       type="text"
       id="search-input"
-      placeholder="Search guest name..."
+      placeholder="Search name or phone..."
       autofocus
       class="search-input"
     />
@@ -43,6 +43,7 @@ const { count: arrivedCount } = await supabaseAdmin
 
     <div id="walkin-form" class="walkin-form" style="display:none">
       <input type="text" id="walkin-name" placeholder="Guest name" class="walkin-input" />
+      <input type="tel" id="walkin-phone" placeholder="Phone (optional)" class="walkin-input" />
       <button id="walkin-submit" class="walkin-submit">Add & Mark Arrived</button>
     </div>
 
@@ -57,6 +58,7 @@ const { count: arrivedCount } = await supabaseAdmin
   const walkinToggle = document.getElementById('walkin-toggle');
   const walkinForm = document.getElementById('walkin-form');
   const walkinName = document.getElementById('walkin-name');
+  const walkinPhone = document.getElementById('walkin-phone');
   const walkinSubmit = document.getElementById('walkin-submit');
 
   let debounceTimer;
@@ -78,7 +80,7 @@ const { count: arrivedCount } = await supabaseAdmin
       <div class="guest-card ${g.arrived_at ? 'arrived' : ''}" data-id="${g.id}">
         <div class="guest-info">
           <span class="guest-name">${g.name}</span>
-          <span class="guest-email">${g.email}</span>
+          <span class="guest-phone">${g.phone || ''}</span>
         </div>
         <div class="guest-actions">
           ${g.arrived_at
@@ -124,11 +126,12 @@ const { count: arrivedCount } = await supabaseAdmin
     const res = await fetch(`/api/door/${slug}/arrive`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name, phone: walkinPhone.value.trim() || undefined }),
     });
 
     if (res.ok) {
       walkinName.value = '';
+      walkinPhone.value = '';
       walkinForm.style.display = 'none';
       localArrivedCount++;
       arrivedCountEl.textContent = localArrivedCount + ' in';
@@ -278,6 +281,11 @@ const { count: arrivedCount } = await supabaseAdmin
   }
 
   .btn-arrive:disabled { opacity: 0.5; }
+
+  .guest-phone {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+  }
 
   .badge-arrived {
     color: var(--color-success);

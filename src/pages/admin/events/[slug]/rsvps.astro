@@ -27,9 +27,9 @@ const rsvpList = rsvps ?? [];
 
 // CSV export
 if (exportCsv) {
-  const header = 'Name,Email,Phone,RSVP Time,Arrived';
+  const header = 'Name,Phone,Email,SMS Opt-in,RSVP Time,Arrived';
   const rows = rsvpList.map(r =>
-    `"${r.name}","${r.email}","${r.phone || ''}","${r.created_at}","${r.arrived_at ? 'Yes' : 'No'}"`
+    `"${r.name}","${r.phone}","${r.email || ''}","${r.sms_opt_in ? 'Yes' : 'No'}","${r.created_at}","${r.arrived_at ? 'Yes' : 'No'}"`
   );
   const csv = [header, ...rows].join('\n');
   return new Response(csv, {
@@ -71,8 +71,8 @@ if (exportCsv) {
           <thead>
             <tr>
               <th data-sort="name" class="sortable">Name</th>
-              <th data-sort="email" class="sortable">Email</th>
               <th>Phone</th>
+              <th data-sort="email" class="sortable">Email</th>
               <th data-sort="time" class="sortable">RSVP Time</th>
               <th>Status</th>
             </tr>
@@ -81,8 +81,8 @@ if (exportCsv) {
             {rsvpList.map((r) => (
               <tr data-name={r.name.toLowerCase()}>
                 <td>{r.name}</td>
-                <td class="td-email">{r.email}</td>
-                <td>{r.phone || '—'}</td>
+                <td>{r.phone}</td>
+                <td class="td-email">{r.email || '—'}</td>
                 <td>{new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</td>
                 <td>
                   {r.arrived_at ? (
