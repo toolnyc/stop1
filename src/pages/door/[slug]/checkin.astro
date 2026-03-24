@@ -1,0 +1,287 @@
+---
+import Base from '@/layouts/Base.astro';
+import { supabaseAdmin } from '@/lib/supabase';
+
+if (!supabaseAdmin) {
+  return new Response('Server configuration error', { status: 500 });
+}
+
+const { slug } = Astro.params;
+
+const { data: event } = await supabaseAdmin
+  .from('events')
+  .select('id, title, door_price')
+  .eq('slug', slug!)
+  .single();
+
+if (!event) return new Response(null, { status: 404 });
+
+const { count: arrivedCount } = await supabaseAdmin
+  .from('rsvps')
+  .select('id', { count: 'exact', head: true })
+  .eq('event_id', event.id)
+  .not('arrived_at', 'is', null);
+---
+<Base title={`Check-in — ${event.title}`}>
+  <main class="checkin-page">
+    <header class="checkin-header">
+      <h1>{event.title}</h1>
+      <span class="arrived-count" id="arrived-count">{arrivedCount ?? 0} in</span>
+    </header>
+
+    <input
+      type="text"
+      id="search-input"
+      placeholder="Search guest name..."
+      autofocus
+      class="search-input"
+    />
+
+    <div id="results" class="results"></div>
+
+    <button id="walkin-toggle" class="walkin-toggle">Not on list? Add walk-in</button>
+
+    <div id="walkin-form" class="walkin-form" style="display:none">
+      <input type="text" id="walkin-name" placeholder="Guest name" class="walkin-input" />
+      <button id="walkin-submit" class="walkin-submit">Add & Mark Arrived</button>
+    </div>
+
+    <a href={`/door/${slug}/summary`} class="summary-link">View Summary</a>
+  </main>
+</Base>
+
+<script define:vars={{ slug, doorPrice: event.door_price }}>
+  const searchInput = document.getElementById('search-input');
+  const results = document.getElementById('results');
+  const arrivedCountEl = document.getElementById('arrived-count');
+  const walkinToggle = document.getElementById('walkin-toggle');
+  const walkinForm = document.getElementById('walkin-form');
+  const walkinName = document.getElementById('walkin-name');
+  const walkinSubmit = document.getElementById('walkin-submit');
+
+  let debounceTimer;
+  let localArrivedCount = parseInt(arrivedCountEl.textContent);
+
+  searchInput.addEventListener('input', () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(doSearch, 150);
+  });
+
+  async function doSearch() {
+    const q = searchInput.value.trim();
+    if (!q) { results.innerHTML = ''; return; }
+
+    const res = await fetch(`/api/door/${slug}/search?q=${encodeURIComponent(q)}`);
+    const guests = await res.json();
+
+    results.innerHTML = guests.map(g => `
+      <div class="guest-card ${g.arrived_at ? 'arrived' : ''}" data-id="${g.id}">
+        <div class="guest-info">
+          <span class="guest-name">${g.name}</span>
+          <span class="guest-email">${g.email}</span>
+        </div>
+        <div class="guest-actions">
+          ${g.arrived_at
+            ? '<span class="badge-arrived">✓ Arrived</span>'
+            : `<button class="btn-arrive" onclick="markArrived('${g.id}', this)">Mark Arrived</button>`
+          }
+        </div>
+      </div>
+    `).join('');
+  }
+
+  window.markArrived = async function(rsvpId, btn) {
+    btn.disabled = true;
+    btn.textContent = '...';
+    const res = await fetch(`/api/door/${slug}/arrive`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rsvpId }),
+    });
+    if (res.ok) {
+      const card = btn.closest('.guest-card');
+      card.classList.add('arrived');
+      btn.outerHTML = '<span class="badge-arrived">✓ Arrived</span>';
+      localArrivedCount++;
+      arrivedCountEl.textContent = localArrivedCount + ' in';
+    } else {
+      btn.disabled = false;
+      btn.textContent = 'Mark Arrived';
+    }
+  };
+
+  walkinToggle.addEventListener('click', () => {
+    walkinForm.style.display = walkinForm.style.display === 'none' ? 'flex' : 'none';
+    if (walkinForm.style.display !== 'none') walkinName.focus();
+  });
+
+  walkinSubmit.addEventListener('click', async () => {
+    const name = walkinName.value.trim();
+    if (!name) return;
+    walkinSubmit.disabled = true;
+    walkinSubmit.textContent = '...';
+
+    const res = await fetch(`/api/door/${slug}/arrive`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+
+    if (res.ok) {
+      walkinName.value = '';
+      walkinForm.style.display = 'none';
+      localArrivedCount++;
+      arrivedCountEl.textContent = localArrivedCount + ' in';
+      // Refresh search if there's a query
+      if (searchInput.value.trim()) doSearch();
+    }
+    walkinSubmit.disabled = false;
+    walkinSubmit.textContent = 'Add & Mark Arrived';
+  });
+</script>
+
+<style>
+  .checkin-page {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: var(--space-4);
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .checkin-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .checkin-header h1 {
+    font-size: 1.25rem;
+    color: var(--color-accent);
+  }
+
+  .arrived-count {
+    background: color-mix(in srgb, var(--color-success) 20%, transparent);
+    color: var(--color-success);
+    padding: var(--space-1) var(--space-3);
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.875rem;
+  }
+
+  .search-input {
+    width: 100%;
+    min-height: 48px;
+    padding: var(--space-3);
+    background: var(--color-surface);
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    color: var(--color-text);
+    font-size: 1.125rem;
+  }
+
+  .search-input:focus { outline: none; border-color: var(--color-accent); }
+
+  .results {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  .walkin-toggle {
+    background: transparent;
+    border: 1px dashed var(--color-border);
+    color: var(--color-text-muted);
+    padding: var(--space-2);
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 0.875rem;
+  }
+
+  .walkin-toggle:hover { border-color: var(--color-text-muted); color: var(--color-text); }
+
+  .walkin-form {
+    display: flex;
+    gap: var(--space-2);
+  }
+
+  .walkin-input {
+    flex: 1;
+    padding: var(--space-2) var(--space-3);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    color: var(--color-text);
+    font-size: 1rem;
+  }
+
+  .walkin-input:focus { outline: none; border-color: var(--color-accent); }
+
+  .walkin-submit {
+    padding: var(--space-2) var(--space-3);
+    background: var(--color-accent);
+    color: var(--color-bg);
+    border: none;
+    border-radius: var(--radius);
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .summary-link {
+    text-align: center;
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+    padding: var(--space-2);
+  }
+</style>
+
+<style is:global>
+  .guest-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-3);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    gap: var(--space-3);
+  }
+
+  .guest-card.arrived { border-color: color-mix(in srgb, var(--color-success) 30%, transparent); }
+
+  .guest-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .guest-name { font-weight: 600; }
+  .guest-email { font-size: 0.75rem; color: var(--color-text-muted); }
+
+  .guest-actions { flex-shrink: 0; }
+
+  .btn-arrive {
+    padding: var(--space-1) var(--space-3);
+    background: var(--color-accent);
+    color: var(--color-bg);
+    border: none;
+    border-radius: var(--radius);
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+    min-height: 36px;
+  }
+
+  .btn-arrive:disabled { opacity: 0.5; }
+
+  .badge-arrived {
+    color: var(--color-success);
+    font-weight: 600;
+    font-size: 0.875rem;
+  }
+</style>
