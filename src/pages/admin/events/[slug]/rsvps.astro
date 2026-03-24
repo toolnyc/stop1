@@ -1,0 +1,237 @@
+---
+import Admin from '@/layouts/Admin.astro';
+import { supabaseAdmin } from '@/lib/supabase';
+
+if (!supabaseAdmin) {
+  return new Response('Server configuration error', { status: 500 });
+}
+
+const { slug } = Astro.params;
+const exportCsv = Astro.url.searchParams.get('export') === 'csv';
+
+const { data: event } = await supabaseAdmin
+  .from('events')
+  .select('id, title')
+  .eq('slug', slug!)
+  .single();
+
+if (!event) return Astro.redirect('/admin');
+
+const { data: rsvps } = await supabaseAdmin
+  .from('rsvps')
+  .select('*')
+  .eq('event_id', event.id)
+  .order('created_at', { ascending: false });
+
+const rsvpList = rsvps ?? [];
+
+// CSV export
+if (exportCsv) {
+  const header = 'Name,Email,Phone,RSVP Time,Arrived';
+  const rows = rsvpList.map(r =>
+    `"${r.name}","${r.email}","${r.phone || ''}","${r.created_at}","${r.arrived_at ? 'Yes' : 'No'}"`
+  );
+  const csv = [header, ...rows].join('\n');
+  return new Response(csv, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/csv',
+      'Content-Disposition': `attachment; filename="rsvps-${slug}.csv"`,
+    },
+  });
+}
+---
+<Admin title={`RSVPs — ${event.title}`}>
+  <div class="edit-layout">
+    <nav class="sidebar">
+      <a href={`/admin/events/${slug}`} class="sidebar-link">Edit</a>
+      <a href={`/admin/events/${slug}/rsvps`} class="sidebar-link active">RSVPs</a>
+      <a href={`/door/${slug}`} class="sidebar-link" target="_blank">Door ↗</a>
+      <a href={`/admin/events/${slug}/budget`} class="sidebar-link">Budget</a>
+      <a href={`/admin/events/${slug}/collaborators`} class="sidebar-link">Collaborators</a>
+    </nav>
+
+    <div class="edit-content">
+      <div class="rsvp-header">
+        <h1>RSVPs ({rsvpList.length})</h1>
+        <a href={`/admin/events/${slug}/rsvps?export=csv`} class="btn-export">Export CSV</a>
+      </div>
+
+      <input
+        type="text"
+        id="name-filter"
+        placeholder="Filter by name..."
+        class="filter-input"
+      />
+
+      {rsvpList.length === 0 ? (
+        <p class="empty">No RSVPs yet.</p>
+      ) : (
+        <table class="rsvp-table" id="rsvp-table">
+          <thead>
+            <tr>
+              <th data-sort="name" class="sortable">Name</th>
+              <th data-sort="email" class="sortable">Email</th>
+              <th>Phone</th>
+              <th data-sort="time" class="sortable">RSVP Time</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rsvpList.map((r) => (
+              <tr data-name={r.name.toLowerCase()}>
+                <td>{r.name}</td>
+                <td class="td-email">{r.email}</td>
+                <td>{r.phone || '—'}</td>
+                <td>{new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</td>
+                <td>
+                  {r.arrived_at ? (
+                    <span class="badge arrived">Arrived</span>
+                  ) : r.walk_in ? (
+                    <span class="badge walkin">Walk-in</span>
+                  ) : (
+                    <span class="badge pending">RSVP</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  </div>
+</Admin>
+
+<script>
+  const filter = document.getElementById('name-filter') as HTMLInputElement;
+  const table = document.getElementById('rsvp-table') as HTMLTableElement;
+
+  // Instant name filter
+  filter?.addEventListener('input', () => {
+    const q = filter.value.toLowerCase();
+    const rows = table?.querySelectorAll('tbody tr') ?? [];
+    rows.forEach((row) => {
+      const name = (row as HTMLElement).dataset.name || '';
+      (row as HTMLElement).style.display = name.includes(q) ? '' : 'none';
+    });
+  });
+
+  // Column sort
+  let sortDir: Record<string, boolean> = {};
+  document.querySelectorAll('.sortable').forEach((th) => {
+    th.addEventListener('click', () => {
+      const key = (th as HTMLElement).dataset.sort!;
+      sortDir[key] = !sortDir[key];
+      const tbody = table?.querySelector('tbody');
+      if (!tbody) return;
+      const rows = Array.from(tbody.querySelectorAll('tr'));
+      rows.sort((a, b) => {
+        const colIdx = Array.from(th.parentElement!.children).indexOf(th);
+        const aVal = a.children[colIdx]?.textContent?.trim() ?? '';
+        const bVal = b.children[colIdx]?.textContent?.trim() ?? '';
+        return sortDir[key] ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      });
+      rows.forEach((row) => tbody.appendChild(row));
+    });
+  });
+</script>
+
+<style>
+  .edit-layout {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: var(--space-6);
+  }
+
+  @media (max-width: 640px) {
+    .edit-layout { grid-template-columns: 1fr; }
+  }
+
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .sidebar-link {
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius);
+    color: var(--color-text-muted);
+    text-decoration: none;
+    font-size: 0.875rem;
+  }
+
+  .sidebar-link:hover { background: var(--color-surface); color: var(--color-text); }
+  .sidebar-link.active { background: var(--color-surface); color: var(--color-accent); }
+
+  .rsvp-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-4);
+  }
+
+  .rsvp-header h1 { font-size: 1.5rem; }
+
+  .btn-export {
+    padding: var(--space-1) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    color: var(--color-text-muted);
+    text-decoration: none;
+    font-size: 0.875rem;
+  }
+
+  .btn-export:hover { border-color: var(--color-text-muted); color: var(--color-text); }
+
+  .filter-input {
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    color: var(--color-text);
+    font-size: 1rem;
+    margin-bottom: var(--space-4);
+  }
+
+  .filter-input:focus { outline: none; border-color: var(--color-accent); }
+
+  .empty { color: var(--color-text-muted); text-align: center; padding: var(--space-8) 0; }
+
+  .rsvp-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+
+  .rsvp-table th {
+    text-align: left;
+    padding: var(--space-2) var(--space-3);
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text-muted);
+    font-weight: 500;
+  }
+
+  .sortable { cursor: pointer; user-select: none; }
+  .sortable:hover { color: var(--color-text); }
+
+  .rsvp-table td {
+    padding: var(--space-2) var(--space-3);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .td-email { color: var(--color-text-muted); }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  .badge.arrived { background: color-mix(in srgb, var(--color-success) 20%, transparent); color: var(--color-success); }
+  .badge.walkin { background: color-mix(in srgb, var(--color-warning) 20%, transparent); color: var(--color-warning); }
+  .badge.pending { background: color-mix(in srgb, var(--color-text-muted) 20%, transparent); color: var(--color-text-muted); }
+</style>
