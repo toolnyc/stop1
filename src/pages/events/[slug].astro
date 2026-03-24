@@ -81,56 +81,54 @@ const timeEnd = event.time_end
   .event-page {
     max-width: 560px;
     margin: 0 auto;
-    padding: var(--space-6) var(--space-4) var(--space-12);
+    padding: var(--space-lg) var(--space-md) var(--space-4xl);
   }
 
   .back-link {
     display: inline-block;
     font-size: 0.8125rem;
-    color: var(--color-text-muted);
+    color: var(--color-muted);
     text-decoration: none;
-    margin-bottom: var(--space-6);
+    margin-bottom: var(--space-lg);
     transition: color var(--transition);
   }
 
   .back-link:hover {
-    color: var(--color-text);
+    color: var(--color-fg);
   }
 
   .event-flyer {
     width: 100%;
-    border-radius: var(--radius-lg);
-    margin-bottom: var(--space-6);
+    margin-bottom: var(--space-lg);
   }
 
   .event-title {
     font-size: 2rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    margin-bottom: var(--space-5);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-tight);
+    margin-bottom: var(--space-lg);
   }
 
   .event-meta {
     display: flex;
     flex-direction: column;
-    gap: var(--space-3);
-    margin-bottom: var(--space-6);
-    padding: var(--space-5);
+    gap: var(--space-sm);
+    margin-bottom: var(--space-lg);
+    padding: var(--space-lg);
     background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
+    border: var(--border);
   }
 
   .meta-item {
     display: flex;
     align-items: flex-start;
-    gap: var(--space-3);
+    gap: var(--space-sm);
     font-size: 0.9375rem;
   }
 
   .meta-icon {
     flex-shrink: 0;
-    color: var(--color-text-muted);
+    color: var(--color-muted);
     margin-top: 2px;
   }
 
@@ -142,12 +140,12 @@ const timeEnd = event.time_end
 
   .meta-address {
     font-size: 0.8125rem;
-    color: var(--color-text-muted);
+    color: var(--color-muted);
   }
 
   .event-description {
-    color: var(--color-text-muted);
-    line-height: 1.7;
-    margin-bottom: var(--space-6);
+    color: var(--color-muted);
+    line-height: var(--leading-relaxed);
+    margin-bottom: var(--space-lg);
   }
 </style>

@@ -71,24 +71,23 @@ function statusBadge(status: string) {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: var(--space-6);
+    margin-bottom: var(--space-lg);
   }
 
   .dashboard-header h1 {
     font-size: 1.5rem;
-    letter-spacing: -0.02em;
+    letter-spacing: var(--tracking-tight);
   }
 
   .empty-state {
     text-align: center;
-    padding: var(--space-12) 0;
+    padding: var(--space-4xl) 0;
   }
 
   .event-list {
     display: flex;
     flex-direction: column;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
+    border: var(--border);
     overflow: hidden;
   }
 
@@ -96,12 +95,12 @@ function statusBadge(status: string) {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: var(--space-4) var(--space-5);
+    padding: var(--space-md) var(--space-lg);
     background: var(--color-surface);
     text-decoration: none;
-    color: var(--color-text);
+    color: var(--color-fg);
     transition: background var(--transition);
-    border-bottom: 1px solid var(--color-border);
+    border-bottom: var(--border);
   }
 
   .event-row:last-child {
@@ -109,33 +108,33 @@ function statusBadge(status: string) {
   }
 
   .event-row:hover {
-    background: var(--color-surface-raised);
+    background: var(--color-bg);
   }
 
   .event-info {
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
+    gap: var(--space-xs);
   }
 
   .event-title {
-    font-weight: 600;
+    font-weight: var(--weight-medium);
   }
 
   .event-date {
     font-size: 0.8125rem;
-    color: var(--color-text-muted);
+    color: var(--color-muted);
   }
 
   .event-meta {
     display: flex;
     align-items: center;
-    gap: var(--space-4);
+    gap: var(--space-md);
     font-size: 0.875rem;
   }
 
   .rsvp-count {
-    color: var(--color-text-muted);
+    color: var(--color-muted);
     font-size: 0.8125rem;
   }
 </style>

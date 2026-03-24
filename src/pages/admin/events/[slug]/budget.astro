@@ -102,7 +102,7 @@ function fmt(n: number) { return `$${n.toFixed(2)}`; }
       <!-- Profit card -->
       <div class="profit-card">
         <div class="profit-inner">
-          <span class="profit-label">Net Profit</span>
+          <span class="profit-label">[Net Profit]</span>
           <span class:list={['profit-value', 'mono', { negative: profit < 0 }]}>{fmt(profit)}</span>
         </div>
         <p class="profit-formula text-muted">{fmt(revenue)} revenue &minus; {fmt(totalExpenses)} expenses</p>
@@ -170,54 +170,53 @@ function fmt(n: number) { return `$${n.toFixed(2)}`; }
 </Admin>
 
 <style>
-  .edit-layout { display: grid; grid-template-columns: 180px 1fr; gap: var(--space-8); }
+  .edit-layout { display: grid; grid-template-columns: 180px 1fr; gap: var(--space-2xl); }
   @media (max-width: 640px) {
-    .edit-layout { grid-template-columns: 1fr; gap: var(--space-4); }
-    .sidebar { flex-direction: row !important; overflow-x: auto; gap: var(--space-1) !important; padding-bottom: var(--space-2); border-bottom: 1px solid var(--color-border); }
+    .edit-layout { grid-template-columns: 1fr; gap: var(--space-md); }
+    .sidebar { flex-direction: row !important; overflow-x: auto; gap: var(--space-xs) !important; padding-bottom: var(--space-sm); border-bottom: var(--border); }
     .sidebar-link { white-space: nowrap; }
   }
 
-  .sidebar { display: flex; flex-direction: column; gap: var(--space-1); }
-  .sidebar-link { padding: var(--space-2) var(--space-3); border-radius: var(--radius); color: var(--color-text-muted); text-decoration: none; font-size: 0.875rem; font-weight: 500; transition: background var(--transition), color var(--transition); }
-  .sidebar-link:hover { background: var(--color-surface); color: var(--color-text); }
+  .sidebar { display: flex; flex-direction: column; gap: var(--space-xs); }
+  .sidebar-link { padding: var(--space-sm) var(--space-sm); color: var(--color-muted); text-decoration: none; font-size: 0.875rem; font-weight: var(--weight-medium); transition: background var(--transition), color var(--transition); }
+  .sidebar-link:hover { background: var(--color-surface); color: var(--color-fg); }
   .sidebar-link.active { background: var(--color-surface); color: var(--color-accent); }
   .sidebar-link.external::after { content: ' ↗'; opacity: 0.5; }
 
-  .edit-content h1 { font-size: 1.5rem; letter-spacing: -0.02em; margin-bottom: var(--space-6); }
+  .edit-content h1 { font-size: 1.5rem; letter-spacing: var(--tracking-tight); margin-bottom: var(--space-lg); }
 
   .profit-card {
     text-align: center;
     background: var(--color-surface);
     border: 2px solid var(--color-accent);
-    border-radius: var(--radius-lg);
-    padding: var(--space-8) var(--space-6);
-    margin-bottom: var(--space-8);
+    padding: var(--space-2xl) var(--space-lg);
+    margin-bottom: var(--space-2xl);
   }
 
-  .profit-inner { display: flex; flex-direction: column; gap: var(--space-2); }
-  .profit-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted); font-weight: 600; }
-  .profit-value { font-size: 2.5rem; font-weight: 700; color: var(--color-success); line-height: 1; }
+  .profit-inner { display: flex; flex-direction: column; gap: var(--space-sm); }
+  .profit-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: var(--tracking-wide); color: var(--color-muted); font-weight: var(--weight-medium); }
+  .profit-value { font-size: 2.5rem; font-weight: var(--weight-bold); color: var(--color-success); line-height: 1; }
   .profit-value.negative { color: var(--color-error); }
-  .profit-formula { font-size: 0.8125rem; margin-top: var(--space-3); }
+  .profit-formula { font-size: 0.8125rem; margin-top: var(--space-sm); }
 
-  .section { margin-bottom: var(--space-8); }
-  .section h2 { font-size: 1.125rem; font-weight: 600; margin-bottom: var(--space-4); }
+  .section { margin-bottom: var(--space-2xl); }
+  .section h2 { font-size: 1.125rem; font-weight: var(--weight-bold); margin-bottom: var(--space-md); }
 
-  .data-table { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden; }
-  .data-row { display: flex; justify-content: space-between; padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-border); font-size: 0.9375rem; }
+  .data-table { background: var(--color-surface); border: var(--border); overflow: hidden; }
+  .data-row { display: flex; justify-content: space-between; padding: var(--space-sm) var(--space-md); border-bottom: var(--border); font-size: 0.9375rem; }
   .data-row:last-child { border-bottom: none; }
-  .data-row.total { font-weight: 700; background: color-mix(in srgb, var(--color-accent) 6%, transparent); }
+  .data-row.total { font-weight: var(--weight-bold); background: color-mix(in srgb, var(--color-accent) 6%, transparent); }
 
-  .collab-expenses { margin-bottom: var(--space-5); }
-  .collab-expenses h3 { font-size: 0.875rem; font-weight: 600; margin-bottom: var(--space-2); }
+  .collab-expenses { margin-bottom: var(--space-lg); }
+  .collab-expenses h3 { font-size: 0.875rem; font-weight: var(--weight-medium); margin-bottom: var(--space-sm); }
 
-  .expense-line { display: flex; justify-content: space-between; padding: var(--space-2) 0; font-size: 0.875rem; }
-  .expense-right { display: flex; gap: var(--space-3); align-items: center; }
+  .expense-line { display: flex; justify-content: space-between; padding: var(--space-sm) 0; font-size: 0.875rem; }
+  .expense-right { display: flex; gap: var(--space-sm); align-items: center; }
   .receipt-link { font-size: 0.75rem; color: var(--color-accent); text-decoration: none; }
 
-  .collab-payout { margin-bottom: var(--space-4); }
-  .payout-header { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.875rem; margin-bottom: var(--space-3); flex-wrap: wrap; gap: var(--space-2); }
-  .payout-name { font-weight: 600; }
-  .payout-summary { display: flex; gap: var(--space-2); font-size: 0.8125rem; }
-  .payout-line { display: flex; justify-content: space-between; font-size: 0.875rem; padding: var(--space-1) 0; }
+  .collab-payout { margin-bottom: var(--space-md); }
+  .payout-header { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.875rem; margin-bottom: var(--space-sm); flex-wrap: wrap; gap: var(--space-sm); }
+  .payout-name { font-weight: var(--weight-medium); }
+  .payout-summary { display: flex; gap: var(--space-sm); font-size: 0.8125rem; }
+  .payout-line { display: flex; justify-content: space-between; font-size: 0.875rem; padding: var(--space-xs) 0; }
 </style>

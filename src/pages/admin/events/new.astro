@@ -99,21 +99,21 @@ const fieldError = Astro.url.searchParams.get('field_error');
 <style>
   .page-title {
     font-size: 1.5rem;
-    letter-spacing: -0.02em;
-    margin-bottom: var(--space-6);
+    letter-spacing: var(--tracking-tight);
+    margin-bottom: var(--space-lg);
   }
 
   .event-form {
     display: flex;
     flex-direction: column;
-    gap: var(--space-5);
+    gap: var(--space-lg);
     max-width: 600px;
   }
 
   .form-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: var(--space-4);
+    gap: var(--space-md);
   }
 
   @media (max-width: 480px) {
@@ -121,6 +121,6 @@ const fieldError = Astro.url.searchParams.get('field_error');
   }
 
   .alert {
-    margin-bottom: var(--space-4);
+    margin-bottom: var(--space-md);
   }
 </style>

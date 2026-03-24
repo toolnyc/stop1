@@ -123,21 +123,21 @@ function formatDatetimeLocal(dateStr: string | null) {
   .edit-layout {
     display: grid;
     grid-template-columns: 180px 1fr;
-    gap: var(--space-8);
+    gap: var(--space-2xl);
   }
 
   @media (max-width: 640px) {
     .edit-layout {
       grid-template-columns: 1fr;
-      gap: var(--space-4);
+      gap: var(--space-md);
     }
 
     .sidebar {
       flex-direction: row !important;
       overflow-x: auto;
-      gap: var(--space-1) !important;
-      padding-bottom: var(--space-2);
-      border-bottom: 1px solid var(--color-border);
+      gap: var(--space-xs) !important;
+      padding-bottom: var(--space-sm);
+      border-bottom: var(--border);
     }
 
     .sidebar-link {
@@ -148,22 +148,21 @@ function formatDatetimeLocal(dateStr: string | null) {
   .sidebar {
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
+    gap: var(--space-xs);
   }
 
   .sidebar-link {
-    padding: var(--space-2) var(--space-3);
-    border-radius: var(--radius);
-    color: var(--color-text-muted);
+    padding: var(--space-sm) var(--space-sm);
+    color: var(--color-muted);
     text-decoration: none;
     font-size: 0.875rem;
-    font-weight: 500;
+    font-weight: var(--weight-medium);
     transition: background var(--transition), color var(--transition);
   }
 
   .sidebar-link:hover {
     background: var(--color-surface);
-    color: var(--color-text);
+    color: var(--color-fg);
   }
 
   .sidebar-link.active {
@@ -178,21 +177,21 @@ function formatDatetimeLocal(dateStr: string | null) {
 
   .edit-content h1 {
     font-size: 1.5rem;
-    letter-spacing: -0.02em;
-    margin-bottom: var(--space-6);
+    letter-spacing: var(--tracking-tight);
+    margin-bottom: var(--space-lg);
   }
 
   .event-form {
     display: flex;
     flex-direction: column;
-    gap: var(--space-5);
+    gap: var(--space-lg);
     max-width: 600px;
   }
 
   .form-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: var(--space-4);
+    gap: var(--space-md);
   }
 
   @media (max-width: 480px) {
@@ -200,14 +199,14 @@ function formatDatetimeLocal(dateStr: string | null) {
   }
 
   .alert {
-    margin-bottom: var(--space-4);
+    margin-bottom: var(--space-md);
     max-width: 600px;
   }
 
   .danger-zone {
-    margin-top: var(--space-10);
-    padding-top: var(--space-6);
-    border-top: 1px solid var(--color-border);
+    margin-top: var(--space-3xl);
+    padding-top: var(--space-lg);
+    border-top: var(--border);
     max-width: 600px;
   }
 </style>
