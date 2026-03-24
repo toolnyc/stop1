@@ -1,7 +1,12 @@
 import { defineConfig } from 'astro/config';
 import vercel from '@astrojs/vercel';
 
+const site = process.env.VERCEL_URL
+  ? `https://${process.env.VERCEL_URL}`
+  : 'http://localhost:4321';
+
 export default defineConfig({
+  site,
   output: 'server',
   adapter: vercel(),
   image: { service: { entrypoint: 'astro/assets/services/noop' } },
