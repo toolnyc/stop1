@@ -25,7 +25,6 @@ const { data: rsvps } = await supabaseAdmin
 
 const rsvpList = rsvps ?? [];
 
-// CSV export
 if (exportCsv) {
   const header = 'Name,Phone,Email,SMS Opt-in,RSVP Time,Arrived';
   const rows = rsvpList.map(r =>
@@ -46,15 +45,15 @@ if (exportCsv) {
     <nav class="sidebar">
       <a href={`/admin/events/${slug}`} class="sidebar-link">Edit</a>
       <a href={`/admin/events/${slug}/rsvps`} class="sidebar-link active">RSVPs</a>
-      <a href={`/door/${slug}`} class="sidebar-link" target="_blank">Door ↗</a>
+      <a href={`/door/${slug}`} class="sidebar-link external" target="_blank">Door</a>
       <a href={`/admin/events/${slug}/budget`} class="sidebar-link">Budget</a>
       <a href={`/admin/events/${slug}/collaborators`} class="sidebar-link">Collaborators</a>
     </nav>
 
     <div class="edit-content">
       <div class="rsvp-header">
-        <h1>RSVPs ({rsvpList.length})</h1>
-        <a href={`/admin/events/${slug}/rsvps?export=csv`} class="btn-export">Export CSV</a>
+        <h1>RSVPs <span class="count">({rsvpList.length})</span></h1>
+        <a href={`/admin/events/${slug}/rsvps?export=csv`} class="btn btn-secondary btn-sm">Export CSV</a>
       </div>
 
       <input
@@ -65,38 +64,40 @@ if (exportCsv) {
       />
 
       {rsvpList.length === 0 ? (
-        <p class="empty">No RSVPs yet.</p>
+        <p class="empty text-muted">No RSVPs yet.</p>
       ) : (
-        <table class="rsvp-table" id="rsvp-table">
-          <thead>
-            <tr>
-              <th data-sort="name" class="sortable">Name</th>
-              <th>Phone</th>
-              <th data-sort="email" class="sortable">Email</th>
-              <th data-sort="time" class="sortable">RSVP Time</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rsvpList.map((r) => (
-              <tr data-name={r.name.toLowerCase()}>
-                <td>{r.name}</td>
-                <td>{r.phone}</td>
-                <td class="td-email">{r.email || '—'}</td>
-                <td>{new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</td>
-                <td>
-                  {r.arrived_at ? (
-                    <span class="badge arrived">Arrived</span>
-                  ) : r.walk_in ? (
-                    <span class="badge walkin">Walk-in</span>
-                  ) : (
-                    <span class="badge pending">RSVP</span>
-                  )}
-                </td>
+        <div class="table-wrap">
+          <table class="rsvp-table" id="rsvp-table">
+            <thead>
+              <tr>
+                <th data-sort="name" class="sortable">Name</th>
+                <th>Phone</th>
+                <th data-sort="email" class="sortable">Email</th>
+                <th data-sort="time" class="sortable">Time</th>
+                <th>Status</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {rsvpList.map((r) => (
+                <tr data-name={r.name.toLowerCase()}>
+                  <td class="td-name">{r.name}</td>
+                  <td>{r.phone}</td>
+                  <td class="td-email">{r.email || '—'}</td>
+                  <td class="td-time">{new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</td>
+                  <td>
+                    {r.arrived_at ? (
+                      <span class="badge badge-success">Arrived</span>
+                    ) : r.walk_in ? (
+                      <span class="badge badge-warning">Walk-in</span>
+                    ) : (
+                      <span class="badge badge-muted">RSVP</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   </div>
@@ -106,7 +107,6 @@ if (exportCsv) {
   const filter = document.getElementById('name-filter') as HTMLInputElement;
   const table = document.getElementById('rsvp-table') as HTMLTableElement;
 
-  // Instant name filter
   filter?.addEventListener('input', () => {
     const q = filter.value.toLowerCase();
     const rows = table?.querySelectorAll('tbody tr') ?? [];
@@ -116,7 +116,6 @@ if (exportCsv) {
     });
   });
 
-  // Column sort
   let sortDir: Record<string, boolean> = {};
   document.querySelectorAll('.sortable').forEach((th) => {
     th.addEventListener('click', () => {
@@ -140,11 +139,22 @@ if (exportCsv) {
   .edit-layout {
     display: grid;
     grid-template-columns: 180px 1fr;
-    gap: var(--space-6);
+    gap: var(--space-8);
   }
 
   @media (max-width: 640px) {
-    .edit-layout { grid-template-columns: 1fr; }
+    .edit-layout {
+      grid-template-columns: 1fr;
+      gap: var(--space-4);
+    }
+    .sidebar {
+      flex-direction: row !important;
+      overflow-x: auto;
+      gap: var(--space-1) !important;
+      padding-bottom: var(--space-2);
+      border-bottom: 1px solid var(--color-border);
+    }
+    .sidebar-link { white-space: nowrap; }
   }
 
   .sidebar {
@@ -159,45 +169,45 @@ if (exportCsv) {
     color: var(--color-text-muted);
     text-decoration: none;
     font-size: 0.875rem;
+    font-weight: 500;
+    transition: background var(--transition), color var(--transition);
   }
 
   .sidebar-link:hover { background: var(--color-surface); color: var(--color-text); }
   .sidebar-link.active { background: var(--color-surface); color: var(--color-accent); }
+  .sidebar-link.external::after { content: ' ↗'; opacity: 0.5; }
 
   .rsvp-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: var(--space-4);
+    margin-bottom: var(--space-5);
   }
 
-  .rsvp-header h1 { font-size: 1.5rem; }
+  .rsvp-header h1 {
+    font-size: 1.5rem;
+    letter-spacing: -0.02em;
+  }
 
-  .btn-export {
-    padding: var(--space-1) var(--space-3);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius);
+  .count {
     color: var(--color-text-muted);
-    text-decoration: none;
-    font-size: 0.875rem;
+    font-weight: 400;
   }
-
-  .btn-export:hover { border-color: var(--color-text-muted); color: var(--color-text); }
 
   .filter-input {
-    width: 100%;
-    padding: var(--space-2) var(--space-3);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius);
-    color: var(--color-text);
-    font-size: 1rem;
     margin-bottom: var(--space-4);
   }
 
-  .filter-input:focus { outline: none; border-color: var(--color-accent); }
+  .empty {
+    text-align: center;
+    padding: var(--space-10) 0;
+  }
 
-  .empty { color: var(--color-text-muted); text-align: center; padding: var(--space-8) 0; }
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+  }
 
   .rsvp-table {
     width: 100%;
@@ -207,31 +217,32 @@ if (exportCsv) {
 
   .rsvp-table th {
     text-align: left;
-    padding: var(--space-2) var(--space-3);
+    padding: var(--space-3) var(--space-4);
     border-bottom: 1px solid var(--color-border);
     color: var(--color-text-muted);
     font-weight: 500;
+    font-size: 0.8125rem;
+    background: var(--color-surface);
   }
 
-  .sortable { cursor: pointer; user-select: none; }
+  .sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: color var(--transition);
+  }
+
   .sortable:hover { color: var(--color-text); }
 
   .rsvp-table td {
-    padding: var(--space-2) var(--space-3);
+    padding: var(--space-3) var(--space-4);
     border-bottom: 1px solid var(--color-border);
   }
 
-  .td-email { color: var(--color-text-muted); }
-
-  .badge {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 999px;
-    font-size: 0.75rem;
-    font-weight: 500;
+  .rsvp-table tbody tr:last-child td {
+    border-bottom: none;
   }
 
-  .badge.arrived { background: color-mix(in srgb, var(--color-success) 20%, transparent); color: var(--color-success); }
-  .badge.walkin { background: color-mix(in srgb, var(--color-warning) 20%, transparent); color: var(--color-warning); }
-  .badge.pending { background: color-mix(in srgb, var(--color-text-muted) 20%, transparent); color: var(--color-text-muted); }
+  .td-name { font-weight: 500; }
+  .td-email { color: var(--color-text-muted); }
+  .td-time { white-space: nowrap; font-size: 0.8125rem; color: var(--color-text-muted); }
 </style>

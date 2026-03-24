@@ -22,74 +22,69 @@ const pinError = Astro.url.searchParams.get('error');
 ---
 <Base title={`Door — ${event.title}`}>
   <main class="pin-page">
-    <h1>{event.title}</h1>
-    <p class="pin-subtitle">Enter Door PIN</p>
+    <div class="pin-card">
+      <h1>{event.title}</h1>
+      <p class="pin-subtitle">Door PIN</p>
 
-    {pinError && <div class="pin-error">{pinError}</div>}
+      {pinError && <div class="alert alert-error">{pinError}</div>}
 
-    <form method="POST" action={`/api/door/${slug}/auth`} class="pin-form">
-      <input
-        type="text"
-        name="pin"
-        inputmode="numeric"
-        pattern="[0-9]*"
-        autocomplete="off"
-        required
-        autofocus
-        class="pin-input"
-        placeholder="PIN"
-      />
-      <button type="submit">Enter</button>
-    </form>
+      <form method="POST" action={`/api/door/${slug}/auth`} class="pin-form">
+        <input
+          type="text"
+          name="pin"
+          inputmode="numeric"
+          pattern="[0-9]*"
+          autocomplete="off"
+          required
+          autofocus
+          class="pin-input"
+          placeholder="- - - -"
+        />
+        <button type="submit" class="btn btn-primary btn-block btn-lg">Enter</button>
+      </form>
+    </div>
   </main>
 </Base>
 
 <style>
   .pin-page {
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
     min-height: 100dvh;
     padding: var(--space-4);
-    text-align: center;
   }
 
-  .pin-page h1 {
+  .pin-card {
+    width: 100%;
+    max-width: 320px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+  }
+
+  .pin-card h1 {
     color: var(--color-accent);
     font-size: 1.5rem;
-    margin-bottom: var(--space-2);
+    letter-spacing: -0.02em;
   }
 
   .pin-subtitle {
     color: var(--color-text-muted);
-    margin-bottom: var(--space-6);
-  }
-
-  .pin-error {
-    background: color-mix(in srgb, var(--color-error) 15%, transparent);
-    border: 1px solid var(--color-error);
-    color: var(--color-error);
-    padding: var(--space-2) var(--space-3);
-    border-radius: var(--radius);
-    font-size: 0.875rem;
-    margin-bottom: var(--space-4);
-    width: 100%;
-    max-width: 300px;
+    margin-top: calc(-1 * var(--space-3));
   }
 
   .pin-form {
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
-    width: 100%;
-    max-width: 300px;
   }
 
   .pin-input {
     width: 100%;
-    min-height: 56px;
-    padding: var(--space-3) var(--space-4);
+    min-height: 64px;
+    padding: var(--space-4);
     background: var(--color-surface);
     border: 2px solid var(--color-border);
     border-radius: var(--radius-lg);
@@ -98,25 +93,17 @@ const pinError = Astro.url.searchParams.get('error');
     text-align: center;
     letter-spacing: 0.5em;
     font-family: var(--font-mono);
+    transition: border-color var(--transition), box-shadow var(--transition);
   }
 
   .pin-input:focus {
     outline: none;
     border-color: var(--color-accent);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-accent) 15%, transparent);
   }
 
-  button {
-    width: 100%;
-    min-height: 48px;
-    padding: var(--space-3);
-    background: var(--color-accent);
-    color: var(--color-bg);
-    border: none;
-    border-radius: var(--radius);
-    font-weight: 600;
-    font-size: 1.125rem;
-    cursor: pointer;
+  .btn-lg {
+    padding: 14px var(--space-5);
+    font-size: 1.0625rem;
   }
-
-  button:hover { opacity: 0.9; }
 </style>

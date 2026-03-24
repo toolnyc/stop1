@@ -13,7 +13,6 @@ if (!collaborator) {
   return Astro.redirect(`/collaborate/${token}`);
 }
 
-// Get collaborator details and event
 const { data: collab } = await supabaseAdmin
   .from('collaborators')
   .select('name, event_id')
@@ -28,7 +27,6 @@ const { data: event } = await supabaseAdmin
   .eq('id', collab.event_id)
   .single();
 
-// Get expenses for this collaborator only
 const { data: expenses } = await supabaseAdmin
   .from('expenses')
   .select('*')
@@ -44,56 +42,58 @@ const success = Astro.url.searchParams.get('success');
 <Base title={`Expenses — ${event?.title ?? 'Event'}`}>
   <main class="expenses-page">
     <h1>{event?.title}</h1>
-    <p class="subtitle">Expenses for {collab.name}</p>
+    <p class="subtitle text-muted">Expenses for {collab.name}</p>
 
-    {error && <div class="msg error">{error}</div>}
-    {success && <div class="msg success">{success}</div>}
+    {error && <div class="alert alert-error">{error}</div>}
+    {success && <div class="alert alert-success">{success}</div>}
 
     <form
       method="POST"
       action="/api/collaborators/expenses/add"
       enctype="multipart/form-data"
-      class="add-form"
+      class="add-form card"
     >
       <h2>Add Expense</h2>
       <label>
         <span>Description *</span>
-        <input type="text" name="description" required />
+        <input type="text" name="description" required placeholder="e.g. Sound rental" />
       </label>
       <label>
         <span>Amount ($) *</span>
-        <input type="number" name="amount" min="0.01" step="0.01" required />
+        <input type="number" name="amount" min="0.01" step="0.01" required placeholder="0.00" />
       </label>
       <label>
         <span>Receipt (optional, max 10MB)</span>
-        <input type="file" name="receipt" accept="image/*,application/pdf" />
+        <input type="file" name="receipt" accept="image/*,application/pdf" class="file-input" />
       </label>
-      <button type="submit">Add Expense</button>
+      <button type="submit" class="btn btn-primary">Add Expense</button>
     </form>
 
     <div class="expense-list">
-      <h2>Your Expenses (${total.toFixed(2)})</h2>
+      <h2>Your Expenses <span class="mono text-muted">(${total.toFixed(2)})</span></h2>
       {expenseList.length === 0 ? (
-        <p class="empty">No expenses yet.</p>
+        <p class="empty text-muted">No expenses yet.</p>
       ) : (
-        expenseList.map((e) => (
-          <div class="expense-row">
-            <div class="expense-info">
-              <span class="expense-desc">{e.description}</span>
-              <span class="expense-date">{new Date(e.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+        <div class="expense-items">
+          {expenseList.map((e) => (
+            <div class="expense-row">
+              <div class="expense-info">
+                <span class="expense-desc">{e.description}</span>
+                <span class="expense-date text-muted">{new Date(e.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+              </div>
+              <div class="expense-actions">
+                <span class="expense-amount mono">${Number(e.amount).toFixed(2)}</span>
+                {e.receipt_url && (
+                  <a href={e.receipt_url} target="_blank" class="receipt-link">Receipt</a>
+                )}
+                <form method="POST" action="/api/collaborators/expenses/delete" style="display:inline">
+                  <input type="hidden" name="expense_id" value={e.id} />
+                  <button type="submit" class="btn-icon-delete" title="Delete">&times;</button>
+                </form>
+              </div>
             </div>
-            <div class="expense-actions">
-              <span class="expense-amount">${Number(e.amount).toFixed(2)}</span>
-              {e.receipt_url && (
-                <a href={e.receipt_url} target="_blank" class="receipt-link">Receipt</a>
-              )}
-              <form method="POST" action="/api/collaborators/expenses/delete" style="display:inline">
-                <input type="hidden" name="expense_id" value={e.id} />
-                <button type="submit" class="btn-delete">×</button>
-              </form>
-            </div>
-          </div>
-        ))
+          ))}
+        </div>
       )}
     </div>
   </main>
@@ -103,83 +103,67 @@ const success = Astro.url.searchParams.get('success');
   .expenses-page {
     max-width: 600px;
     margin: 0 auto;
-    padding: var(--space-6) var(--space-4);
+    padding: var(--space-8) var(--space-4);
   }
 
-  h1 { color: var(--color-accent); margin-bottom: var(--space-1); }
-  .subtitle { color: var(--color-text-muted); margin-bottom: var(--space-6); }
-
-  .msg {
-    padding: var(--space-2) var(--space-3);
-    border-radius: var(--radius);
-    font-size: 0.875rem;
-    margin-bottom: var(--space-4);
+  h1 {
+    font-size: 1.375rem;
+    letter-spacing: -0.02em;
+    margin-bottom: var(--space-1);
   }
-  .msg.error { background: color-mix(in srgb, var(--color-error) 15%, transparent); border: 1px solid var(--color-error); color: var(--color-error); }
-  .msg.success { background: color-mix(in srgb, var(--color-success) 15%, transparent); border: 1px solid var(--color-success); color: var(--color-success); }
+
+  .subtitle {
+    margin-bottom: var(--space-6);
+    font-size: 0.9375rem;
+  }
+
+  .alert { margin-bottom: var(--space-4); }
 
   .add-form {
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
-    margin-bottom: var(--space-8);
-    padding: var(--space-4);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
+    gap: var(--space-5);
+    margin-bottom: var(--space-10);
   }
 
-  .add-form h2 { font-size: 1.125rem; }
+  .add-form h2 { font-size: 1.125rem; font-weight: 600; }
 
-  label { display: flex; flex-direction: column; gap: var(--space-1); }
-  label span { font-size: 0.875rem; color: var(--color-text-muted); }
-
-  input[type="text"], input[type="number"] {
-    width: 100%;
-    padding: var(--space-2) var(--space-3);
-    background: var(--color-bg);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius);
-    color: var(--color-text);
-    font-size: 1rem;
-  }
-
-  input:focus { outline: none; border-color: var(--color-accent); }
-
-  input[type="file"] {
+  .file-input {
     font-size: 0.875rem;
     color: var(--color-text-muted);
   }
 
-  .add-form button {
-    padding: var(--space-2) var(--space-4);
-    background: var(--color-accent);
-    color: var(--color-bg);
-    border: none;
-    border-radius: var(--radius);
+  .expense-list h2 {
+    font-size: 1.125rem;
     font-weight: 600;
-    cursor: pointer;
-    align-self: flex-start;
+    margin-bottom: var(--space-4);
   }
 
-  .expense-list h2 { font-size: 1.125rem; margin-bottom: var(--space-3); }
-  .empty { color: var(--color-text-muted); }
+  .empty { padding: var(--space-4) 0; }
+
+  .expense-items {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
 
   .expense-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: var(--space-3);
-    border-bottom: 1px solid var(--color-border);
+    padding: var(--space-4) var(--space-5);
     gap: var(--space-3);
+    border-bottom: 1px solid var(--color-border);
   }
+
+  .expense-row:last-child { border-bottom: none; }
 
   .expense-info { display: flex; flex-direction: column; gap: 2px; }
   .expense-desc { font-weight: 500; }
-  .expense-date { font-size: 0.75rem; color: var(--color-text-muted); }
+  .expense-date { font-size: 0.75rem; }
 
   .expense-actions { display: flex; align-items: center; gap: var(--space-3); flex-shrink: 0; }
-  .expense-amount { font-weight: 600; font-family: var(--font-mono); }
+  .expense-amount { font-weight: 600; }
 
   .receipt-link {
     font-size: 0.75rem;
@@ -187,7 +171,7 @@ const success = Astro.url.searchParams.get('success');
     text-decoration: none;
   }
 
-  .btn-delete {
+  .btn-icon-delete {
     background: transparent;
     border: 1px solid var(--color-border);
     color: var(--color-error);
@@ -200,5 +184,11 @@ const success = Astro.url.searchParams.get('success');
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: border-color var(--transition), background var(--transition);
+  }
+
+  .btn-icon-delete:hover {
+    border-color: var(--color-error);
+    background: color-mix(in srgb, var(--color-error) 12%, transparent);
   }
 </style>

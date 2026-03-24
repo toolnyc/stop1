@@ -26,23 +26,25 @@ function formatDate(dateStr: string) {
   });
 }
 
-function statusColor(status: string) {
+function statusBadge(status: string) {
   switch (status) {
-    case 'published': return 'var(--color-success)';
-    case 'draft': return 'var(--color-warning)';
-    case 'archived': return 'var(--color-text-muted)';
-    default: return 'var(--color-text-muted)';
+    case 'published': return 'badge-success';
+    case 'draft': return 'badge-warning';
+    default: return 'badge-muted';
   }
 }
 ---
 <Admin title="Events — Stop One Admin">
   <div class="dashboard-header">
     <h1>Events</h1>
-    <a href="/admin/events/new" class="btn-new">New Event</a>
+    <a href="/admin/events/new" class="btn btn-primary btn-sm">New Event</a>
   </div>
 
   {eventList.length === 0 ? (
-    <p class="empty">No events yet. Create your first event to get started.</p>
+    <div class="empty-state">
+      <p>No events yet.</p>
+      <p class="text-muted">Create your first event to get started.</p>
+    </div>
   ) : (
     <div class="event-list">
       {eventList.map((event) => {
@@ -54,10 +56,8 @@ function statusColor(status: string) {
               <span class="event-date">{formatDate(event.date)}</span>
             </div>
             <div class="event-meta">
-              <span class="rsvp-count">{rsvpCount} RSVPs</span>
-              <span class="status-badge" style={`color: ${statusColor(event.status)}`}>
-                {event.status}
-              </span>
+              <span class="rsvp-count mono">{rsvpCount}</span>
+              <span class={`badge ${statusBadge(event.status)}`}>{event.status}</span>
             </div>
           </a>
         );
@@ -76,36 +76,19 @@ function statusColor(status: string) {
 
   .dashboard-header h1 {
     font-size: 1.5rem;
+    letter-spacing: -0.02em;
   }
 
-  .btn-new {
-    display: inline-block;
-    padding: var(--space-2) var(--space-4);
-    background: var(--color-accent);
-    color: var(--color-bg);
-    text-decoration: none;
-    border-radius: var(--radius);
-    font-weight: 600;
-    font-size: 0.875rem;
-  }
-
-  .btn-new:hover {
-    opacity: 0.9;
-  }
-
-  .empty {
-    color: var(--color-text-muted);
+  .empty-state {
     text-align: center;
-    padding: var(--space-10) 0;
+    padding: var(--space-12) 0;
   }
 
   .event-list {
     display: flex;
     flex-direction: column;
-    gap: 1px;
-    background: var(--color-border);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius);
+    border-radius: var(--radius-lg);
     overflow: hidden;
   }
 
@@ -113,11 +96,16 @@ function statusColor(status: string) {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: var(--space-3) var(--space-4);
+    padding: var(--space-4) var(--space-5);
     background: var(--color-surface);
     text-decoration: none;
     color: var(--color-text);
-    transition: background-color 0.1s;
+    transition: background var(--transition);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .event-row:last-child {
+    border-bottom: none;
   }
 
   .event-row:hover {
@@ -135,7 +123,7 @@ function statusColor(status: string) {
   }
 
   .event-date {
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     color: var(--color-text-muted);
   }
 
@@ -148,10 +136,6 @@ function statusColor(status: string) {
 
   .rsvp-count {
     color: var(--color-text-muted);
-  }
-
-  .status-badge {
-    text-transform: capitalize;
-    font-weight: 500;
+    font-size: 0.8125rem;
   }
 </style>

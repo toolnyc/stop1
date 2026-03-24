@@ -31,7 +31,7 @@ function formatDatetimeLocal(dateStr: string | null) {
     <nav class="sidebar">
       <a href={`/admin/events/${slug}`} class="sidebar-link active">Edit</a>
       <a href={`/admin/events/${slug}/rsvps`} class="sidebar-link">RSVPs</a>
-      <a href={`/door/${slug}`} class="sidebar-link" target="_blank">Door ↗</a>
+      <a href={`/door/${slug}`} class="sidebar-link external" target="_blank">Door</a>
       <a href={`/admin/events/${slug}/budget`} class="sidebar-link">Budget</a>
       <a href={`/admin/events/${slug}/collaborators`} class="sidebar-link">Collaborators</a>
     </nav>
@@ -39,8 +39,8 @@ function formatDatetimeLocal(dateStr: string | null) {
     <div class="edit-content">
       <h1>Edit: {event.title}</h1>
 
-      {error && <div class="form-error">{error}</div>}
-      {success && <div class="form-success">{success}</div>}
+      {error && <div class="alert alert-error">{error}</div>}
+      {success && <div class="alert alert-success">{success}</div>}
 
       <form method="POST" action={`/api/admin/events/${slug}/update`} class="event-form">
         <label>
@@ -51,7 +51,7 @@ function formatDatetimeLocal(dateStr: string | null) {
         <label>
           <span>Slug</span>
           <input type="text" value={event.slug} disabled />
-          <small>Slug cannot be changed after creation.</small>
+          <small>Cannot be changed after creation.</small>
         </label>
 
         <div class="form-row">
@@ -93,7 +93,7 @@ function formatDatetimeLocal(dateStr: string | null) {
 
         <label>
           <span>Door PIN</span>
-          <input type="text" name="door_pin" inputmode="numeric" pattern="[0-9]*" placeholder="Leave blank to keep current PIN" />
+          <input type="text" name="door_pin" inputmode="numeric" pattern="[0-9]*" placeholder="Leave blank to keep current" />
           <small>Leave blank to keep existing PIN.</small>
         </label>
 
@@ -105,15 +105,15 @@ function formatDatetimeLocal(dateStr: string | null) {
           </select>
         </label>
 
-        <div class="form-actions">
-          <button type="submit">Save Changes</button>
-        </div>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
       </form>
 
       {event.status !== 'archived' && (
-        <form method="POST" action={`/api/admin/events/${slug}/archive`} class="archive-form">
-          <button type="submit" class="btn-archive">Archive Event</button>
-        </form>
+        <div class="danger-zone">
+          <form method="POST" action={`/api/admin/events/${slug}/archive`}>
+            <button type="submit" class="btn btn-danger btn-sm">Archive Event</button>
+          </form>
+        </div>
       )}
     </div>
   </div>
@@ -123,12 +123,25 @@ function formatDatetimeLocal(dateStr: string | null) {
   .edit-layout {
     display: grid;
     grid-template-columns: 180px 1fr;
-    gap: var(--space-6);
+    gap: var(--space-8);
   }
 
   @media (max-width: 640px) {
     .edit-layout {
       grid-template-columns: 1fr;
+      gap: var(--space-4);
+    }
+
+    .sidebar {
+      flex-direction: row !important;
+      overflow-x: auto;
+      gap: var(--space-1) !important;
+      padding-bottom: var(--space-2);
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .sidebar-link {
+      white-space: nowrap;
     }
   }
 
@@ -144,6 +157,8 @@ function formatDatetimeLocal(dateStr: string | null) {
     color: var(--color-text-muted);
     text-decoration: none;
     font-size: 0.875rem;
+    font-weight: 500;
+    transition: background var(--transition), color var(--transition);
   }
 
   .sidebar-link:hover {
@@ -156,35 +171,21 @@ function formatDatetimeLocal(dateStr: string | null) {
     color: var(--color-accent);
   }
 
+  .sidebar-link.external::after {
+    content: ' ↗';
+    opacity: 0.5;
+  }
+
   .edit-content h1 {
     font-size: 1.5rem;
+    letter-spacing: -0.02em;
     margin-bottom: var(--space-6);
-  }
-
-  .form-error {
-    background: color-mix(in srgb, var(--color-error) 15%, transparent);
-    border: 1px solid var(--color-error);
-    color: var(--color-error);
-    padding: var(--space-2) var(--space-3);
-    border-radius: var(--radius);
-    font-size: 0.875rem;
-    margin-bottom: var(--space-4);
-  }
-
-  .form-success {
-    background: color-mix(in srgb, var(--color-success) 15%, transparent);
-    border: 1px solid var(--color-success);
-    color: var(--color-success);
-    padding: var(--space-2) var(--space-3);
-    border-radius: var(--radius);
-    font-size: 0.875rem;
-    margin-bottom: var(--space-4);
   }
 
   .event-form {
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
+    gap: var(--space-5);
     max-width: 600px;
   }
 
@@ -194,83 +195,19 @@ function formatDatetimeLocal(dateStr: string | null) {
     gap: var(--space-4);
   }
 
-  label {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
+  @media (max-width: 480px) {
+    .form-row { grid-template-columns: 1fr; }
   }
 
-  label span {
-    font-size: 0.875rem;
-    color: var(--color-text-muted);
-  }
-
-  small {
-    font-size: 0.75rem;
-    color: var(--color-text-muted);
-  }
-
-  input, textarea, select {
-    width: 100%;
-    padding: var(--space-2) var(--space-3);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius);
-    color: var(--color-text);
-    font-size: 1rem;
-  }
-
-  input:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  input:focus, textarea:focus, select:focus {
-    outline: none;
-    border-color: var(--color-accent);
-  }
-
-  textarea { resize: vertical; }
-
-  select {
-    appearance: none;
-    cursor: pointer;
-  }
-
-  .form-actions {
-    display: flex;
-    gap: var(--space-3);
-  }
-
-  button {
-    padding: var(--space-2) var(--space-4);
-    background: var(--color-accent);
-    color: var(--color-bg);
-    border: none;
-    border-radius: var(--radius);
-    font-weight: 600;
-    font-size: 1rem;
-    cursor: pointer;
-  }
-
-  button:hover { opacity: 0.9; }
-
-  .archive-form {
-    margin-top: var(--space-8);
-    padding-top: var(--space-6);
-    border-top: 1px solid var(--color-border);
+  .alert {
+    margin-bottom: var(--space-4);
     max-width: 600px;
   }
 
-  .btn-archive {
-    background: transparent;
-    color: var(--color-error);
-    border: 1px solid var(--color-error);
-    font-weight: 500;
-    font-size: 0.875rem;
-  }
-
-  .btn-archive:hover {
-    background: color-mix(in srgb, var(--color-error) 15%, transparent);
+  .danger-zone {
+    margin-top: var(--space-10);
+    padding-top: var(--space-6);
+    border-top: 1px solid var(--color-border);
+    max-width: 600px;
   }
 </style>
