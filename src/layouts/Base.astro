@@ -1,5 +1,6 @@
 ---
 import '@/styles/global.css';
+import { ViewTransitions } from 'astro:transitions';
 
 export interface Props {
   title?: string;
@@ -13,15 +14,47 @@ const { title = 'Stop One', description = 'Recurring DIY party series' } = Astro
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content={description} />
-    <meta name="theme-color" content="#cd2e2a" />
+    <meta name="theme-color" content="#0a0a0a" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta property="og:image" content="/images/og-logo.png" />
     <link rel="stylesheet" href="https://use.typekit.net/YOUR_KIT_ID.css" />
     <title>{title}</title>
+    <ViewTransitions />
     <slot name="head" />
   </head>
   <body>
     <slot />
+    <script>
+      import gsap from 'gsap';
+
+      // Page transition animations using Astro View Transitions
+      document.addEventListener('astro:page-load', () => {
+        // Animate in new page content
+        gsap.from('main', {
+          duration: 0.6,
+          opacity: 0,
+          y: 30,
+          ease: 'power3.out'
+        });
+      });
+
+      document.addEventListener('astro:before-preparation', (event) => {
+        // Animate out current page
+        const main = document.querySelector('main');
+        if (main) {
+          event.preventDefault();
+          gsap.to(main, {
+            duration: 0.4,
+            opacity: 0,
+            y: -20,
+            ease: 'power2.in',
+            onComplete: () => {
+              (event as CustomEvent).detail.resume();
+            }
+          });
+        }
+      });
+    </script>
   </body>
 </html>

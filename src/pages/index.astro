@@ -2,193 +2,200 @@
 import Base from '@/layouts/Base.astro';
 import { supabase } from '@/lib/supabase';
 
-// Get upcoming published events
+// Get next upcoming published event
 const { data: events } = await supabase
   .from('events')
-  .select('title, slug, date, venue_name, door_price, flyer_url')
+  .select('title, slug, date')
   .eq('status', 'published')
   .gte('date', new Date().toISOString())
-  .order('date', { ascending: true });
+  .order('date', { ascending: true })
+  .limit(1);
 
-const upcoming = events ?? [];
-
-// If exactly one upcoming event, could redirect — but showing the page is friendlier
-const nextEvent = upcoming[0] ?? null;
-
-function formatDate(dateStr: string) {
-  const d = new Date(dateStr);
-  return {
-    weekday: d.toLocaleDateString('en-US', { weekday: 'long' }),
-    date: d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' }),
-    time: d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
-  };
-}
+const nextEvent = events?.[0] ?? null;
+const eventDate = nextEvent ? new Date(nextEvent.date) : null;
 ---
 <Base title="Stop One">
-  <main class="home">
-    <header class="hero">
-      <h1 class="logo">
-        <img src="/images/wordmark.svg" alt="stop1" class="wordmark" />
-      </h1>
-      <p class="tagline">Recurring DIY party series</p>
-    </header>
+  <main class="landing" data-event-slug={nextEvent?.slug}>
+    <div class="landing-content">
+      <img src="/images/wordmark.svg" alt="Stop One" class="wordmark" />
 
-    {upcoming.length === 0 ? (
-      <div class="empty-state">
-        <p>No upcoming events right now.</p>
-        <p class="text-muted">Check back soon.</p>
-      </div>
-    ) : (
-      <section class="events">
-        <h2 class="section-title">[Upcoming]</h2>
-        <div class="event-cards">
-          {upcoming.map((event) => {
-            const { weekday, date, time } = formatDate(event.date);
-            return (
-              <a href={`/events/${event.slug}`} class="event-card">
-                {event.flyer_url && (
-                  <img src={event.flyer_url} alt="" class="event-card-flyer" loading="lazy" />
-                )}
-                <div class="event-card-body">
-                  <h3 class="event-card-title">{event.title}</h3>
-                  <div class="event-card-details">
-                    <span class="event-card-date">{weekday}, {date}</span>
-                    <span class="event-card-time">{time}</span>
-                    {event.venue_name && <span class="event-card-venue">{event.venue_name}</span>}
-                  </div>
-                  {Number(event.door_price) > 0 && (
-                    <span class="event-card-price">${Number(event.door_price)}</span>
-                  )}
-                </div>
-                <span class="event-card-cta">RSVP &rarr;</span>
-              </a>
-            );
-          })}
+      {eventDate ? (
+        <div class="countdown mono" data-target={eventDate.toISOString()}>
+          <span class="countdown-label">IN</span>
+          <span class="countdown-value" id="countdown-days">0</span><span class="countdown-unit">D</span>
+          <span class="countdown-value" id="countdown-hours">0</span><span class="countdown-unit">H</span>
+          <span class="countdown-value" id="countdown-mins">0</span><span class="countdown-unit">M</span>
         </div>
-      </section>
-    )}
+      ) : (
+        <div class="countdown mono">
+          <span class="countdown-tba">NEXT EVENT TBA</span>
+        </div>
+      )}
+
+      {nextEvent ? (
+        <a href={`/events/${nextEvent.slug}`} class="rsvp-link" id="rsvp-btn">
+          <span class="rsvp-text">RSVP</span>
+        </a>
+      ) : null}
+    </div>
   </main>
 </Base>
 
+<script>
+  import gsap from 'gsap';
+
+  // Countdown timer
+  const countdownEl = document.querySelector('.countdown');
+  if (countdownEl && countdownEl.hasAttribute('data-target')) {
+    const target = new Date(countdownEl.getAttribute('data-target')!);
+    const daysEl = document.getElementById('countdown-days');
+    const hoursEl = document.getElementById('countdown-hours');
+    const minsEl = document.getElementById('countdown-mins');
+
+    function updateCountdown() {
+      const now = new Date();
+      const diff = target.getTime() - now.getTime();
+
+      if (diff <= 0) {
+        if (daysEl) daysEl.textContent = '0';
+        if (hoursEl) hoursEl.textContent = '0';
+        if (minsEl) minsEl.textContent = '0';
+        return;
+      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+      if (daysEl) daysEl.textContent = String(days);
+      if (hoursEl) hoursEl.textContent = String(hours);
+      if (minsEl) minsEl.textContent = String(mins);
+    }
+
+    updateCountdown();
+    setInterval(updateCountdown, 60000);
+  }
+
+  // RSVP hover animation
+  const rsvpBtn = document.getElementById('rsvp-btn');
+  if (rsvpBtn) {
+    const textEl = rsvpBtn.querySelector('.rsvp-text');
+    if (textEl) {
+      const originalText = 'RSVP';
+      const hoverText = 'RESERVE YOUR PLAY';
+
+      rsvpBtn.addEventListener('mouseenter', () => {
+        gsap.to(textEl, {
+          duration: 0.3,
+          ease: 'power2.out',
+          onStart: () => {
+            textEl.textContent = hoverText;
+          }
+        });
+        gsap.fromTo(textEl,
+          { letterSpacing: '0.1em' },
+          { duration: 0.4, ease: 'power2.out', letterSpacing: '0.3em' }
+        );
+      });
+
+      rsvpBtn.addEventListener('mouseleave', () => {
+        gsap.to(textEl, {
+          duration: 0.2,
+          ease: 'power2.in',
+          onComplete: () => {
+            textEl.textContent = originalText;
+          }
+        });
+        gsap.to(textEl, {
+          duration: 0.2,
+          ease: 'power2.in',
+          letterSpacing: '0.1em'
+        });
+      });
+    }
+  }
+
+  // Entrance animation
+  gsap.from('.wordmark', {
+    duration: 0.8,
+    opacity: 0,
+    y: -20,
+    ease: 'power3.out'
+  });
+  gsap.from('.countdown', {
+    duration: 0.8,
+    opacity: 0,
+    y: 20,
+    delay: 0.2,
+    ease: 'power3.out'
+  });
+  gsap.from('.rsvp-link', {
+    duration: 0.8,
+    opacity: 0,
+    y: 20,
+    delay: 0.4,
+    ease: 'power3.out'
+  });
+</script>
+
 <style>
-  .home {
-    max-width: var(--max-width-narrow);
-    margin: 0 auto;
-    padding: var(--space-lg) var(--space-md);
+  .landing {
     min-height: 100dvh;
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-lg);
   }
 
-  .hero {
-    padding: var(--space-4xl) 0 var(--space-2xl);
-    text-align: center;
-  }
-
-  .logo {
-    line-height: 1;
-  }
-
-  .wordmark {
-    height: 2.5rem;
-    width: auto;
-  }
-
-  .tagline {
-    color: var(--color-muted);
-    font-size: 1.0625rem;
-    font-weight: var(--weight-light);
-    margin-top: var(--space-sm);
-  }
-
-  .empty-state {
-    flex: 1;
+  .landing-content {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    gap: var(--space-sm);
-    padding: var(--space-3xl) 0;
+    gap: var(--space-xl);
     text-align: center;
   }
 
-  .section-title {
-    font-size: 0.75rem;
+  .wordmark {
+    height: 3rem;
+    width: auto;
+  }
+
+  .countdown {
+    font-size: 1.125rem;
     font-weight: var(--weight-medium);
-    text-transform: uppercase;
-    letter-spacing: var(--tracking-wide);
-    color: var(--color-muted);
-    margin-bottom: var(--space-md);
+    letter-spacing: 0.15em;
   }
 
-  .event-cards {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-md);
+  .countdown-label {
+    margin-right: 0.5em;
   }
 
-  .event-card {
-    display: flex;
-    flex-direction: column;
-    background: var(--color-surface);
-    border: var(--border);
-    overflow: hidden;
-    text-decoration: none;
-    color: var(--color-fg);
-    transition: box-shadow var(--transition), transform var(--transition);
-  }
-
-  .event-card:hover {
-    box-shadow: var(--shadow-md);
-    transform: translateY(-2px);
-  }
-
-  .event-card-flyer {
-    width: 100%;
-    aspect-ratio: 4 / 5;
-    object-fit: cover;
-  }
-
-  .event-card-body {
-    padding: var(--space-lg);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-sm);
-  }
-
-  .event-card-title {
-    font-size: 1.375rem;
+  .countdown-value {
     font-weight: var(--weight-bold);
-    letter-spacing: var(--tracking-tight);
   }
 
-  .event-card-details {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-xs) var(--space-md);
-    font-size: 0.875rem;
-    color: var(--color-muted);
+  .countdown-unit {
+    margin-right: 0.5em;
+    opacity: 0.6;
   }
 
-  .event-card-price {
-    font-weight: var(--weight-medium);
-    font-family: var(--font-mono);
-    color: var(--color-fg);
-    font-size: 0.875rem;
+  .countdown-tba {
+    opacity: 0.5;
   }
 
-  .event-card-cta {
-    padding: var(--space-sm) var(--space-lg);
-    border-top: var(--border);
-    font-weight: var(--weight-medium);
-    font-size: 0.875rem;
-    color: var(--color-accent);
-    text-transform: uppercase;
-    letter-spacing: var(--tracking-wide);
-    transition: background var(--transition);
+  .rsvp-link {
+    font-size: 1.5rem;
+    font-weight: var(--weight-bold);
+    text-decoration: none;
+    letter-spacing: 0.1em;
+    transition: opacity var(--transition);
   }
 
-  .event-card:hover .event-card-cta {
-    background: color-mix(in srgb, var(--color-accent) 6%, transparent);
+  .rsvp-link:hover {
+    opacity: 0.7;
+  }
+
+  .rsvp-text {
+    display: inline-block;
   }
 </style>

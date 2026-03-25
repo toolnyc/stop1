@@ -5,19 +5,19 @@ export interface Props {
 }
 const { slug, eventTitle } = Astro.props;
 ---
-<form id="rsvp-form" method="POST" action={`/api/rsvp/${slug}`} class="rsvp-form card">
-  <h2 class="rsvp-title">Get on the list</h2>
+<form id="rsvp-form" method="POST" action={`/api/rsvp/${slug}`} class="rsvp-form">
+  <h2 class="rsvp-title">RSVP</h2>
 
   <div id="rsvp-message" class="rsvp-message" style="display:none"></div>
 
   <div id="rsvp-fields" class="rsvp-fields">
     <label>
-      <span>Name *</span>
+      <span>Name</span>
       <input type="text" name="name" required autocomplete="name" placeholder="Your name" />
     </label>
 
     <label>
-      <span>Phone *</span>
+      <span>Phone</span>
       <input type="tel" name="phone" id="rsvp-phone" required autocomplete="tel" placeholder="(555) 123-4567" />
     </label>
 
@@ -33,11 +33,13 @@ const { slug, eventTitle } = Astro.props;
       </div>
     </label>
 
-    <button type="submit" id="rsvp-submit" class="btn btn-primary btn-block">RSVP</button>
+    <button type="submit" id="rsvp-submit" class="btn btn-primary btn-block">Submit</button>
   </div>
 </form>
 
 <script>
+  import gsap from 'gsap';
+
   const form = document.getElementById('rsvp-form') as HTMLFormElement;
   const fields = document.getElementById('rsvp-fields')!;
   const message = document.getElementById('rsvp-message')!;
@@ -66,29 +68,67 @@ const { slug, eventTitle } = Astro.props;
       const result = await res.json();
 
       if (res.ok) {
-        fields.style.display = 'none';
-        message.className = 'rsvp-message alert alert-success';
-        message.innerHTML = `<strong>You're on the list, ${data.name}!</strong><br><span class="confirm-sub">Check your texts for confirmation.</span>`;
-        message.style.display = 'block';
+        // Animate form out
+        gsap.to(fields, {
+          duration: 0.4,
+          opacity: 0,
+          y: -20,
+          ease: 'power2.in',
+          onComplete: () => {
+            fields.style.display = 'none';
+            message.className = 'rsvp-message success-message';
+            message.innerHTML = `
+              <div class="success-check">✓</div>
+              <div class="success-text">You're on the list, ${data.name}!</div>
+              <div class="success-sub">Check your texts for confirmation.</div>
+            `;
+            message.style.display = 'block';
+
+            // Animate success in
+            gsap.from('.success-check', {
+              duration: 0.6,
+              scale: 0,
+              rotation: -180,
+              ease: 'back.out(1.7)'
+            });
+            gsap.from('.success-text', {
+              duration: 0.6,
+              opacity: 0,
+              y: 20,
+              delay: 0.2,
+              ease: 'power3.out'
+            });
+            gsap.from('.success-sub', {
+              duration: 0.6,
+              opacity: 0,
+              y: 20,
+              delay: 0.3,
+              ease: 'power3.out'
+            });
+          }
+        });
       } else {
         message.className = 'rsvp-message alert alert-error';
         message.textContent = result.error || 'Something went wrong';
         message.style.display = 'block';
         submitBtn.disabled = false;
-        submitBtn.textContent = 'RSVP';
+        submitBtn.textContent = 'Submit';
       }
     } catch {
       message.className = 'rsvp-message alert alert-error';
       message.textContent = 'Network error. Please try again.';
       message.style.display = 'block';
       submitBtn.disabled = false;
-      submitBtn.textContent = 'RSVP';
+      submitBtn.textContent = 'Submit';
     }
   });
 </script>
 
 <style>
   .rsvp-form {
+    background: var(--color-surface);
+    border: var(--border);
+    padding: var(--space-lg);
     display: flex;
     flex-direction: column;
     gap: var(--space-md);
@@ -115,7 +155,7 @@ const { slug, eventTitle } = Astro.props;
   .checkbox-row input[type="checkbox"] {
     width: 16px;
     height: 16px;
-    accent-color: var(--color-accent);
+    accent-color: var(--color-fg);
   }
 
   .checkbox-text {
@@ -130,8 +170,23 @@ const { slug, eventTitle } = Astro.props;
     text-align: center;
   }
 
-  .confirm-sub {
-    font-size: 0.8125rem;
-    opacity: 0.8;
+  .success-message {
+    padding: var(--space-xl) 0;
+  }
+
+  .success-check {
+    font-size: 3rem;
+    margin-bottom: var(--space-md);
+  }
+
+  .success-text {
+    font-size: 1.25rem;
+    font-weight: var(--weight-bold);
+    margin-bottom: var(--space-sm);
+  }
+
+  .success-sub {
+    font-size: 0.875rem;
+    color: var(--color-muted);
   }
 </style>
