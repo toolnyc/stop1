@@ -103,6 +103,7 @@ const timeEnd = event.time_end
 <script>
   import gsap from 'gsap';
 
+  document.addEventListener('astro:page-load', () => {
   const step1 = document.getElementById('step-1')!;
   const step2 = document.getElementById('step-2')!;
   const step3 = document.getElementById('step-3')!;
@@ -112,6 +113,8 @@ const timeEnd = event.time_end
   const phoneInput = document.getElementById('input-phone') as HTMLInputElement;
   const message = document.getElementById('rsvp-message')!;
   const submitBtn = document.getElementById('rsvp-submit') as HTMLButtonElement;
+
+  if (!step1) return;
 
   function transitionStep(outEl: HTMLElement, inEl: HTMLElement, focusEl?: HTMLElement) {
     gsap.to(outEl, {
@@ -200,10 +203,11 @@ const timeEnd = event.time_end
     }
   });
 
-  // Entrance animations
-  gsap.from('.flyer-container', { duration: 0.8, opacity: 0, ease: 'power2.out' });
-  gsap.from('.event-info', { duration: 0.8, y: 20, opacity: 0, delay: 0.2, ease: 'power3.out' });
-  gsap.from('.rsvp-section', { duration: 0.8, y: 20, opacity: 0, delay: 0.4, ease: 'power3.out' });
+  // Entrance animations — explicit start/end to avoid ViewTransition opacity conflicts
+  gsap.fromTo('.flyer-container', { opacity: 0 }, { duration: 0.8, opacity: 1, ease: 'power2.out' });
+  gsap.fromTo('.event-info', { opacity: 0, y: 20 }, { duration: 0.8, opacity: 1, y: 0, delay: 0.2, ease: 'power3.out' });
+  gsap.fromTo('.rsvp-section', { opacity: 0, y: 20 }, { duration: 0.8, opacity: 1, y: 0, delay: 0.4, ease: 'power3.out' });
+  });
 </script>
 
 <style>

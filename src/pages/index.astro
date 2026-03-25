@@ -47,65 +47,70 @@ const eventDate = nextEvent ? new Date(nextEvent.date) : null;
 <script>
   import gsap from 'gsap';
 
-  const countdownEl = document.querySelector('.countdown');
-  if (countdownEl && countdownEl.hasAttribute('data-target')) {
-    const target = new Date(countdownEl.getAttribute('data-target')!);
-    const daysEl = document.getElementById('countdown-days');
-    const hoursEl = document.getElementById('countdown-hours');
-    const minsEl = document.getElementById('countdown-mins');
+  document.addEventListener('astro:page-load', () => {
+    gsap.killTweensOf('.wordmark, .countdown, .rsvp-link, .landing-footer');
 
-    function updateCountdown() {
-      const now = new Date();
-      const diff = target.getTime() - now.getTime();
-      if (diff <= 0) {
-        if (daysEl) daysEl.textContent = '0';
-        if (hoursEl) hoursEl.textContent = '0';
-        if (minsEl) minsEl.textContent = '0';
-        return;
+    // Countdown timer
+    const countdownEl = document.querySelector('.countdown');
+    if (countdownEl && countdownEl.hasAttribute('data-target')) {
+      const target = new Date(countdownEl.getAttribute('data-target')!);
+      const daysEl = document.getElementById('countdown-days');
+      const hoursEl = document.getElementById('countdown-hours');
+      const minsEl = document.getElementById('countdown-mins');
+
+      function updateCountdown() {
+        const now = new Date();
+        const diff = target.getTime() - now.getTime();
+        if (diff <= 0) {
+          if (daysEl) daysEl.textContent = '0';
+          if (hoursEl) hoursEl.textContent = '0';
+          if (minsEl) minsEl.textContent = '0';
+          return;
+        }
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        if (daysEl) daysEl.textContent = String(days);
+        if (hoursEl) hoursEl.textContent = String(hours);
+        if (minsEl) minsEl.textContent = String(mins);
       }
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      if (daysEl) daysEl.textContent = String(days);
-      if (hoursEl) hoursEl.textContent = String(hours);
-      if (minsEl) minsEl.textContent = String(mins);
+      updateCountdown();
+      setInterval(updateCountdown, 60000);
     }
-    updateCountdown();
-    setInterval(updateCountdown, 60000);
-  }
 
-  // RSVP hover animation
-  const rsvpBtn = document.getElementById('rsvp-btn');
-  if (rsvpBtn) {
-    const textEl = rsvpBtn.querySelector('.rsvp-text');
-    if (textEl) {
-      rsvpBtn.addEventListener('mouseenter', () => {
-        gsap.to(textEl, {
-          duration: 0.3,
-          ease: 'power2.out',
-          onStart: () => { textEl.textContent = 'RESERVE YOUR PLAY'; }
+    // RSVP hover animation
+    const rsvpBtn = document.getElementById('rsvp-btn');
+    if (rsvpBtn) {
+      const textEl = rsvpBtn.querySelector('.rsvp-text');
+      if (textEl) {
+        rsvpBtn.addEventListener('mouseenter', () => {
+          gsap.to(textEl, {
+            duration: 0.3,
+            ease: 'power2.out',
+            onStart: () => { textEl.textContent = 'RESERVE YOUR PLAY'; }
+          });
+          gsap.fromTo(textEl,
+            { letterSpacing: '0.1em' },
+            { duration: 0.4, ease: 'power2.out', letterSpacing: '0.25em' }
+          );
         });
-        gsap.fromTo(textEl,
-          { letterSpacing: '0.15em' },
-          { duration: 0.4, ease: 'power2.out', letterSpacing: '0.35em' }
-        );
-      });
-      rsvpBtn.addEventListener('mouseleave', () => {
-        gsap.to(textEl, {
-          duration: 0.2,
-          ease: 'power2.in',
-          letterSpacing: '0.15em',
-          onComplete: () => { textEl.textContent = 'RSVP'; }
+        rsvpBtn.addEventListener('mouseleave', () => {
+          gsap.to(textEl, {
+            duration: 0.2,
+            ease: 'power2.in',
+            letterSpacing: '0.1em',
+            onComplete: () => { textEl.textContent = 'RSVP'; }
+          });
         });
-      });
+      }
     }
-  }
 
-  // Entrance
-  gsap.from('.wordmark', { duration: 1, opacity: 0, scale: 0.95, ease: 'power3.out' });
-  gsap.from('.countdown', { duration: 0.6, opacity: 0, delay: 0.4, ease: 'power2.out' });
-  gsap.from('.rsvp-link', { duration: 0.8, opacity: 0, y: 20, delay: 0.6, ease: 'power3.out' });
-  gsap.from('.landing-footer', { duration: 0.6, opacity: 0, delay: 0.8, ease: 'power2.out' });
+    // Entrance animations — explicit start/end to avoid ViewTransition opacity conflicts
+    gsap.fromTo('.wordmark', { opacity: 0, scale: 0.95 }, { duration: 1, opacity: 1, scale: 1, ease: 'power3.out' });
+    gsap.fromTo('.countdown', { opacity: 0 }, { duration: 0.6, opacity: 1, delay: 0.4, ease: 'power2.out' });
+    gsap.fromTo('.rsvp-link', { opacity: 0, y: 20 }, { duration: 0.8, opacity: 1, y: 0, delay: 0.6, ease: 'power3.out' });
+    gsap.fromTo('.landing-footer', { opacity: 0 }, { duration: 0.6, opacity: 0.3, delay: 0.8, ease: 'power2.out' });
+  });
 </script>
 
 <style>
@@ -136,12 +141,12 @@ const eventDate = nextEvent ? new Date(nextEvent.date) : null;
   }
 
   .wordmark {
-    height: 8rem;
+    height: 10rem;
     width: auto;
   }
 
   @media (min-width: 768px) {
-    .wordmark { height: 10rem; }
+    .wordmark { height: 13rem; }
   }
 
   .countdown {
@@ -165,11 +170,11 @@ const eventDate = nextEvent ? new Date(nextEvent.date) : null;
   }
 
   .rsvp-link {
-    font-size: 1.5rem;
+    font-size: 1rem;
     font-weight: var(--weight-bold);
     text-decoration: none;
-    letter-spacing: 0.15em;
-    padding: var(--space-md) var(--space-2xl);
+    letter-spacing: 0.1em;
+    padding: var(--space-sm) var(--space-xl);
     border: 2px solid var(--color-fg);
     background: var(--color-fg);
     color: var(--color-bg);
