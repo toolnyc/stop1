@@ -1,6 +1,6 @@
 ---
 import '@/styles/global.css';
-import { ViewTransitions } from 'astro:transitions';
+import { ClientRouter } from 'astro:transitions';
 
 export interface Props {
   title?: string;
@@ -20,7 +20,7 @@ const { title = 'Stop One', description = 'Recurring DIY party series' } = Astro
     <meta property="og:image" content="/images/og-logo.png" />
     <link rel="stylesheet" href="https://use.typekit.net/YOUR_KIT_ID.css" />
     <title>{title}</title>
-    <ViewTransitions />
+    <ClientRouter />
     <slot name="head" />
     <style>
       /* Smooth page transitions */
