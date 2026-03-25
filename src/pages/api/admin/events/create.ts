@@ -1,6 +1,8 @@
 import { supabaseAdmin } from '@/lib/supabase';
+import { uploadFlyer } from '@/lib/blob';
 import bcrypt from 'bcryptjs';
 import { withLogging } from '@/lib/api';
+import { trackCall } from '@/lib/track';
 
 export const POST = withLogging(async ({ request, cookies, redirect, log }) => {
   if (!supabaseAdmin) {
@@ -21,12 +23,18 @@ export const POST = withLogging(async ({ request, cookies, redirect, log }) => {
 
   const contentType = request.headers.get('content-type') || '';
   let body: Record<string, string>;
+  let flyer: File | null = null;
 
   if (contentType.includes('application/json')) {
     body = await request.json();
   } else {
     const formData = await request.formData();
-    body = Object.fromEntries(formData.entries()) as Record<string, string>;
+    flyer = formData.get('flyer') as File | null;
+    const entries: Record<string, string> = {};
+    for (const [key, value] of formData.entries()) {
+      if (typeof value === 'string') entries[key] = value;
+    }
+    body = entries;
   }
 
   const { title, slug, date, time_end, venue_name, venue_address, description, door_price, door_pin, capacity, status } = body;
@@ -47,6 +55,31 @@ export const POST = withLogging(async ({ request, cookies, redirect, log }) => {
     });
   }
 
+  let flyerUrl: string | null = null;
+  if (flyer && flyer.size > 0) {
+    if (flyer.size > 5 * 1024 * 1024) {
+      if (!contentType.includes('application/json')) {
+        return redirect(`/admin/events/new?error=${encodeURIComponent('Flyer must be under 5MB')}`);
+      }
+      return new Response(JSON.stringify({ error: 'Flyer must be under 5MB' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    const uploadResult = await trackCall({
+      service: 'blob',
+      action: 'upload-flyer',
+      meta: { slug, size: flyer.size },
+      log,
+      fn: () => uploadFlyer(flyer!, slug),
+    });
+    if (uploadResult.ok) {
+      flyerUrl = uploadResult.data;
+    } else {
+      log.error('event.flyer_upload_failed', { slug, error: uploadResult.error });
+    }
+  }
+
   const doorPinHash = await bcrypt.hash(door_pin, 10);
 
   const { data, error } = await supabaseAdmin
@@ -63,6 +96,7 @@ export const POST = withLogging(async ({ request, cookies, redirect, log }) => {
       door_pin: doorPinHash,
       capacity: capacity ? parseInt(capacity) : null,
       status: (status === 'published' ? 'published' : 'draft') as 'draft' | 'published',
+      flyer_url: flyerUrl,
     })
     .select()
     .single();

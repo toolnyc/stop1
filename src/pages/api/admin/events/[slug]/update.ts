@@ -1,6 +1,8 @@
 import { supabaseAdmin } from '@/lib/supabase';
+import { uploadFlyer } from '@/lib/blob';
 import bcrypt from 'bcryptjs';
 import { withLogging } from '@/lib/api';
+import { trackCall } from '@/lib/track';
 
 export const POST = withLogging(async ({ params, request, cookies, redirect, log }) => {
   if (!supabaseAdmin) {
@@ -26,6 +28,8 @@ export const POST = withLogging(async ({ params, request, cookies, redirect, log
   const door_pin = formData.get('door_pin') as string;
   const capacity = formData.get('capacity') as string;
   const status = formData.get('status') as string;
+  const flyer = formData.get('flyer') as File | null;
+  const removeFlyer = formData.get('remove_flyer') as string;
 
   if (!title || !date) {
     return redirect(`/admin/events/${slug}?error=${encodeURIComponent('Title and date are required')}`);
@@ -46,6 +50,27 @@ export const POST = withLogging(async ({ params, request, cookies, redirect, log
 
   if (door_pin && door_pin.trim()) {
     updates.door_pin = await bcrypt.hash(door_pin.trim(), 10);
+  }
+
+  if (removeFlyer === 'true') {
+    updates.flyer_url = null;
+  } else if (flyer && flyer.size > 0) {
+    if (flyer.size > 5 * 1024 * 1024) {
+      return redirect(`/admin/events/${slug}?error=${encodeURIComponent('Flyer must be under 5MB (compress client-side first)')}`);
+    }
+    const uploadResult = await trackCall({
+      service: 'blob',
+      action: 'upload-flyer',
+      meta: { slug, size: flyer.size },
+      log,
+      fn: () => uploadFlyer(flyer, slug!),
+    });
+    if (uploadResult.ok) {
+      updates.flyer_url = uploadResult.data;
+    } else {
+      log.error('event.flyer_upload_failed', { slug, error: uploadResult.error });
+      return redirect(`/admin/events/${slug}?error=${encodeURIComponent('Failed to upload flyer')}`);
+    }
   }
 
   const { error } = await supabaseAdmin
