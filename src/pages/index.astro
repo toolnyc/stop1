@@ -15,22 +15,21 @@ const nextEvent = events?.[0] ?? null;
 const eventDate = nextEvent ? new Date(nextEvent.date) : null;
 ---
 <Base title="Stop One">
-  <main class="landing" data-event-slug={nextEvent?.slug}>
+  <main class="landing">
     <div class="landing-content">
-      <img src="/images/wordmark.svg" alt="Stop One" class="wordmark" />
-
-      {eventDate ? (
-        <div class="countdown" data-target={eventDate.toISOString()}>
-          <span class="countdown-label">IN</span>
-          <span class="countdown-value" id="countdown-days">0</span><span class="countdown-unit">D</span>
-          <span class="countdown-value" id="countdown-hours">0</span><span class="countdown-unit">H</span>
-          <span class="countdown-value" id="countdown-mins">0</span><span class="countdown-unit">M</span>
-        </div>
-      ) : (
-        <div class="countdown">
-          <span class="countdown-tba">NEXT EVENT TBA</span>
-        </div>
-      )}
+      <div class="hero-block">
+        <img src="/images/wordmark.svg" alt="Stop One" class="wordmark" />
+        {eventDate ? (
+          <p class="countdown" data-target={eventDate.toISOString()}>
+            <span class="countdown-label">in</span>
+            <span id="countdown-days">0</span><span class="countdown-unit">d</span>
+            <span id="countdown-hours">0</span><span class="countdown-unit">h</span>
+            <span id="countdown-mins">0</span><span class="countdown-unit">m</span>
+          </p>
+        ) : (
+          <p class="countdown countdown-tba">Next event TBA</p>
+        )}
+      </div>
 
       {nextEvent ? (
         <a href={`/events/${nextEvent.slug}`} class="rsvp-link" id="rsvp-btn">
@@ -48,7 +47,6 @@ const eventDate = nextEvent ? new Date(nextEvent.date) : null;
 <script>
   import gsap from 'gsap';
 
-  // Countdown timer
   const countdownEl = document.querySelector('.countdown');
   if (countdownEl && countdownEl.hasAttribute('data-target')) {
     const target = new Date(countdownEl.getAttribute('data-target')!);
@@ -59,23 +57,19 @@ const eventDate = nextEvent ? new Date(nextEvent.date) : null;
     function updateCountdown() {
       const now = new Date();
       const diff = target.getTime() - now.getTime();
-
       if (diff <= 0) {
         if (daysEl) daysEl.textContent = '0';
         if (hoursEl) hoursEl.textContent = '0';
         if (minsEl) minsEl.textContent = '0';
         return;
       }
-
       const days = Math.floor(diff / (1000 * 60 * 60 * 24));
       const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
       const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-
       if (daysEl) daysEl.textContent = String(days);
       if (hoursEl) hoursEl.textContent = String(hours);
       if (minsEl) minsEl.textContent = String(mins);
     }
-
     updateCountdown();
     setInterval(updateCountdown, 60000);
   }
@@ -85,67 +79,33 @@ const eventDate = nextEvent ? new Date(nextEvent.date) : null;
   if (rsvpBtn) {
     const textEl = rsvpBtn.querySelector('.rsvp-text');
     if (textEl) {
-      const originalText = 'RSVP';
-      const hoverText = 'RESERVE YOUR PLAY';
-
       rsvpBtn.addEventListener('mouseenter', () => {
         gsap.to(textEl, {
           duration: 0.3,
           ease: 'power2.out',
-          onStart: () => {
-            textEl.textContent = hoverText;
-          }
+          onStart: () => { textEl.textContent = 'RESERVE YOUR PLAY'; }
         });
         gsap.fromTo(textEl,
-          { letterSpacing: '0.1em' },
-          { duration: 0.4, ease: 'power2.out', letterSpacing: '0.3em' }
+          { letterSpacing: '0.15em' },
+          { duration: 0.4, ease: 'power2.out', letterSpacing: '0.35em' }
         );
       });
-
       rsvpBtn.addEventListener('mouseleave', () => {
         gsap.to(textEl, {
           duration: 0.2,
           ease: 'power2.in',
-          onComplete: () => {
-            textEl.textContent = originalText;
-          }
-        });
-        gsap.to(textEl, {
-          duration: 0.2,
-          ease: 'power2.in',
-          letterSpacing: '0.1em'
+          letterSpacing: '0.15em',
+          onComplete: () => { textEl.textContent = 'RSVP'; }
         });
       });
     }
   }
 
-  // Entrance animation
-  gsap.from('.wordmark', {
-    duration: 1,
-    opacity: 0,
-    scale: 0.9,
-    ease: 'power3.out'
-  });
-  gsap.from('.countdown', {
-    duration: 0.8,
-    opacity: 0,
-    y: 20,
-    delay: 0.3,
-    ease: 'power3.out'
-  });
-  gsap.from('.rsvp-link', {
-    duration: 0.8,
-    opacity: 0,
-    y: 20,
-    delay: 0.5,
-    ease: 'power3.out'
-  });
-  gsap.from('.landing-footer', {
-    duration: 0.6,
-    opacity: 0,
-    delay: 0.7,
-    ease: 'power2.out'
-  });
+  // Entrance
+  gsap.from('.wordmark', { duration: 1, opacity: 0, scale: 0.95, ease: 'power3.out' });
+  gsap.from('.countdown', { duration: 0.6, opacity: 0, delay: 0.4, ease: 'power2.out' });
+  gsap.from('.rsvp-link', { duration: 0.8, opacity: 0, y: 20, delay: 0.6, ease: 'power3.out' });
+  gsap.from('.landing-footer', { duration: 0.6, opacity: 0, delay: 0.8, ease: 'power2.out' });
 </script>
 
 <style>
@@ -162,39 +122,41 @@ const eventDate = nextEvent ? new Date(nextEvent.date) : null;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: var(--space-2xl);
+    gap: var(--space-3xl);
     text-align: center;
     flex: 1;
     justify-content: center;
   }
 
+  .hero-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-sm);
+  }
+
   .wordmark {
-    height: 6rem;
+    height: 8rem;
     width: auto;
   }
 
   @media (min-width: 768px) {
-    .wordmark {
-      height: 8rem;
-    }
+    .wordmark { height: 10rem; }
   }
 
   .countdown {
-    font-size: 1.25rem;
-    font-weight: var(--weight-medium);
-    letter-spacing: 0.2em;
+    font-size: 0.8125rem;
+    font-weight: var(--weight-regular);
+    letter-spacing: 0.15em;
+    color: var(--color-muted);
   }
 
   .countdown-label {
-    margin-right: 0.5em;
-  }
-
-  .countdown-value {
-    font-weight: var(--weight-bold);
+    margin-right: 0.25em;
   }
 
   .countdown-unit {
-    margin-right: 0.5em;
+    margin-right: 0.4em;
     opacity: 0.5;
   }
 
@@ -203,20 +165,20 @@ const eventDate = nextEvent ? new Date(nextEvent.date) : null;
   }
 
   .rsvp-link {
-    font-size: 2rem;
+    font-size: 1.5rem;
     font-weight: var(--weight-bold);
     text-decoration: none;
-    letter-spacing: 0.1em;
-    padding: var(--space-sm) var(--space-lg);
+    letter-spacing: 0.15em;
+    padding: var(--space-md) var(--space-2xl);
     border: 2px solid var(--color-fg);
-    background: var(--color-bg);
-    color: var(--color-fg);
+    background: var(--color-fg);
+    color: var(--color-bg);
     transition: all 0.2s ease;
   }
 
   .rsvp-link:hover {
-    background: var(--color-fg);
-    color: var(--color-bg);
+    background: transparent;
+    color: var(--color-fg);
     opacity: 1;
   }
 
@@ -226,12 +188,12 @@ const eventDate = nextEvent ? new Date(nextEvent.date) : null;
 
   .landing-footer {
     padding-top: var(--space-xl);
-    opacity: 0.4;
+    opacity: 0.3;
     transition: opacity var(--transition);
   }
 
   .landing-footer:hover {
-    opacity: 0.8;
+    opacity: 0.7;
   }
 
   .admin-link {

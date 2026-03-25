@@ -18,7 +18,6 @@ if (error || !event) {
 const eventDate = new Date(event.date);
 const dateFormatted = eventDate.toLocaleDateString('en-US', {
   weekday: 'long',
-  year: 'numeric',
   month: 'long',
   day: 'numeric',
 });
@@ -44,57 +43,55 @@ const timeEnd = event.time_end
 
     <div class="event-info">
       <h1 class="event-title">{event.title}</h1>
-
-      <div class="event-meta">
-        <span class="meta-date">{dateFormatted}</span>
-        <span class="meta-sep">•</span>
-        <span class="meta-time">{timeFormatted}{timeEnd ? ` – ${timeEnd}` : ''}</span>
-        {event.venue_name && (
-          <>
-            <span class="meta-sep">•</span>
-            <span class="meta-venue">{event.venue_name}</span>
-          </>
-        )}
-      </div>
-
+      <p class="event-meta">
+        {dateFormatted} &middot; {timeFormatted}{timeEnd ? ` – ${timeEnd}` : ''}
+        {event.venue_name && <> &middot; {event.venue_name}</>}
+      </p>
       {Number(event.door_price) > 0 && (
-        <div class="event-price">${Number(event.door_price)} at the door</div>
+        <p class="event-price">${Number(event.door_price)} at the door</p>
       )}
-
       {event.description && (
         <p class="event-description">{event.description}</p>
       )}
     </div>
 
-    <!-- RSVP Form - Click through to reveal -->
+    <!-- Multi-step RSVP form -->
     <div class="rsvp-section" id="rsvp-section">
-      <button class="rsvp-toggle" id="rsvp-toggle">RSVP</button>
-
-      <form id="rsvp-form" method="POST" action={`/api/rsvp/${slug}`} class="rsvp-form" style="display: none;">
-        <div class="rsvp-fields">
+      <form id="rsvp-form" method="POST" action={`/api/rsvp/${slug}`}>
+        <!-- Step 1: Name -->
+        <div class="step" id="step-1">
           <label>
-            <span>Name</span>
-            <input type="text" name="name" required autocomplete="name" placeholder="Your name" />
+            <span>Your name</span>
+            <input type="text" name="name" id="input-name" required autocomplete="name" placeholder="First Last" autofocus />
           </label>
+          <button type="button" class="btn btn-primary btn-block" id="next-1">Next</button>
+        </div>
 
+        <!-- Step 2: Phone -->
+        <div class="step" id="step-2" style="display:none;">
           <label>
-            <span>Phone</span>
-            <input type="tel" name="phone" required autocomplete="tel" placeholder="(555) 123-4567" />
+            <span>Phone number</span>
+            <input type="tel" name="phone" id="input-phone" required autocomplete="tel" placeholder="(555) 123-4567" />
           </label>
-
           <label>
-            <span>Email</span>
-            <input type="email" name="email" autocomplete="email" placeholder="Optional" />
+            <span>Email (optional)</span>
+            <input type="email" name="email" autocomplete="email" placeholder="you@example.com" />
           </label>
+          <button type="button" class="btn btn-primary btn-block" id="next-2">Next</button>
+        </div>
 
-          <label class="sms-label">
-            <div class="checkbox-row">
-              <input type="checkbox" name="sms_opt_in" value="true" checked />
-              <span class="checkbox-text">Text me event reminders</span>
-            </div>
-          </label>
-
-          <button type="submit" id="rsvp-submit" class="btn btn-primary btn-block">Submit</button>
+        <!-- Step 3: SMS opt-in + submit -->
+        <div class="step" id="step-3" style="display:none;">
+          <div class="sms-opt-in">
+            <label class="sms-label">
+              <div class="checkbox-row">
+                <input type="checkbox" name="sms_opt_in" value="true" checked />
+                <span class="checkbox-text">Text me event reminders</span>
+              </div>
+            </label>
+            <p class="sms-note">We'll only text you about upcoming events. No spam.</p>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block" id="rsvp-submit">Get on the list</button>
         </div>
       </form>
 
@@ -106,30 +103,45 @@ const timeEnd = event.time_end
 <script>
   import gsap from 'gsap';
 
-  // RSVP toggle - click through to reveal form
-  const toggleBtn = document.getElementById('rsvp-toggle');
-  const form = document.getElementById('rsvp-form');
-  const fields = document.querySelector('.rsvp-fields') as HTMLElement;
+  const step1 = document.getElementById('step-1')!;
+  const step2 = document.getElementById('step-2')!;
+  const step3 = document.getElementById('step-3')!;
+  const next1 = document.getElementById('next-1')!;
+  const next2 = document.getElementById('next-2')!;
+  const nameInput = document.getElementById('input-name') as HTMLInputElement;
+  const phoneInput = document.getElementById('input-phone') as HTMLInputElement;
   const message = document.getElementById('rsvp-message')!;
   const submitBtn = document.getElementById('rsvp-submit') as HTMLButtonElement;
 
-  toggleBtn?.addEventListener('click', () => {
-    gsap.to(toggleBtn, {
-      duration: 0.3,
-      opacity: 0,
-      y: -10,
-      ease: 'power2.in',
+  function transitionStep(outEl: HTMLElement, inEl: HTMLElement, focusEl?: HTMLElement) {
+    gsap.to(outEl, {
+      duration: 0.3, opacity: 0, x: -30, ease: 'power2.in',
       onComplete: () => {
-        toggleBtn.style.display = 'none';
-        form!.style.display = 'block';
-        gsap.from(form, {
-          duration: 0.5,
-          opacity: 0,
-          y: 20,
-          ease: 'power3.out'
-        });
+        outEl.style.display = 'none';
+        inEl.style.display = 'flex';
+        gsap.fromTo(inEl,
+          { opacity: 0, x: 30 },
+          { duration: 0.4, opacity: 1, x: 0, ease: 'power3.out' }
+        );
+        if (focusEl) setTimeout(() => focusEl.focus(), 100);
       }
     });
+  }
+
+  next1.addEventListener('click', () => {
+    if (!nameInput.value.trim()) { nameInput.focus(); return; }
+    transitionStep(step1, step2, phoneInput);
+  });
+  nameInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); next1.click(); }
+  });
+
+  next2.addEventListener('click', () => {
+    if (!phoneInput.value.trim()) { phoneInput.focus(); return; }
+    transitionStep(step2, step3);
+  });
+  phoneInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); next2.click(); }
   });
 
   // Form submission
@@ -153,45 +165,23 @@ const timeEnd = event.time_end
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-
       const result = await res.json();
 
       if (res.ok) {
-        gsap.to(fields, {
-          duration: 0.4,
-          opacity: 0,
-          y: -20,
-          ease: 'power2.in',
+        gsap.to(step3, {
+          duration: 0.3, opacity: 0, y: -20, ease: 'power2.in',
           onComplete: () => {
-            fields.style.display = 'none';
+            step3.style.display = 'none';
             message.className = 'rsvp-message success-message';
             message.innerHTML = `
-              <div class="success-check">✓</div>
+              <div class="success-check">&#10003;</div>
               <div class="success-text">You're on the list, ${data.name}!</div>
               <div class="success-sub">Check your texts for confirmation.</div>
             `;
             message.style.display = 'block';
-
-            gsap.from('.success-check', {
-              duration: 0.6,
-              scale: 0,
-              rotation: -180,
-              ease: 'back.out(1.7)'
-            });
-            gsap.from('.success-text', {
-              duration: 0.6,
-              opacity: 0,
-              y: 20,
-              delay: 0.2,
-              ease: 'power3.out'
-            });
-            gsap.from('.success-sub', {
-              duration: 0.6,
-              opacity: 0,
-              y: 20,
-              delay: 0.3,
-              ease: 'power3.out'
-            });
+            gsap.from('.success-check', { duration: 0.6, scale: 0, rotation: -180, ease: 'back.out(1.7)' });
+            gsap.from('.success-text', { duration: 0.6, opacity: 0, y: 20, delay: 0.15, ease: 'power3.out' });
+            gsap.from('.success-sub', { duration: 0.6, opacity: 0, y: 20, delay: 0.25, ease: 'power3.out' });
           }
         });
       } else {
@@ -199,52 +189,21 @@ const timeEnd = event.time_end
         message.textContent = result.error || 'Something went wrong';
         message.style.display = 'block';
         submitBtn.disabled = false;
-        submitBtn.textContent = 'Submit';
+        submitBtn.textContent = 'Get on the list';
       }
     } catch {
       message.className = 'rsvp-message alert alert-error';
       message.textContent = 'Network error. Please try again.';
       message.style.display = 'block';
       submitBtn.disabled = false;
-      submitBtn.textContent = 'Submit';
+      submitBtn.textContent = 'Get on the list';
     }
   });
 
-  // Entrance animations - image fade in
-  const flyerImg = document.querySelector('.event-flyer') as HTMLImageElement;
-  if (flyerImg) {
-    if (flyerImg.complete) {
-      gsap.from(flyerImg, {
-        duration: 1,
-        opacity: 0,
-        ease: 'power2.out'
-      });
-    } else {
-      flyerImg.addEventListener('load', () => {
-        gsap.from(flyerImg, {
-          duration: 1,
-          opacity: 0,
-          ease: 'power2.out'
-        });
-      });
-    }
-  }
-
-  gsap.from('.event-info', {
-    duration: 0.8,
-    y: 30,
-    opacity: 0,
-    delay: 0.3,
-    ease: 'power3.out'
-  });
-
-  gsap.from('.rsvp-section', {
-    duration: 0.8,
-    y: 30,
-    opacity: 0,
-    delay: 0.5,
-    ease: 'power3.out'
-  });
+  // Entrance animations
+  gsap.from('.flyer-container', { duration: 0.8, opacity: 0, ease: 'power2.out' });
+  gsap.from('.event-info', { duration: 0.8, y: 20, opacity: 0, delay: 0.2, ease: 'power3.out' });
+  gsap.from('.rsvp-section', { duration: 0.8, y: 20, opacity: 0, delay: 0.4, ease: 'power3.out' });
 </script>
 
 <style>
@@ -263,19 +222,11 @@ const timeEnd = event.time_end
     transition: opacity var(--transition);
   }
 
-  .back-link:hover {
-    opacity: 1;
-  }
+  .back-link:hover { opacity: 1; }
 
   .back-logo {
-    height: 3rem;
+    height: 2rem;
     width: auto;
-  }
-
-  @media (min-width: 768px) {
-    .back-logo {
-      height: 4rem;
-    }
   }
 
   .flyer-container {
@@ -295,26 +246,18 @@ const timeEnd = event.time_end
     font-size: 1.75rem;
     font-weight: var(--weight-bold);
     letter-spacing: var(--tracking-tight);
-    margin-bottom: var(--space-sm);
+    margin-bottom: var(--space-xs);
   }
 
   .event-meta {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-xs);
     font-size: 0.9375rem;
     color: var(--color-muted);
     margin-bottom: var(--space-sm);
   }
 
-  .meta-sep {
-    opacity: 0.4;
-  }
-
   .event-price {
     font-size: 0.875rem;
-    margin-bottom: var(--space-md);
+    margin-bottom: var(--space-sm);
   }
 
   .event-description {
@@ -323,71 +266,54 @@ const timeEnd = event.time_end
     font-size: 0.9375rem;
   }
 
-  /* RSVP Section */
+  /* Multi-step RSVP */
   .rsvp-section {
     background: var(--color-surface);
     border: var(--border);
-    padding: var(--space-lg);
+    padding: var(--space-xl) var(--space-lg);
+    min-height: 180px;
   }
 
-  .rsvp-toggle {
-    width: 100%;
-    padding: var(--space-lg);
-    font-size: 1.5rem;
-    font-weight: var(--weight-bold);
-    letter-spacing: 0.1em;
-    background: transparent;
-    border: 2px solid var(--color-fg);
-    color: var(--color-fg);
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .rsvp-toggle:hover {
-    background: var(--color-fg);
-    color: var(--color-bg);
-  }
-
-  .rsvp-form {
+  .step {
     display: flex;
     flex-direction: column;
-    gap: var(--space-md);
+    gap: var(--space-lg);
   }
 
-  .rsvp-fields {
+  .sms-opt-in {
     display: flex;
     flex-direction: column;
-    gap: var(--space-md);
+    gap: var(--space-sm);
+  }
+
+  .sms-note {
+    font-size: 0.8125rem;
+    color: var(--color-muted);
   }
 
   .checkbox-row {
     display: flex;
     align-items: center;
     gap: var(--space-sm);
-    flex-direction: row;
   }
 
   .checkbox-row input[type="checkbox"] {
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
     accent-color: var(--color-fg);
   }
 
   .checkbox-text {
-    font-size: 0.875rem !important;
+    font-size: 0.9375rem !important;
     color: var(--color-fg) !important;
     font-weight: var(--weight-regular) !important;
     text-transform: none !important;
     letter-spacing: normal !important;
   }
 
-  .rsvp-message {
-    text-align: center;
-  }
+  .rsvp-message { text-align: center; }
 
-  .success-message {
-    padding: var(--space-xl) 0;
-  }
+  .success-message { padding: var(--space-xl) 0; }
 
   .success-check {
     font-size: 3rem;
