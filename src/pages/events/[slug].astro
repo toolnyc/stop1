@@ -34,50 +34,70 @@ const timeEnd = event.time_end
 <Base title={`${event.title} — Stop One`} description={`RSVP for ${event.title}`}>
   <main class="event-page">
     <a href="/" class="back-link">
-      <img src="/images/logo.svg" alt="stop1" class="back-logo" />
+      <img src="/images/wordmark.svg" alt="Stop One" class="back-logo" />
     </a>
 
     {event.flyer_url && (
-      <img src={event.flyer_url} alt={`${event.title} flyer`} class="event-flyer" />
+      <div class="flyer-container">
+        <img src={event.flyer_url} alt={`${event.title} flyer`} class="event-flyer" />
+      </div>
     )}
 
-    <h1 class="event-title">{event.title}</h1>
+    <div class="event-info">
+      <h1 class="event-title">{event.title}</h1>
 
-    <div class="event-meta">
-      <div class="meta-item">
-        <svg class="meta-icon" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M5.75 2a.75.75 0 01.75.75V4h7V2.75a.75.75 0 011.5 0V4h.25A2.75 2.75 0 0118 6.75v8.5A2.75 2.75 0 0115.25 18H4.75A2.75 2.75 0 012 15.25v-8.5A2.75 2.75 0 014.75 4H5V2.75A.75.75 0 015.75 2zm-1 5.5c-.69 0-1.25.56-1.25 1.25v6.5c0 .69.56 1.25 1.25 1.25h10.5c.69 0 1.25-.56 1.25-1.25v-6.5c0-.69-.56-1.25-1.25-1.25H4.75z" clip-rule="evenodd" /></svg>
-        <span>{dateFormatted}</span>
+      <div class="event-meta">
+        <span class="meta-date">{dateFormatted}</span>
+        <span class="meta-sep">•</span>
+        <span class="meta-time">{timeFormatted}{timeEnd ? ` – ${timeEnd}` : ''}</span>
+        {event.venue_name && (
+          <>
+            <span class="meta-sep">•</span>
+            <span class="meta-venue">{event.venue_name}</span>
+          </>
+        )}
       </div>
-      <div class="meta-item">
-        <svg class="meta-icon" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clip-rule="evenodd" /></svg>
-        <span>{timeFormatted}{timeEnd ? ` – ${timeEnd}` : ''}</span>
-      </div>
-      {event.venue_name && (
-        <div class="meta-item">
-          <svg class="meta-icon" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M9.69 18.933l.003.001C9.89 19.02 10 19 10 19s.11.02.308-.066l.002-.001.006-.003.018-.008a5.741 5.741 0 00.281-.14c.186-.096.446-.24.757-.433.62-.384 1.445-.966 2.274-1.765C15.302 14.988 17 12.493 17 9A7 7 0 103 9c0 3.492 1.698 5.988 3.355 7.584a13.731 13.731 0 002.273 1.765 11.842 11.842 0 00.976.544l.062.029.018.008.006.003zM10 11.25a2.25 2.25 0 100-4.5 2.25 2.25 0 000 4.5z" clip-rule="evenodd" /></svg>
-          <div class="meta-venue">
-            <span>{event.venue_name}</span>
-            {event.venue_address && <span class="meta-address">{event.venue_address}</span>}
-          </div>
-        </div>
-      )}
+
       {Number(event.door_price) > 0 && (
-        <div class="meta-item">
-          <svg class="meta-icon" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path d="M10.75 10.818v2.614A3.13 3.13 0 0011.888 13c.482-.315.612-.648.612-.875 0-.227-.13-.56-.612-.875a3.13 3.13 0 00-1.138-.432zM8.33 8.62c.053.055.115.11.19.163.478.316.609.648.609.875 0 .227-.13.56-.61.875-.074.054-.136.108-.188.163a3.13 3.13 0 01-.66-.263C7.195 10.048 7 9.556 7 9c0-.556.195-1.048.67-1.433.204-.164.463-.294.762-.391L8.33 8.62z" /><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.25 5a.75.75 0 011.5 0v.35c.397.072.752.21 1.046.41.543.36.904.907.904 1.558 0 .652-.361 1.198-.904 1.558a3.612 3.612 0 01-.814.39v2.874c.287-.077.544-.194.758-.345a.75.75 0 01.87 1.222A4.076 4.076 0 0110.75 13.9v1.35a.75.75 0 01-1.5 0v-1.35a4.076 4.076 0 01-1.86-1.083.75.75 0 01.87-1.222c.213.15.47.268.758.345V8.066a3.612 3.612 0 01-.814-.39C7.661 7.316 7.3 6.77 7.3 6.118c0-.652.361-1.198.904-1.558.294-.2.649-.338 1.046-.41V5z" clip-rule="evenodd" /></svg>
-          <span>${Number(event.door_price)} at the door</span>
-        </div>
+        <div class="event-price mono">${Number(event.door_price)} at the door</div>
+      )}
+
+      {event.description && (
+        <p class="event-description">{event.description}</p>
       )}
     </div>
-
-    {event.description && (
-      <div class="event-description">
-        <p>{event.description}</p>
-      </div>
-    )}
 
     <RsvpForm slug={slug!} eventTitle={event.title} />
   </main>
 </Base>
+
+<script>
+  import gsap from 'gsap';
+
+  // Entrance animations
+  gsap.from('.flyer-container', {
+    duration: 0.8,
+    scale: 0.95,
+    opacity: 0,
+    ease: 'power3.out'
+  });
+
+  gsap.from('.event-info', {
+    duration: 0.8,
+    y: 30,
+    opacity: 0,
+    delay: 0.2,
+    ease: 'power3.out'
+  });
+
+  gsap.from('.rsvp-form', {
+    duration: 0.8,
+    y: 30,
+    opacity: 0,
+    delay: 0.4,
+    ease: 'power3.out'
+  });
+</script>
 
 <style>
   .event-page {
@@ -91,7 +111,7 @@ const timeEnd = event.time_end
     align-items: center;
     text-decoration: none;
     margin-bottom: var(--space-lg);
-    opacity: 0.6;
+    opacity: 0.5;
     transition: opacity var(--transition);
   }
 
@@ -100,59 +120,52 @@ const timeEnd = event.time_end
   }
 
   .back-logo {
-    height: 1.25rem;
+    height: 1.5rem;
     width: auto;
+  }
+
+  .flyer-container {
+    margin-bottom: var(--space-xl);
   }
 
   .event-flyer {
     width: 100%;
-    margin-bottom: var(--space-lg);
+    height: auto;
+  }
+
+  .event-info {
+    margin-bottom: var(--space-xl);
   }
 
   .event-title {
-    font-size: 2rem;
+    font-size: 1.75rem;
     font-weight: var(--weight-bold);
     letter-spacing: var(--tracking-tight);
-    margin-bottom: var(--space-lg);
+    margin-bottom: var(--space-sm);
   }
 
   .event-meta {
     display: flex;
-    flex-direction: column;
-    gap: var(--space-sm);
-    margin-bottom: var(--space-lg);
-    padding: var(--space-lg);
-    background: var(--color-surface);
-    border: var(--border);
-  }
-
-  .meta-item {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-sm);
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-xs);
     font-size: 0.9375rem;
-  }
-
-  .meta-icon {
-    flex-shrink: 0;
     color: var(--color-muted);
-    margin-top: 2px;
+    margin-bottom: var(--space-sm);
   }
 
-  .meta-venue {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+  .meta-sep {
+    opacity: 0.4;
   }
 
-  .meta-address {
-    font-size: 0.8125rem;
-    color: var(--color-muted);
+  .event-price {
+    font-size: 0.875rem;
+    margin-bottom: var(--space-md);
   }
 
   .event-description {
     color: var(--color-muted);
     line-height: var(--leading-relaxed);
-    margin-bottom: var(--space-lg);
+    font-size: 0.9375rem;
   }
 </style>

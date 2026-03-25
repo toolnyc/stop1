@@ -4,30 +4,16 @@
 
 /* ========== Brand Palette ========== */
 :root {
-  /* Brand */
-  --color-paper: #f0ebe4;
-  --color-paper-dark: #e2dbd2;
-  --color-ink: #1a1714;
-  --color-ink-muted: #6b6560;
-  --color-ink-faint: #a39e98;
-  --color-red: #cd2e2a;
-  --color-red-dark: #a82420;
-  --color-charcoal: #2c2825;
-  --color-charcoal-light: #3d3835;
-  --color-border-light: #d0c9c1;
-  --color-border-dark: #443f3a;
+  /* Brand — Simplified monochrome */
+  --color-bg: #f5f3f0;
+  --color-fg: #0a0a0a;
+  --color-muted: #666666;
+  --color-surface: #eae8e5;
+  --color-border: #d8d6d3;
 
   /* Semantic */
-  --color-bg: var(--color-paper);
-  --color-fg: var(--color-ink);
-  --color-muted: var(--color-ink-muted);
-  --color-faint: var(--color-ink-faint);
-  --color-accent: var(--color-red);
-  --color-accent-hover: var(--color-red-dark);
-  --color-surface: var(--color-paper-dark);
-  --color-border: var(--color-border-light);
   --color-success: #3a7d44;
-  --color-error: var(--color-red);
+  --color-error: #b91c1c;
   --color-warning: #c4890e;
 
   /* Typography */
@@ -95,11 +81,11 @@
 
 /* ========== Dark Context ========== */
 .dark-ctx {
-  --color-bg: var(--color-charcoal);
-  --color-fg: var(--color-paper);
-  --color-muted: var(--color-ink-faint);
-  --color-surface: var(--color-charcoal-light);
-  --color-border: var(--color-border-dark);
+  --color-bg: #0a0a0a;
+  --color-fg: #f5f3f0;
+  --color-muted: #999999;
+  --color-surface: #1a1a1a;
+  --color-border: #333333;
 }
 
 /* ========== Reset ========== */
@@ -130,14 +116,14 @@ body {
 
 /* ========== Typography ========== */
 a {
-  color: var(--color-accent);
+  color: var(--color-fg);
   text-decoration-thickness: 1px;
   text-underline-offset: 2px;
-  transition: color var(--transition);
+  transition: opacity var(--transition);
 }
 
 a:hover {
-  color: var(--color-accent-hover);
+  opacity: 0.6;
 }
 
 h1, h2, h3, h4 {
@@ -180,8 +166,8 @@ input:focus,
 textarea:focus,
 select:focus {
   outline: none;
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 15%, transparent);
+  border-color: var(--color-fg);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-fg) 15%, transparent);
 }
 
 input::placeholder,
@@ -261,14 +247,14 @@ small {
 }
 
 .btn-primary {
-  background: var(--color-red);
-  color: var(--color-paper);
-  border: var(--border-width) solid var(--color-red);
+  background: var(--color-fg);
+  color: var(--color-bg);
+  border: var(--border-width) solid var(--color-fg);
 }
 
 .btn-primary:hover:not(:disabled) {
   background: transparent;
-  color: var(--color-red);
+  color: var(--color-fg);
 }
 
 .btn-secondary {
@@ -284,13 +270,13 @@ small {
 
 .btn-danger {
   background: transparent;
-  color: var(--color-red);
-  border: var(--border-width) solid var(--color-red);
+  color: var(--color-error);
+  border: var(--border-width) solid var(--color-error);
 }
 
 .btn-danger:hover:not(:disabled) {
-  background: var(--color-red);
-  color: var(--color-paper);
+  background: var(--color-error);
+  color: var(--color-bg);
 }
 
 .btn-sm {
@@ -369,10 +355,6 @@ small {
 
 .text-muted {
   color: var(--color-muted);
-}
-
-.text-accent {
-  color: var(--color-accent);
 }
 
 .sr-only {
