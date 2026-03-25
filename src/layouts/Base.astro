@@ -22,38 +22,39 @@ const { title = 'Stop One', description = 'Recurring DIY party series' } = Astro
     <title>{title}</title>
     <ViewTransitions />
     <slot name="head" />
+    <style>
+      /* Smooth page transitions */
+      ::view-transition-old(main),
+      ::view-transition-new(main) {
+        animation-duration: 0.4s;
+      }
+      ::view-transition-old(main) {
+        animation-name: fade-out;
+      }
+      ::view-transition-new(main) {
+        animation-name: fade-in;
+      }
+      @keyframes fade-out {
+        from { opacity: 1; }
+        to { opacity: 0; }
+      }
+      @keyframes fade-in {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      main {
+        view-transition-name: main;
+      }
+    </style>
   </head>
   <body>
     <slot />
     <script>
       import gsap from 'gsap';
 
-      // Page transition animations using Astro View Transitions
+      // Page load animations
       document.addEventListener('astro:page-load', () => {
-        // Animate in new page content
-        gsap.from('main', {
-          duration: 0.6,
-          opacity: 0,
-          y: 30,
-          ease: 'power3.out'
-        });
-      });
-
-      document.addEventListener('astro:before-preparation', (event) => {
-        // Animate out current page
-        const main = document.querySelector('main');
-        if (main) {
-          event.preventDefault();
-          gsap.to(main, {
-            duration: 0.4,
-            opacity: 0,
-            y: -20,
-            ease: 'power2.in',
-            onComplete: () => {
-              (event as CustomEvent).detail.resume();
-            }
-          });
-        }
+        // Initial page animations are handled in-page
       });
     </script>
   </body>

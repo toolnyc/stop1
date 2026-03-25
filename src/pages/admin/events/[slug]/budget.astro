@@ -103,7 +103,7 @@ function fmt(n: number) { return `$${n.toFixed(2)}`; }
       <div class="profit-card">
         <div class="profit-inner">
           <span class="profit-label">[Net Profit]</span>
-          <span class:list={['profit-value', 'mono', { negative: profit < 0 }]}>{fmt(profit)}</span>
+          <span class:list={['profit-value', { negative: profit < 0 }]}>{fmt(profit)}</span>
         </div>
         <p class="profit-formula text-muted">{fmt(revenue)} revenue &minus; {fmt(totalExpenses)} expenses</p>
       </div>
@@ -112,9 +112,9 @@ function fmt(n: number) { return `$${n.toFixed(2)}`; }
       <section class="section">
         <h2>Income</h2>
         <div class="data-table">
-          <div class="data-row"><span>Cash</span><span class="mono">{fmt(cashTotal)}</span></div>
-          <div class="data-row"><span>Card</span><span class="mono">{fmt(cardTotal)}</span></div>
-          <div class="data-row total"><span>Door Revenue</span><span class="mono">{fmt(revenue)}</span></div>
+          <div class="data-row"><span>Cash</span><span>{fmt(cashTotal)}</span></div>
+          <div class="data-row"><span>Card</span><span>{fmt(cardTotal)}</span></div>
+          <div class="data-row total"><span>Door Revenue</span><span>{fmt(revenue)}</span></div>
         </div>
       </section>
 
@@ -128,7 +128,7 @@ function fmt(n: number) { return `$${n.toFixed(2)}`; }
               <div class="expense-line">
                 <span>{e.description}</span>
                 <span class="expense-right">
-                  <span class="mono">{fmt(Number(e.amount))}</span>
+                  <span>{fmt(Number(e.amount))}</span>
                   {e.receipt_url && <a href={e.receipt_url} target="_blank" class="receipt-link">Receipt</a>}
                 </span>
               </div>
@@ -136,7 +136,7 @@ function fmt(n: number) { return `$${n.toFixed(2)}`; }
           </div>
         ))}
         <div class="data-table">
-          <div class="data-row total"><span>Total Expenses</span><span class="mono">{fmt(totalExpenses)}</span></div>
+          <div class="data-row total"><span>Total Expenses</span><span>{fmt(totalExpenses)}</span></div>
         </div>
       </section>
 
@@ -147,7 +147,7 @@ function fmt(n: number) { return `$${n.toFixed(2)}`; }
           <div class="collab-payout card">
             <div class="payout-header">
               <span class="payout-name">{c.name} <span class="text-muted">({c.payout_pct}%)</span></span>
-              <div class="payout-summary mono">
+              <div class="payout-summary">
                 <span>Owed {fmt(c.owed)}</span>
                 <span class="text-muted">/</span>
                 <span>Paid {fmt(c.paid)}</span>

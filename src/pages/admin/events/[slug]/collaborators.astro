@@ -45,7 +45,7 @@ const origin = Astro.url.origin;
       {success && <div class="alert alert-success">{success}</div>}
 
       <div class:list={['total-pct', { warn: totalPct > 100 }]}>
-        Total payout: <span class="mono">{totalPct}%</span>
+        Total payout: <span>{totalPct}%</span>
         {totalPct > 100 && <span class="pct-warn"> (exceeds 100%)</span>}
       </div>
 

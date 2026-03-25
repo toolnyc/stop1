@@ -7,7 +7,7 @@ const error = Astro.url.searchParams.get('error');
   <main class="login-page">
     <form method="POST" action="/api/admin/login" class="login-form">
       <div class="login-header">
-        <h1>Stop One</h1>
+        <img src="/images/wordmark.svg" alt="Stop One" class="login-logo" />
         <p class="login-subtitle">[Admin]</p>
       </div>
 
@@ -50,16 +50,15 @@ const error = Astro.url.searchParams.get('error');
     margin-bottom: var(--space-sm);
   }
 
-  .login-header h1 {
-    color: var(--color-accent);
-    font-size: 1.75rem;
-    letter-spacing: var(--tracking-tight);
+  .login-logo {
+    height: 2rem;
+    width: auto;
   }
 
   .login-subtitle {
     color: var(--color-muted);
     font-size: 0.75rem;
-    margin-top: var(--space-xs);
+    margin-top: var(--space-sm);
     text-transform: uppercase;
     letter-spacing: var(--tracking-wide);
   }

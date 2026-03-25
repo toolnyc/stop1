@@ -70,7 +70,7 @@ const success = Astro.url.searchParams.get('success');
     </form>
 
     <div class="expense-list">
-      <h2>Your Expenses <span class="mono text-muted">(${total.toFixed(2)})</span></h2>
+      <h2>Your Expenses <span class="text-muted">(${total.toFixed(2)})</span></h2>
       {expenseList.length === 0 ? (
         <p class="empty text-muted">No expenses yet.</p>
       ) : (

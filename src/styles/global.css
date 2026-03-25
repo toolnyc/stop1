@@ -1,6 +1,5 @@
 /* ========== Fonts ========== */
 /* Neue Haas Grotesk Display Pro loaded via Adobe Fonts — see Base.astro */
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 /* ========== Brand Palette ========== */
 :root {
@@ -18,7 +17,6 @@
 
   /* Typography */
   --font-display: 'Neue Haas Grotesk Display Pro', 'Neue Haas Grotesk', system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
   --weight-light: 300;
   --weight-regular: 400;
   --weight-medium: 500;
@@ -349,10 +347,6 @@ small {
 }
 
 /* ========== Utility ========== */
-.mono {
-  font-family: var(--font-mono);
-}
-
 .text-muted {
   color: var(--color-muted);
 }
