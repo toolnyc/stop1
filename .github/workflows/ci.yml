@@ -8,7 +8,7 @@ jobs:
       - uses: pnpm/action-setup@v3
         with: { version: 9 }
       - uses: actions/setup-node@v4
-        with: { node-version: '20', cache: 'pnpm' }
+        with: { node-version: '22', cache: 'pnpm' }
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - name: Smoke test
@@ -24,8 +24,8 @@ jobs:
           echo "GET / -> $STATUS"
           [ "$STATUS" = "200" ] || (echo "FAIL: expected 200, got $STATUS" && exit 1)
     env:
-      PUBLIC_SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL }}
-      PUBLIC_SUPABASE_KEY: ${{ secrets.PUBLIC_SUPABASE_KEY }}
+      PUBLIC_SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }}
+      PUBLIC_SUPABASE_KEY: ${{ secrets.PUBLIC_SUPABASE_KEY || 'placeholder-anon-key' }}
       SUPABASE_SECRET_KEY: placeholder
       COOKIE_SECRET: placeholder-32-char-string-here
       STRIPE_SECRET_KEY: sk_test_placeholder
