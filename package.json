@@ -10,7 +10,11 @@
     "db:types": "supabase gen types typescript --project-id $SUPABASE_PROJECT_ID > src/types/database.ts",
     "db:push": "supabase db push",
     "db:new": "supabase migration new",
-    "sync-instructions": "npx ts-node scripts/sync-instructions.ts"
+    "lint": "eslint src/",
+    "format": "prettier --write .",
+    "test": "vitest run",
+    "sync-instructions": "npx ts-node scripts/sync-instructions.ts",
+    "prepare": "husky"
   },
   "dependencies": {
     "@astrojs/vercel": "^8.0.0",
@@ -27,8 +31,20 @@
     "twilio": "^5.13.0"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/bcryptjs": "^3.0.0",
-    "typescript": "^5.7.0"
+    "eslint": "^10.1.0",
+    "eslint-config-prettier": "^10.1.8",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.8.1",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.57.2",
+    "vitest": "^4.1.1"
+  },
+  "lint-staged": {
+    "*.{ts,mjs,astro}": "eslint --fix",
+    "*.{ts,mjs,astro,css,json,md}": "prettier --write"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
