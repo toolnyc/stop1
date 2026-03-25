@@ -8,7 +8,9 @@ const { title = 'Admin — Stop One' } = Astro.props;
 ---
 <Base title={title}>
   <nav class="admin-nav">
-    <a href="/admin" class="admin-nav-brand">Stop One</a>
+    <a href="/admin" class="admin-nav-brand">
+      <img src="/images/logo.svg" alt="stop1" class="admin-nav-logo" />
+    </a>
     <div class="admin-nav-links">
       <a href="/admin" class="admin-nav-link">Events</a>
       <form method="POST" action="/api/admin/logout" style="display:inline">
@@ -35,11 +37,14 @@ const { title = 'Admin — Stop One' } = Astro.props;
   }
 
   .admin-nav-brand {
-    font-weight: var(--weight-bold);
-    font-size: 0.9375rem;
-    color: var(--color-accent);
     text-decoration: none;
-    letter-spacing: var(--tracking-tight);
+    display: flex;
+    align-items: center;
+  }
+
+  .admin-nav-logo {
+    height: 1.5rem;
+    width: auto;
   }
 
   .admin-nav-links {

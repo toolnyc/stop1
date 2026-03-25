@@ -27,7 +27,9 @@ function formatDate(dateStr: string) {
 <Base title="Stop One">
   <main class="home">
     <header class="hero">
-      <h1 class="logo">Stop One</h1>
+      <h1 class="logo">
+        <img src="/images/wordmark.svg" alt="stop1" class="wordmark" />
+      </h1>
       <p class="tagline">Recurring DIY party series</p>
     </header>
 
@@ -84,10 +86,12 @@ function formatDate(dateStr: string) {
   }
 
   .logo {
-    font-size: 2.5rem;
-    font-weight: var(--weight-black);
-    letter-spacing: var(--tracking-tight);
-    color: var(--color-fg);
+    line-height: 1;
+  }
+
+  .wordmark {
+    height: 2.5rem;
+    width: auto;
   }
 
   .tagline {
