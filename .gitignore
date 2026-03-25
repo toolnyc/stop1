@@ -7,3 +7,6 @@ dist
 .DS_Store
 .env.dev
 .astro
+
+# AI agent worktrees (git worktrees for parallel sessions)
+/.claude/worktrees/
