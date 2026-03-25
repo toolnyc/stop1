@@ -8,5 +8,9 @@ dist
 .env.dev
 .astro
 
+# IDE
+.idea
+.vscode
+
 # AI agent worktrees (git worktrees for parallel sessions)
 /.claude/worktrees/
