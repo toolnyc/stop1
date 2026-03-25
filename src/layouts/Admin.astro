@@ -9,7 +9,7 @@ const { title = 'Admin — Stop One' } = Astro.props;
 <Base title={title}>
   <nav class="admin-nav">
     <a href="/admin" class="admin-nav-brand">
-      <img src="/images/logo.svg" alt="stop1" class="admin-nav-logo" />
+      <img src="/images/wordmark.svg" alt="Stop One" class="admin-nav-logo" />
     </a>
     <div class="admin-nav-links">
       <a href="/admin" class="admin-nav-link">Events</a>
@@ -58,11 +58,11 @@ const { title = 'Admin — Stop One' } = Astro.props;
     text-decoration: none;
     font-size: 0.875rem;
     font-weight: var(--weight-medium);
-    transition: color var(--transition);
+    transition: opacity var(--transition);
   }
 
   .admin-nav-link:hover {
-    color: var(--color-fg);
+    opacity: 0.7;
   }
 
   .admin-main {

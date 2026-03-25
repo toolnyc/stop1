@@ -1,6 +1,5 @@
 ---
 import Base from '@/layouts/Base.astro';
-import RsvpForm from '@/components/public/RsvpForm.astro';
 import { supabase } from '@/lib/supabase';
 
 const { slug } = Astro.params;
@@ -39,7 +38,7 @@ const timeEnd = event.time_end
 
     {event.flyer_url && (
       <div class="flyer-container">
-        <img src={event.flyer_url} alt={`${event.title} flyer`} class="event-flyer" />
+        <img src={event.flyer_url} alt={`${event.title} flyer`} class="event-flyer" loading="eager" />
       </div>
     )}
 
@@ -59,7 +58,7 @@ const timeEnd = event.time_end
       </div>
 
       {Number(event.door_price) > 0 && (
-        <div class="event-price mono">${Number(event.door_price)} at the door</div>
+        <div class="event-price">${Number(event.door_price)} at the door</div>
       )}
 
       {event.description && (
@@ -67,34 +66,183 @@ const timeEnd = event.time_end
       )}
     </div>
 
-    <RsvpForm slug={slug!} eventTitle={event.title} />
+    <!-- RSVP Form - Click through to reveal -->
+    <div class="rsvp-section" id="rsvp-section">
+      <button class="rsvp-toggle" id="rsvp-toggle">RSVP</button>
+
+      <form id="rsvp-form" method="POST" action={`/api/rsvp/${slug}`} class="rsvp-form" style="display: none;">
+        <div class="rsvp-fields">
+          <label>
+            <span>Name</span>
+            <input type="text" name="name" required autocomplete="name" placeholder="Your name" />
+          </label>
+
+          <label>
+            <span>Phone</span>
+            <input type="tel" name="phone" required autocomplete="tel" placeholder="(555) 123-4567" />
+          </label>
+
+          <label>
+            <span>Email</span>
+            <input type="email" name="email" autocomplete="email" placeholder="Optional" />
+          </label>
+
+          <label class="sms-label">
+            <div class="checkbox-row">
+              <input type="checkbox" name="sms_opt_in" value="true" checked />
+              <span class="checkbox-text">Text me event reminders</span>
+            </div>
+          </label>
+
+          <button type="submit" id="rsvp-submit" class="btn btn-primary btn-block">Submit</button>
+        </div>
+      </form>
+
+      <div id="rsvp-message" class="rsvp-message" style="display:none"></div>
+    </div>
   </main>
 </Base>
 
 <script>
   import gsap from 'gsap';
 
-  // Entrance animations
-  gsap.from('.flyer-container', {
-    duration: 0.8,
-    scale: 0.95,
-    opacity: 0,
-    ease: 'power3.out'
+  // RSVP toggle - click through to reveal form
+  const toggleBtn = document.getElementById('rsvp-toggle');
+  const form = document.getElementById('rsvp-form');
+  const fields = document.querySelector('.rsvp-fields') as HTMLElement;
+  const message = document.getElementById('rsvp-message')!;
+  const submitBtn = document.getElementById('rsvp-submit') as HTMLButtonElement;
+
+  toggleBtn?.addEventListener('click', () => {
+    gsap.to(toggleBtn, {
+      duration: 0.3,
+      opacity: 0,
+      y: -10,
+      ease: 'power2.in',
+      onComplete: () => {
+        toggleBtn.style.display = 'none';
+        form!.style.display = 'block';
+        gsap.from(form, {
+          duration: 0.5,
+          opacity: 0,
+          y: 20,
+          ease: 'power3.out'
+        });
+      }
+    });
   });
+
+  // Form submission
+  const formEl = document.getElementById('rsvp-form') as HTMLFormElement;
+  formEl?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submitting...';
+
+    const formData = new FormData(formEl);
+    const data = {
+      name: formData.get('name') as string,
+      phone: (formData.get('phone') as string) || '',
+      email: (formData.get('email') as string) || '',
+      sms_opt_in: formData.get('sms_opt_in') === 'true',
+    };
+
+    try {
+      const res = await fetch(formEl.action, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      const result = await res.json();
+
+      if (res.ok) {
+        gsap.to(fields, {
+          duration: 0.4,
+          opacity: 0,
+          y: -20,
+          ease: 'power2.in',
+          onComplete: () => {
+            fields.style.display = 'none';
+            message.className = 'rsvp-message success-message';
+            message.innerHTML = `
+              <div class="success-check">✓</div>
+              <div class="success-text">You're on the list, ${data.name}!</div>
+              <div class="success-sub">Check your texts for confirmation.</div>
+            `;
+            message.style.display = 'block';
+
+            gsap.from('.success-check', {
+              duration: 0.6,
+              scale: 0,
+              rotation: -180,
+              ease: 'back.out(1.7)'
+            });
+            gsap.from('.success-text', {
+              duration: 0.6,
+              opacity: 0,
+              y: 20,
+              delay: 0.2,
+              ease: 'power3.out'
+            });
+            gsap.from('.success-sub', {
+              duration: 0.6,
+              opacity: 0,
+              y: 20,
+              delay: 0.3,
+              ease: 'power3.out'
+            });
+          }
+        });
+      } else {
+        message.className = 'rsvp-message alert alert-error';
+        message.textContent = result.error || 'Something went wrong';
+        message.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit';
+      }
+    } catch {
+      message.className = 'rsvp-message alert alert-error';
+      message.textContent = 'Network error. Please try again.';
+      message.style.display = 'block';
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Submit';
+    }
+  });
+
+  // Entrance animations - image fade in
+  const flyerImg = document.querySelector('.event-flyer') as HTMLImageElement;
+  if (flyerImg) {
+    if (flyerImg.complete) {
+      gsap.from(flyerImg, {
+        duration: 1,
+        opacity: 0,
+        ease: 'power2.out'
+      });
+    } else {
+      flyerImg.addEventListener('load', () => {
+        gsap.from(flyerImg, {
+          duration: 1,
+          opacity: 0,
+          ease: 'power2.out'
+        });
+      });
+    }
+  }
 
   gsap.from('.event-info', {
     duration: 0.8,
     y: 30,
     opacity: 0,
-    delay: 0.2,
+    delay: 0.3,
     ease: 'power3.out'
   });
 
-  gsap.from('.rsvp-form', {
+  gsap.from('.rsvp-section', {
     duration: 0.8,
     y: 30,
     opacity: 0,
-    delay: 0.4,
+    delay: 0.5,
     ease: 'power3.out'
   });
 </script>
@@ -120,8 +268,14 @@ const timeEnd = event.time_end
   }
 
   .back-logo {
-    height: 1.5rem;
+    height: 3rem;
     width: auto;
+  }
+
+  @media (min-width: 768px) {
+    .back-logo {
+      height: 4rem;
+    }
   }
 
   .flyer-container {
@@ -167,5 +321,87 @@ const timeEnd = event.time_end
     color: var(--color-muted);
     line-height: var(--leading-relaxed);
     font-size: 0.9375rem;
+  }
+
+  /* RSVP Section */
+  .rsvp-section {
+    background: var(--color-surface);
+    border: var(--border);
+    padding: var(--space-lg);
+  }
+
+  .rsvp-toggle {
+    width: 100%;
+    padding: var(--space-lg);
+    font-size: 1.5rem;
+    font-weight: var(--weight-bold);
+    letter-spacing: 0.1em;
+    background: transparent;
+    border: 2px solid var(--color-fg);
+    color: var(--color-fg);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .rsvp-toggle:hover {
+    background: var(--color-fg);
+    color: var(--color-bg);
+  }
+
+  .rsvp-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+  }
+
+  .rsvp-fields {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+  }
+
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    flex-direction: row;
+  }
+
+  .checkbox-row input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--color-fg);
+  }
+
+  .checkbox-text {
+    font-size: 0.875rem !important;
+    color: var(--color-fg) !important;
+    font-weight: var(--weight-regular) !important;
+    text-transform: none !important;
+    letter-spacing: normal !important;
+  }
+
+  .rsvp-message {
+    text-align: center;
+  }
+
+  .success-message {
+    padding: var(--space-xl) 0;
+  }
+
+  .success-check {
+    font-size: 3rem;
+    margin-bottom: var(--space-md);
+  }
+
+  .success-text {
+    font-size: 1.25rem;
+    font-weight: var(--weight-bold);
+    margin-bottom: var(--space-sm);
+  }
+
+  .success-sub {
+    font-size: 0.875rem;
+    color: var(--color-muted);
   }
 </style>
