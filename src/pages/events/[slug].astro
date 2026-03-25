@@ -33,7 +33,9 @@ const timeEnd = event.time_end
 ---
 <Base title={`${event.title} — Stop One`} description={`RSVP for ${event.title}`}>
   <main class="event-page">
-    <a href="/" class="back-link">&larr; Stop One</a>
+    <a href="/" class="back-link">
+      <img src="/images/logo.svg" alt="stop1" class="back-logo" />
+    </a>
 
     {event.flyer_url && (
       <img src={event.flyer_url} alt={`${event.title} flyer`} class="event-flyer" />
@@ -85,16 +87,21 @@ const timeEnd = event.time_end
   }
 
   .back-link {
-    display: inline-block;
-    font-size: 0.8125rem;
-    color: var(--color-muted);
+    display: inline-flex;
+    align-items: center;
     text-decoration: none;
     margin-bottom: var(--space-lg);
-    transition: color var(--transition);
+    opacity: 0.6;
+    transition: opacity var(--transition);
   }
 
   .back-link:hover {
-    color: var(--color-fg);
+    opacity: 1;
+  }
+
+  .back-logo {
+    height: 1.25rem;
+    width: auto;
   }
 
   .event-flyer {
