@@ -37,7 +37,21 @@ export const POST = withLogging(async ({ request, cookies, redirect, log }) => {
     body = entries;
   }
 
-  const { title, slug, date, time_end, venue_name, venue_address, description, door_price, door_pin, capacity, status } = body;
+  const {
+    title,
+    slug,
+    date,
+    time_end,
+    venue_name,
+    venue_address,
+    description,
+    door_price,
+    early_price,
+    early_cutoff,
+    door_pin,
+    capacity,
+    status,
+  } = body;
 
   const errors: string[] = [];
   if (!title) errors.push('Title is required');
@@ -93,6 +107,8 @@ export const POST = withLogging(async ({ request, cookies, redirect, log }) => {
       venue_address: venue_address || null,
       description: description || null,
       door_price: parseFloat(door_price) || 0,
+      early_price: early_price ? parseFloat(early_price) : null,
+      early_cutoff: early_cutoff || null,
       door_pin: doorPinHash,
       capacity: capacity ? parseInt(capacity) : null,
       status: (status === 'published' ? 'published' : 'draft') as 'draft' | 'published',
