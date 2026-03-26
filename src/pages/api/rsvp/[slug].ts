@@ -23,7 +23,7 @@ export const POST = withLogging(async ({ params, request, log }) => {
   // Look up event
   const { data: event, error: eventError } = await supabaseAdmin
     .from('events')
-    .select('id, status, title, date, venue_name')
+    .select('id, status, title, date, time_end, door_price, venue_name, venue_address')
     .eq('slug', slug!)
     .eq('status', 'published')
     .single();
@@ -113,7 +113,7 @@ export const POST = withLogging(async ({ params, request, log }) => {
   // Fire-and-forget SMS confirmation (now tracked)
   if (sms_opt_in) {
     const smsBody = rsvpConfirmationSms(name.trim(), event);
-    sendSms(phone, smsBody, { action: 'send-rsvp-confirmation', log }).then(result => {
+    sendSms(phone, smsBody, { action: 'send-rsvp-confirmation', log }).then((result) => {
       if (!result.ok) {
         log.error('rsvp.sms_failed', { slug, rsvpId: data.id, error: result.error });
       }
@@ -129,7 +129,7 @@ export const POST = withLogging(async ({ params, request, log }) => {
       meta: { to: maskEmail(email), slug },
       log,
       fn: () => resend.emails.send(emailData),
-    }).then(result => {
+    }).then((result) => {
       if (!result.ok) {
         log.error('rsvp.email_failed', { slug, rsvpId: data.id, error: result.error });
       }

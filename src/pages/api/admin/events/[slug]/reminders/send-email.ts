@@ -28,7 +28,9 @@ export const POST = withLogging(async ({ params, cookies, log }) => {
 
   const { data: event } = await supabaseAdmin
     .from('events')
-    .select('id, title, date, venue_name, venue_address, reminder_email_sent_at')
+    .select(
+      'id, title, date, time_end, door_price, venue_name, venue_address, reminder_email_sent_at',
+    )
     .eq('slug', slug!)
     .single();
 
