@@ -5,7 +5,7 @@
 :root {
   /* Brand — Simplified monochrome */
   --color-bg: #f5f3f0;
-  --color-fg: #0a0a0a;
+  --color-fg: #1a1816;
   --color-muted: #666666;
   --color-surface: #eae8e5;
   --color-border: #d8d6d3;
@@ -52,9 +52,9 @@
   --border: var(--border-width) solid var(--color-border);
 
   /* Shadows */
-  --shadow-sm: 0 1px 3px rgba(26, 23, 20, 0.08);
-  --shadow-md: 0 4px 12px rgba(26, 23, 20, 0.1);
-  --shadow-lg: 0 12px 40px rgba(26, 23, 20, 0.15);
+  --shadow-sm: 0 1px 3px rgba(26, 24, 22, 0.08);
+  --shadow-md: 0 4px 12px rgba(26, 24, 22, 0.1);
+  --shadow-lg: 0 12px 40px rgba(26, 24, 22, 0.15);
 
   /* Motion */
   --duration-fast: 0.15s;
@@ -84,7 +84,7 @@
 
 /* ========== Dark Context ========== */
 .dark-ctx {
-  --color-bg: #0a0a0a;
+  --color-bg: #1a1816;
   --color-fg: #f5f3f0;
   --color-muted: #999999;
   --color-surface: #1a1a1a;

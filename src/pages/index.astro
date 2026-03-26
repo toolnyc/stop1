@@ -49,28 +49,6 @@ const timeEnd = nextEvent?.time_end
       }
 
       {
-        eventDate ? (
-          <p class="countdown" data-target={eventDate.toISOString()}>
-            <span class="countdown-label">in</span>
-            <>
-              <span id="countdown-days">0</span>
-              <span class="countdown-unit">d</span>
-            </>
-            <>
-              <span id="countdown-hours">0</span>
-              <span class="countdown-unit">h</span>
-            </>
-            <>
-              <span id="countdown-mins">0</span>
-              <span class="countdown-unit">m</span>
-            </>
-          </p>
-        ) : (
-          <p class="countdown countdown-tba">Next event TBA</p>
-        )
-      }
-
-      {
         nextEvent ? (
           <div class="actions">
             <a href={`/events/${nextEvent.slug}`} class="action-btn">
@@ -159,7 +137,6 @@ const timeEnd = nextEvent?.time_end
   // Module-level state so cleanup works across navigations
   let _rafId: number | null = null;
   let _handleOrientation: ((e: DeviceOrientationEvent) => void) | null = null;
-  let _countdownInterval: ReturnType<typeof setInterval> | null = null;
   let _phraseInterval: ReturnType<typeof setInterval> | null = null;
 
   function cleanup() {
@@ -170,10 +147,6 @@ const timeEnd = nextEvent?.time_end
     if (_handleOrientation) {
       window.removeEventListener('deviceorientation', _handleOrientation);
       _handleOrientation = null;
-    }
-    if (_countdownInterval) {
-      clearInterval(_countdownInterval);
-      _countdownInterval = null;
     }
     if (_phraseInterval) {
       clearInterval(_phraseInterval);
@@ -186,7 +159,7 @@ const timeEnd = nextEvent?.time_end
   document.addEventListener('astro:page-load', () => {
     cleanup();
     gsap.killTweensOf(
-      '.flyer-card, .wordmark, .countdown, .actions, .landing-footer, .modal-backdrop, .modal-sheet, .menu-overlay, .menu-content, .footer-text, .footer-logo',
+      '.flyer-card, .wordmark, .actions, .landing-footer, .modal-backdrop, .modal-sheet, .menu-overlay, .menu-content, .footer-text, .footer-logo',
     );
 
     // --- Nuclear reset: strip ALL inline styles from every element in main ---
@@ -318,34 +291,6 @@ const timeEnd = nextEvent?.time_end
       });
     }
 
-    // --- Countdown timer ---
-    const countdownEl = document.querySelector('.countdown');
-    if (countdownEl && countdownEl.hasAttribute('data-target')) {
-      const target = new Date(countdownEl.getAttribute('data-target')!);
-      const daysEl = document.getElementById('countdown-days');
-      const hoursEl = document.getElementById('countdown-hours');
-      const minsEl = document.getElementById('countdown-mins');
-
-      function updateCountdown() {
-        const now = new Date();
-        const diff = target.getTime() - now.getTime();
-        if (diff <= 0) {
-          if (daysEl) daysEl.textContent = '0';
-          if (hoursEl) hoursEl.textContent = '0';
-          if (minsEl) minsEl.textContent = '0';
-          return;
-        }
-        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        if (daysEl) daysEl.textContent = String(days);
-        if (hoursEl) hoursEl.textContent = String(hours);
-        if (minsEl) minsEl.textContent = String(mins);
-      }
-      updateCountdown();
-      _countdownInterval = setInterval(updateCountdown, 60000);
-    }
-
     // --- Footer rotation: text phrases + wordmark as peers ---
     const footerItems = document.querySelectorAll<HTMLElement>('.footer-item');
     if (footerItems.length > 0) {
@@ -471,19 +416,14 @@ const timeEnd = nextEvent?.time_end
       { duration: 1, opacity: 1, scale: 1, ease: 'power3.out' },
     );
     gsap.fromTo(
-      '.countdown',
+      '.actions',
       { opacity: 0 },
       { duration: 0.6, opacity: 1, delay: 0.5, ease: 'power2.out' },
     );
     gsap.fromTo(
-      '.actions',
-      { opacity: 0 },
-      { duration: 0.6, opacity: 1, delay: 0.7, ease: 'power2.out' },
-    );
-    gsap.fromTo(
       '.landing-footer',
       { opacity: 0 },
-      { duration: 0.6, opacity: 1, delay: 0.9, ease: 'power2.out' },
+      { duration: 0.6, opacity: 1, delay: 0.7, ease: 'power2.out' },
     );
   });
 </script>
@@ -572,30 +512,6 @@ const timeEnd = nextEvent?.time_end
     }
   }
 
-  /* ---- Countdown ---- */
-  .countdown {
-    font-size: 1rem;
-    font-weight: var(--weight-regular);
-    letter-spacing: -0.01em;
-    color: #231e19;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .countdown-label {
-    margin-right: 0.15em;
-  }
-
-  .countdown-unit {
-    margin-right: 0.2em;
-    opacity: 0.35;
-    font-size: 0.75em;
-  }
-
-  .countdown-tba {
-    opacity: 0.5;
-    letter-spacing: -0.01em;
-  }
-
   /* ---- Action buttons ---- */
   .actions {
     display: flex;
@@ -608,9 +524,9 @@ const timeEnd = nextEvent?.time_end
     font-weight: var(--weight-medium);
     letter-spacing: -0.01em;
     text-decoration: none;
-    color: #231e19;
+    color: #1a1816;
     background: none;
-    border: 1.5px solid #231e19;
+    border: 1.5px solid #1a1816;
     cursor: pointer;
     padding: 10px 28px;
     font-family: inherit;
@@ -624,10 +540,10 @@ const timeEnd = nextEvent?.time_end
   }
 
   .action-btn:hover {
-    background: #231e19;
+    background: #1a1816;
     color: #f5f3f0;
     opacity: 1;
-    box-shadow: 0 4px 16px rgba(35, 30, 25, 0.2);
+    box-shadow: 0 4px 16px rgba(26, 24, 22, 0.2);
   }
 
   .action-btn:active {
@@ -637,9 +553,9 @@ const timeEnd = nextEvent?.time_end
 
   @media (hover: none) {
     .action-btn:active {
-      background: #231e19;
+      background: #1a1816;
       color: #f5f3f0;
-      box-shadow: 0 4px 16px rgba(35, 30, 25, 0.2);
+      box-shadow: 0 4px 16px rgba(26, 24, 22, 0.2);
     }
   }
 
@@ -648,7 +564,7 @@ const timeEnd = nextEvent?.time_end
     width: 100vw;
     margin-left: calc(-50vw + 50%);
     padding: var(--space-sm) var(--space-md);
-    background: #231e19;
+    background: #1a1816;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
     transition: opacity 0.15s ease;
@@ -698,7 +614,7 @@ const timeEnd = nextEvent?.time_end
     position: fixed;
     inset: 0;
     z-index: var(--z-overlay);
-    background: rgba(35, 30, 25, 0.55);
+    background: rgba(26, 24, 22, 0.55);
     align-items: center;
     justify-content: center;
     padding: var(--space-md);
@@ -711,7 +627,7 @@ const timeEnd = nextEvent?.time_end
     max-width: 360px;
     padding: var(--space-2xl) var(--space-xl);
     border-radius: 6px;
-    box-shadow: 0 16px 48px rgba(35, 30, 25, 0.25);
+    box-shadow: 0 16px 48px rgba(26, 24, 22, 0.25);
   }
 
   .modal-close {
