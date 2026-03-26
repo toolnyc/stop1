@@ -1,7 +1,7 @@
 {
   "milestone": "site-refinement",
-  "round": 1,
-  "status": "fail",
+  "round": 2,
+  "status": "pass",
   "validatorsRun": {
     "test": {
       "passed": true,
@@ -20,54 +20,19 @@
     }
   },
   "reviewsSummary": {
-    "total": 5,
-    "passed": 4,
-    "failed": 1,
-    "failedFeatures": ["email-template-redesign"]
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "failedFeatures": []
   },
-  "blockingIssues": [
-    {
-      "featureId": "email-template-redesign",
-      "severity": "blocking",
-      "description": "Day-of reminder email omits event date in both HTML and plain-text bodies, conflicting with feature requirements for full details in both templates."
-    }
-  ],
-  "appliedUpdates": [
-    {
-      "target": "services.yaml",
-      "description": "Added command aliases for `test` and `lint` so scrutiny validators are explicitly represented in shared services metadata.",
-      "sourceFeature": "fix-preexisting-lint-errors"
-    }
-  ],
-  "suggestedGuidanceUpdates": [
-    {
-      "target": "AGENTS.md",
-      "suggestion": "Add mission authoring guidance to keep `features.json` and `validation-contract.md` assertion details in sync, and explicitly define precedence when they conflict.",
-      "evidence": "email-template-redesign review found conflicting requirements for day-of reminder date inclusion between features.json and validation-contract.md.",
-      "isSystemic": false
-    },
-    {
-      "target": "frontend-worker skill",
-      "suggestion": "Disallow validator commands piped through truncation tools (e.g., `| tail`) unless `set -o pipefail` is enforced, to avoid masked non-zero exits.",
-      "evidence": "poster-interaction-redesign transcript used `pnpm build 2>&1 | tail -20`, which can report success despite upstream command failure.",
-      "isSystemic": true
-    },
-    {
-      "target": "frontend-worker skill",
-      "suggestion": "Document a non-visual validation path for config/lint-only features and relax tests-first wording for cross-file formatting-only updates where test harness additions are unnecessary.",
-      "evidence": "timezone-fix and fix-preexisting-lint-errors completed correctly without added tests or browser checks despite current skill language implying those are mandatory.",
-      "isSystemic": true
-    }
-  ],
+  "blockingIssues": [],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [],
   "rejectedObservations": [
     {
-      "observation": "Update .factory/library/architecture.md to reflect countdown/color changes",
-      "reason": "deferred to orchestrator due instruction boundary against documentation updates in this run"
-    },
-    {
-      "observation": "Treat `src/pages/admin/events/[slug]/index.astro` timezone contract mention as a defect requiring immediate code change",
-      "reason": "rejected as non-blocking review metadata mismatch; implementation behavior is already correct"
+      "observation": "Validation contract language for day-of reminder details omits date while feature spec and implementation include it.",
+      "reason": "already captured in prior round guidance; duplicate observation without new systemic evidence"
     }
   ],
-  "previousRound": null
+  "previousRound": ".factory/validation/site-refinement/scrutiny/synthesis.round1.json"
 }

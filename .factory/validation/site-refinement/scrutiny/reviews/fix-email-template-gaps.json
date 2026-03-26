@@ -1,0 +1,21 @@
+{
+  "featureId": "fix-email-template-gaps",
+  "reviewedAt": "2026-03-26T12:58:45Z",
+  "commitId": "bd059212c5104645e2f0c216ad54a4e913eda637",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The fix commit directly addresses both prior findings from email-template-redesign. Day-of reminder now includes a timezone-formatted Date row in HTML and a Date line in plain text, and both email templates now format non-free prices with two decimal places via toFixed(2). No remaining blocking or non-blocking issues were found in scope.",
+    "issues": []
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "Validation contract language for day-of reminder details still omits date even though feature specs and implemented behavior require date, which can cause future implementation/review drift.",
+      "evidence": "validation-contract.md:97-99 (VAL-EMAIL-004 lists time/venue/address/price only) vs features.json email-template-redesign expectedBehavior (requires full details including date in both templates)."
+    }
+  ],
+  "addressesFailureFrom": ".factory/validation/site-refinement/scrutiny/reviews/email-template-redesign.json",
+  "summary": "Fix review passed. The original blocking gap (missing day-of date in HTML/text) is resolved, and the prior price-formatting concern is resolved in both templates."
+}
