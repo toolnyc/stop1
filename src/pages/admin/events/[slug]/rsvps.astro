@@ -27,8 +27,9 @@ const rsvpList = rsvps ?? [];
 
 if (exportCsv) {
   const header = 'Name,Phone,Email,SMS Opt-in,RSVP Time,Arrived';
-  const rows = rsvpList.map(r =>
-    `"${r.name}","${r.phone}","${r.email || ''}","${r.sms_opt_in ? 'Yes' : 'No'}","${r.created_at}","${r.arrived_at ? 'Yes' : 'No'}"`
+  const rows = rsvpList.map(
+    (r) =>
+      `"${r.name}","${r.phone}","${r.email || ''}","${r.sms_opt_in ? 'Yes' : 'No'}","${r.created_at}","${r.arrived_at ? 'Yes' : 'No'}"`,
   );
   const csv = [header, ...rows].join('\n');
   return new Response(csv, {
@@ -40,6 +41,7 @@ if (exportCsv) {
   });
 }
 ---
+
 <Admin title={`RSVPs — ${event.title}`}>
   <div class="edit-layout">
     <nav class="sidebar">
@@ -53,52 +55,64 @@ if (exportCsv) {
     <div class="edit-content">
       <div class="rsvp-header">
         <h1>RSVPs <span class="count">({rsvpList.length})</span></h1>
-        <a href={`/admin/events/${slug}/rsvps?export=csv`} class="btn btn-secondary btn-sm">Export CSV</a>
+        <a href={`/admin/events/${slug}/rsvps?export=csv`} class="btn btn-secondary btn-sm"
+          >Export CSV</a
+        >
       </div>
 
-      <input
-        type="text"
-        id="name-filter"
-        placeholder="Filter by name..."
-        class="filter-input"
-      />
+      <input type="text" id="name-filter" placeholder="Filter by name..." class="filter-input" />
 
-      {rsvpList.length === 0 ? (
-        <p class="empty text-muted">No RSVPs yet.</p>
-      ) : (
-        <div class="table-wrap">
-          <table class="rsvp-table" id="rsvp-table">
-            <thead>
-              <tr>
-                <th data-sort="name" class="sortable">Name</th>
-                <th>Phone</th>
-                <th data-sort="email" class="sortable">Email</th>
-                <th data-sort="time" class="sortable">Time</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rsvpList.map((r) => (
-                <tr data-name={r.name.toLowerCase()}>
-                  <td class="td-name">{r.name}</td>
-                  <td>{r.phone}</td>
-                  <td class="td-email">{r.email || '—'}</td>
-                  <td class="td-time">{new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</td>
-                  <td>
-                    {r.arrived_at ? (
-                      <span class="badge badge-success">Arrived</span>
-                    ) : r.walk_in ? (
-                      <span class="badge badge-warning">Walk-in</span>
-                    ) : (
-                      <span class="badge badge-muted">RSVP</span>
-                    )}
-                  </td>
+      {
+        rsvpList.length === 0 ? (
+          <p class="empty text-muted">No RSVPs yet.</p>
+        ) : (
+          <div class="table-wrap">
+            <table class="rsvp-table" id="rsvp-table">
+              <thead>
+                <tr>
+                  <th data-sort="name" class="sortable">
+                    Name
+                  </th>
+                  <th>Phone</th>
+                  <th data-sort="email" class="sortable">
+                    Email
+                  </th>
+                  <th data-sort="time" class="sortable">
+                    Time
+                  </th>
+                  <th>Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              </thead>
+              <tbody>
+                {rsvpList.map((r) => (
+                  <tr data-name={r.name.toLowerCase()}>
+                    <td class="td-name">{r.name}</td>
+                    <td>{r.phone}</td>
+                    <td class="td-email">{r.email || '—'}</td>
+                    <td class="td-time">
+                      {new Date(r.created_at).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })}
+                    </td>
+                    <td>
+                      {r.arrived_at ? (
+                        <span class="badge badge-success">Arrived</span>
+                      ) : r.walk_in ? (
+                        <span class="badge badge-warning">Walk-in</span>
+                      ) : (
+                        <span class="badge badge-muted">RSVP</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      }
     </div>
   </div>
 </Admin>
@@ -154,7 +168,9 @@ if (exportCsv) {
       padding-bottom: var(--space-sm);
       border-bottom: var(--border);
     }
-    .sidebar-link { white-space: nowrap; }
+    .sidebar-link {
+      white-space: nowrap;
+    }
   }
 
   .sidebar {
@@ -169,12 +185,23 @@ if (exportCsv) {
     text-decoration: none;
     font-size: 0.875rem;
     font-weight: var(--weight-medium);
-    transition: background var(--transition), color var(--transition);
+    transition:
+      background var(--transition),
+      color var(--transition);
   }
 
-  .sidebar-link:hover { background: var(--color-surface); color: var(--color-fg); }
-  .sidebar-link.active { background: var(--color-surface); color: var(--color-accent); }
-  .sidebar-link.external::after { content: ' ↗'; opacity: 0.5; }
+  .sidebar-link:hover {
+    background: var(--color-surface);
+    color: var(--color-fg);
+  }
+  .sidebar-link.active {
+    background: var(--color-surface);
+    color: var(--color-accent);
+  }
+  .sidebar-link.external::after {
+    content: ' ↗';
+    opacity: 0.5;
+  }
 
   .rsvp-header {
     display: flex;
@@ -220,7 +247,6 @@ if (exportCsv) {
     color: var(--color-muted);
     font-weight: var(--weight-medium);
     font-size: 0.75rem;
-    text-transform: uppercase;
     letter-spacing: var(--tracking-wide);
     background: var(--color-surface);
   }
@@ -231,7 +257,9 @@ if (exportCsv) {
     transition: color var(--transition);
   }
 
-  .sortable:hover { color: var(--color-fg); }
+  .sortable:hover {
+    color: var(--color-fg);
+  }
 
   .rsvp-table td {
     padding: var(--space-sm) var(--space-md);
@@ -242,7 +270,15 @@ if (exportCsv) {
     border-bottom: none;
   }
 
-  .td-name { font-weight: var(--weight-medium); }
-  .td-email { color: var(--color-muted); }
-  .td-time { white-space: nowrap; font-size: 0.8125rem; color: var(--color-muted); }
+  .td-name {
+    font-weight: var(--weight-medium);
+  }
+  .td-email {
+    color: var(--color-muted);
+  }
+  .td-time {
+    white-space: nowrap;
+    font-size: 0.8125rem;
+    color: var(--color-muted);
+  }
 </style>

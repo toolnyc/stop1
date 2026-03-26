@@ -16,7 +16,8 @@
   --color-warning: #c4890e;
 
   /* Typography */
-  --font-display: 'Neue Haas Grotesk Display Pro', 'Neue Haas Grotesk', system-ui, -apple-system, sans-serif;
+  --font-display:
+    'Neue Haas Grotesk Display Pro', 'Neue Haas Grotesk', system-ui, -apple-system, sans-serif;
   --weight-light: 300;
   --weight-regular: 400;
   --weight-medium: 500;
@@ -71,10 +72,14 @@
 }
 
 @media (min-width: 768px) {
-  :root { --content-padding: var(--space-xl); }
+  :root {
+    --content-padding: var(--space-xl);
+  }
 }
 @media (min-width: 1024px) {
-  :root { --content-padding: var(--space-3xl); }
+  :root {
+    --content-padding: var(--space-3xl);
+  }
 }
 
 /* ========== Dark Context ========== */
@@ -124,7 +129,10 @@ a:hover {
   opacity: 0.6;
 }
 
-h1, h2, h3, h4 {
+h1,
+h2,
+h3,
+h4 {
   line-height: var(--leading-tight);
   letter-spacing: var(--tracking-tight);
   font-weight: var(--weight-bold);
@@ -139,14 +147,14 @@ button {
   font-size: inherit;
 }
 
-input[type="text"],
-input[type="email"],
-input[type="tel"],
-input[type="password"],
-input[type="number"],
-input[type="url"],
-input[type="search"],
-input[type="datetime-local"],
+input[type='text'],
+input[type='email'],
+input[type='tel'],
+input[type='password'],
+input[type='number'],
+input[type='url'],
+input[type='search'],
+input[type='datetime-local'],
 textarea,
 select {
   width: 100%;
@@ -157,7 +165,9 @@ select {
   color: var(--color-fg);
   font-size: 0.9375rem;
   line-height: 1.5;
-  transition: border-color var(--transition), box-shadow var(--transition);
+  transition:
+    border-color var(--transition),
+    box-shadow var(--transition);
 }
 
 input:focus,
@@ -205,7 +215,6 @@ label > span {
   font-size: 0.8125rem;
   font-weight: var(--weight-medium);
   color: var(--color-muted);
-  text-transform: uppercase;
   letter-spacing: var(--tracking-wide);
 }
 
@@ -227,10 +236,12 @@ small {
   font-size: 0.9375rem;
   line-height: 1;
   cursor: pointer;
-  transition: background var(--transition), color var(--transition), border-color var(--transition);
+  transition:
+    background var(--transition),
+    color var(--transition),
+    border-color var(--transition);
   text-decoration: none;
   white-space: nowrap;
-  text-transform: uppercase;
   letter-spacing: var(--tracking-wide);
 }
 
@@ -321,7 +332,6 @@ small {
   font-size: 0.75rem;
   font-weight: var(--weight-medium);
   letter-spacing: var(--tracking-wide);
-  text-transform: uppercase;
 }
 
 .badge-success {

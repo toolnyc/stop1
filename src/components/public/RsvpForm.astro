@@ -5,6 +5,7 @@ export interface Props {
 }
 const { slug, eventTitle } = Astro.props;
 ---
+
 <form id="rsvp-form" method="POST" action={`/api/rsvp/${slug}`} class="rsvp-form">
   <h2 class="rsvp-title">RSVP</h2>
 
@@ -18,12 +19,24 @@ const { slug, eventTitle } = Astro.props;
 
     <label>
       <span>Phone</span>
-      <input type="tel" name="phone" id="rsvp-phone" required autocomplete="tel" placeholder="(555) 123-4567" />
+      <input
+        type="tel"
+        name="phone"
+        id="rsvp-phone"
+        required
+        autocomplete="tel"
+        placeholder="(555) 123-4567"
+      />
     </label>
 
     <label>
       <span>Email</span>
-      <input type="email" name="email" autocomplete="email" placeholder="Optional — for email updates" />
+      <input
+        type="email"
+        name="email"
+        autocomplete="email"
+        placeholder="Optional — for email updates"
+      />
     </label>
 
     <label class="sms-label">
@@ -89,23 +102,23 @@ const { slug, eventTitle } = Astro.props;
               duration: 0.6,
               scale: 0,
               rotation: -180,
-              ease: 'back.out(1.7)'
+              ease: 'back.out(1.7)',
             });
             gsap.from('.success-text', {
               duration: 0.6,
               opacity: 0,
               y: 20,
               delay: 0.2,
-              ease: 'power3.out'
+              ease: 'power3.out',
             });
             gsap.from('.success-sub', {
               duration: 0.6,
               opacity: 0,
               y: 20,
               delay: 0.3,
-              ease: 'power3.out'
+              ease: 'power3.out',
             });
-          }
+          },
         });
       } else {
         message.className = 'rsvp-message alert alert-error';
@@ -152,18 +165,17 @@ const { slug, eventTitle } = Astro.props;
     flex-direction: row;
   }
 
-  .checkbox-row input[type="checkbox"] {
+  .checkbox-row input[type='checkbox'] {
     width: 16px;
     height: 16px;
     accent-color: var(--color-fg);
   }
 
   .checkbox-text {
-    font-size: 0.875rem !important;
-    color: var(--color-fg) !important;
-    font-weight: var(--weight-regular) !important;
-    text-transform: none !important;
-    letter-spacing: normal !important;
+    font-size: 0.875rem;
+    color: var(--color-fg);
+    font-weight: var(--weight-regular);
+    letter-spacing: normal;
   }
 
   .rsvp-message {

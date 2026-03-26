@@ -14,28 +14,43 @@ const { data: events } = await supabase
 const nextEvent = events?.[0] ?? null;
 const eventDate = nextEvent ? new Date(nextEvent.date) : null;
 ---
+
 <Base title="Stop One">
   <main class="landing">
     <div class="landing-content">
       <div class="hero-block">
         <img src="/images/wordmark.svg" alt="Stop One" class="wordmark" />
-        {eventDate ? (
-          <p class="countdown" data-target={eventDate.toISOString()}>
-            <span class="countdown-label">in</span>
-            <span id="countdown-days">0</span><span class="countdown-unit">d</span>
-            <span id="countdown-hours">0</span><span class="countdown-unit">h</span>
-            <span id="countdown-mins">0</span><span class="countdown-unit">m</span>
-          </p>
-        ) : (
-          <p class="countdown countdown-tba">Next event TBA</p>
-        )}
-      </div>
 
-      {nextEvent ? (
-        <a href={`/events/${nextEvent.slug}`} class="rsvp-link" id="rsvp-btn">
-          <span class="rsvp-text">RSVP</span>
-        </a>
-      ) : null}
+        {
+          nextEvent ? (
+            <a href={`/events/${nextEvent.slug}`} class="rsvp-link" id="rsvp-btn">
+              <span class="rsvp-text">RSVP</span>
+            </a>
+          ) : null
+        }
+
+        {
+          eventDate ? (
+            <p class="countdown" data-target={eventDate.toISOString()}>
+              <span class="countdown-label">in</span>
+              <>
+                <span id="countdown-days">0</span>
+                <span class="countdown-unit">d</span>
+              </>
+              <>
+                <span id="countdown-hours">0</span>
+                <span class="countdown-unit">h</span>
+              </>
+              <>
+                <span id="countdown-mins">0</span>
+                <span class="countdown-unit">m</span>
+              </>
+            </p>
+          ) : (
+            <p class="countdown countdown-tba">Next event TBA</p>
+          )
+        }
+      </div>
     </div>
 
     <footer class="landing-footer">
@@ -87,11 +102,14 @@ const eventDate = nextEvent ? new Date(nextEvent.date) : null;
           gsap.to(textEl, {
             duration: 0.3,
             ease: 'power2.out',
-            onStart: () => { textEl.textContent = 'RESERVE YOUR PLAY'; }
+            onStart: () => {
+              textEl.textContent = 'Reserve your play';
+            },
           });
-          gsap.fromTo(textEl,
+          gsap.fromTo(
+            textEl,
             { letterSpacing: '0.1em' },
-            { duration: 0.4, ease: 'power2.out', letterSpacing: '0.25em' }
+            { duration: 0.4, ease: 'power2.out', letterSpacing: '0.25em' },
           );
         });
         rsvpBtn.addEventListener('mouseleave', () => {
@@ -99,17 +117,35 @@ const eventDate = nextEvent ? new Date(nextEvent.date) : null;
             duration: 0.2,
             ease: 'power2.in',
             letterSpacing: '0.1em',
-            onComplete: () => { textEl.textContent = 'RSVP'; }
+            onComplete: () => {
+              textEl.textContent = 'RSVP';
+            }, // RSVP is an acronym, stays uppercase
           });
         });
       }
     }
 
     // Entrance animations — explicit start/end to avoid ViewTransition opacity conflicts
-    gsap.fromTo('.wordmark', { opacity: 0, scale: 0.95 }, { duration: 1, opacity: 1, scale: 1, ease: 'power3.out' });
-    gsap.fromTo('.countdown', { opacity: 0 }, { duration: 0.6, opacity: 1, delay: 0.4, ease: 'power2.out' });
-    gsap.fromTo('.rsvp-link', { opacity: 0, y: 20 }, { duration: 0.8, opacity: 1, y: 0, delay: 0.6, ease: 'power3.out' });
-    gsap.fromTo('.landing-footer', { opacity: 0 }, { duration: 0.6, opacity: 0.3, delay: 0.8, ease: 'power2.out' });
+    gsap.fromTo(
+      '.wordmark',
+      { opacity: 0, scale: 0.95 },
+      { duration: 1, opacity: 1, scale: 1, ease: 'power3.out' },
+    );
+    gsap.fromTo(
+      '.countdown',
+      { opacity: 0 },
+      { duration: 0.6, opacity: 1, delay: 0.4, ease: 'power2.out' },
+    );
+    gsap.fromTo(
+      '.rsvp-link',
+      { opacity: 0, y: 20 },
+      { duration: 0.8, opacity: 1, y: 0, delay: 0.6, ease: 'power3.out' },
+    );
+    gsap.fromTo(
+      '.landing-footer',
+      { opacity: 0 },
+      { duration: 0.6, opacity: 0.3, delay: 0.8, ease: 'power2.out' },
+    );
   });
 </script>
 
@@ -127,7 +163,6 @@ const eventDate = nextEvent ? new Date(nextEvent.date) : null;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: var(--space-3xl);
     text-align: center;
     flex: 1;
     justify-content: center;
@@ -137,7 +172,7 @@ const eventDate = nextEvent ? new Date(nextEvent.date) : null;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: var(--space-sm);
+    gap: var(--space-md);
   }
 
   .wordmark {
@@ -146,12 +181,14 @@ const eventDate = nextEvent ? new Date(nextEvent.date) : null;
   }
 
   @media (min-width: 768px) {
-    .wordmark { height: 13rem; }
+    .wordmark {
+      height: 13rem;
+    }
   }
 
   .countdown {
     font-size: 0.8125rem;
-    font-weight: var(--weight-regular);
+    font-weight: var(--weight-medium);
     letter-spacing: 0.15em;
     color: var(--color-muted);
   }
@@ -205,6 +242,5 @@ const eventDate = nextEvent ? new Date(nextEvent.date) : null;
     font-size: 0.75rem;
     text-decoration: none;
     letter-spacing: var(--tracking-wide);
-    text-transform: uppercase;
   }
 </style>

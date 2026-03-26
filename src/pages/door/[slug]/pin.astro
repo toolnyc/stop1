@@ -20,6 +20,7 @@ if (error || !event) {
 
 const pinError = Astro.url.searchParams.get('error');
 ---
+
 <Base title={`Door — ${event.title}`}>
   <main class="pin-page dark-ctx">
     <div class="pin-card">
@@ -76,7 +77,6 @@ const pinError = Astro.url.searchParams.get('error');
     color: var(--color-muted);
     margin-top: calc(-1 * var(--space-sm));
     font-size: 0.75rem;
-    text-transform: uppercase;
     letter-spacing: var(--tracking-wide);
   }
 
