@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 // Get next upcoming published event
 const { data: events } = await supabase
   .from('events')
-  .select('title, slug, date')
+  .select('title, slug, date, time_end, flyer_url, venue_name, venue_address, description')
   .eq('status', 'published')
   .gte('date', new Date().toISOString())
   .order('date', { ascending: true })
@@ -13,59 +13,312 @@ const { data: events } = await supabase
 
 const nextEvent = events?.[0] ?? null;
 const eventDate = nextEvent ? new Date(nextEvent.date) : null;
+
+// Format event details for the info modal
+const dateFormatted = eventDate
+  ? eventDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+  : null;
+const timeFormatted = eventDate
+  ? eventDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  : null;
+const timeEnd = nextEvent?.time_end
+  ? new Date(nextEvent.time_end).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  : null;
 ---
 
 <Base title="Stop One">
   <main class="landing">
     <div class="landing-content">
-      <div class="hero-block">
-        <img src="/images/wordmark.svg" alt="Stop One" class="wordmark" />
+      {
+        nextEvent?.flyer_url ? (
+          <div class="flyer-scene" id="flyer-scene">
+            <div class="flyer-card" id="flyer-card">
+              <div class="flyer-shine" id="flyer-shine" />
+              <img
+                src={nextEvent.flyer_url}
+                alt={`${nextEvent.title} flyer`}
+                class="flyer-img"
+                loading="eager"
+                draggable="false"
+              />
+            </div>
+          </div>
+        ) : (
+          <img src="/images/wordmark.svg" alt="Stop One" class="wordmark" />
+        )
+      }
 
-        {
-          nextEvent ? (
-            <a href={`/events/${nextEvent.slug}`} class="rsvp-link" id="rsvp-btn">
-              <span class="rsvp-text">RSVP</span>
+      {
+        eventDate ? (
+          <p class="countdown" data-target={eventDate.toISOString()}>
+            <span class="countdown-label">in</span>
+            <>
+              <span id="countdown-days">0</span>
+              <span class="countdown-unit">d</span>
+            </>
+            <>
+              <span id="countdown-hours">0</span>
+              <span class="countdown-unit">h</span>
+            </>
+            <>
+              <span id="countdown-mins">0</span>
+              <span class="countdown-unit">m</span>
+            </>
+          </p>
+        ) : (
+          <p class="countdown countdown-tba">Next event TBA</p>
+        )
+      }
+
+      {
+        nextEvent ? (
+          <div class="actions">
+            <a href={`/events/${nextEvent.slug}`} class="action-btn">
+              RSVP
             </a>
-          ) : null
-        }
-
-        {
-          eventDate ? (
-            <p class="countdown" data-target={eventDate.toISOString()}>
-              <span class="countdown-label">in</span>
-              <>
-                <span id="countdown-days">0</span>
-                <span class="countdown-unit">d</span>
-              </>
-              <>
-                <span id="countdown-hours">0</span>
-                <span class="countdown-unit">h</span>
-              </>
-              <>
-                <span id="countdown-mins">0</span>
-                <span class="countdown-unit">m</span>
-              </>
-            </p>
-          ) : (
-            <p class="countdown countdown-tba">Next event TBA</p>
-          )
-        }
-      </div>
+            <button type="button" class="action-btn" id="info-btn">
+              Info
+            </button>
+          </div>
+        ) : null
+      }
     </div>
 
-    <footer class="landing-footer">
-      <a href="/admin/login" class="admin-link">Admin</a>
+    <footer class="landing-footer dark-ctx" id="footer-bar">
+      <div class="footer-slot" id="footer-slot">
+        <span class="footer-item footer-text" data-idx="0">your first</span>
+        <span class="footer-item footer-text" data-idx="1" style="display:none;">your last</span>
+        <span class="footer-item footer-text" data-idx="2" style="display:none;">your only</span>
+        <img
+          class="footer-item footer-logo"
+          data-idx="3"
+          src="/images/wordmark.svg"
+          alt="Stop One"
+          style="display:none;"
+        />
+      </div>
     </footer>
+
+    {/* Info modal */}
+    {
+      nextEvent && (
+        <div class="modal-backdrop" id="info-modal" aria-hidden="true">
+          <div class="modal-sheet" role="dialog" aria-label="Event info">
+            <button type="button" class="modal-close" id="modal-close" aria-label="Close">
+              &times;
+            </button>
+            <div class="modal-body">
+              <h2 class="modal-title">{nextEvent.title}</h2>
+              {dateFormatted && <p class="modal-detail">{dateFormatted}</p>}
+              {timeFormatted && (
+                <p class="modal-detail">
+                  {timeFormatted}
+                  {timeEnd ? ` \u2013 ${timeEnd}` : ''}
+                </p>
+              )}
+              {nextEvent.venue_name && <p class="modal-detail">{nextEvent.venue_name}</p>}
+              {nextEvent.venue_address && (
+                <p class="modal-detail modal-detail-muted">{nextEvent.venue_address}</p>
+              )}
+              {nextEvent.description && <p class="modal-desc">{nextEvent.description}</p>}
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    {/* Menu overlay with login */}
+    <div class="menu-overlay" id="menu-overlay" aria-hidden="true">
+      <button type="button" class="menu-close" id="menu-close" aria-label="Close">&times;</button>
+      <div class="menu-content">
+        <form method="POST" action="/api/admin/login" class="menu-login">
+          <label>
+            <span>Email</span>
+            <input
+              type="email"
+              name="email"
+              required
+              autocomplete="email"
+              placeholder="you@example.com"
+            />
+          </label>
+          <label>
+            <span>Password</span>
+            <input type="password" name="password" required autocomplete="current-password" />
+          </label>
+          <button type="submit" class="btn btn-primary btn-block">Sign in</button>
+        </form>
+      </div>
+    </div>
   </main>
 </Base>
 
 <script>
   import gsap from 'gsap';
 
-  document.addEventListener('astro:page-load', () => {
-    gsap.killTweensOf('.wordmark, .countdown, .rsvp-link, .landing-footer');
+  // Module-level state so cleanup works across navigations
+  let _rafId: number | null = null;
+  let _handleOrientation: ((e: DeviceOrientationEvent) => void) | null = null;
+  let _countdownInterval: ReturnType<typeof setInterval> | null = null;
+  let _phraseInterval: ReturnType<typeof setInterval> | null = null;
 
-    // Countdown timer
+  function cleanup() {
+    if (_rafId) {
+      cancelAnimationFrame(_rafId);
+      _rafId = null;
+    }
+    if (_handleOrientation) {
+      window.removeEventListener('deviceorientation', _handleOrientation);
+      _handleOrientation = null;
+    }
+    if (_countdownInterval) {
+      clearInterval(_countdownInterval);
+      _countdownInterval = null;
+    }
+    if (_phraseInterval) {
+      clearInterval(_phraseInterval);
+      _phraseInterval = null;
+    }
+  }
+
+  document.addEventListener('astro:before-swap', cleanup);
+
+  document.addEventListener('astro:page-load', () => {
+    cleanup();
+    gsap.killTweensOf(
+      '.flyer-card, .wordmark, .countdown, .actions, .landing-footer, .modal-backdrop, .modal-sheet, .menu-overlay, .menu-content, .footer-text, .footer-logo',
+    );
+
+    // --- Nuclear reset: strip ALL inline styles from every element in main ---
+    // View transitions cache DOM with stale GSAP inline styles.
+    // Instead of tracking each element individually, wipe everything.
+    document.querySelectorAll<HTMLElement>('main *').forEach((el) => {
+      if (el.style.length > 0) el.removeAttribute('style');
+    });
+
+    // Re-apply the initial display:none states that the server renders
+    const hiddenByDefault = ['#info-modal', '#menu-overlay'];
+    hiddenByDefault.forEach((sel) => {
+      const el = document.querySelector<HTMLElement>(sel);
+      if (el) el.setAttribute('aria-hidden', 'true');
+    });
+
+    // Footer items: show first, hide rest
+    document.querySelectorAll<HTMLElement>('.footer-item').forEach((el, i) => {
+      if (i > 0) el.style.display = 'none';
+    });
+
+    // Grab refs we need below
+    const card = document.getElementById('flyer-card');
+    const shine = document.getElementById('flyer-shine');
+    const modal = document.getElementById('info-modal');
+    const modalSheet = modal?.querySelector('.modal-sheet') as HTMLElement | null;
+    const menuOverlay = document.getElementById('menu-overlay');
+    const menuContent = menuOverlay?.querySelector('.menu-content') as HTMLElement | null;
+
+    // --- Interactive flyer card ---
+    const scene = document.getElementById('flyer-scene');
+
+    if (scene && card && shine) {
+      const MAX_TILT = 15;
+      let gyroActive = false;
+      let currentRotateX = 0;
+      let currentRotateY = 0;
+      let targetRotateX = 0;
+      let targetRotateY = 0;
+
+      function lerp(a: number, b: number, t: number) {
+        return a + (b - a) * t;
+      }
+
+      function updateCard() {
+        currentRotateX = lerp(currentRotateX, targetRotateX, 0.08);
+        currentRotateY = lerp(currentRotateY, targetRotateY, 0.08);
+
+        card.style.transform = `perspective(800px) rotateX(${currentRotateX}deg) rotateY(${currentRotateY}deg)`;
+
+        const shineX = 50 + (currentRotateY / MAX_TILT) * 40;
+        const shineY = 50 - (currentRotateX / MAX_TILT) * 40;
+        shine.style.background = `radial-gradient(circle at ${shineX}% ${shineY}%, rgba(255,255,255,0.18) 0%, transparent 60%)`;
+
+        _rafId = requestAnimationFrame(updateCard);
+      }
+
+      _rafId = requestAnimationFrame(updateCard);
+
+      function handleOrientation(e: DeviceOrientationEvent) {
+        if (e.gamma === null || e.beta === null) return;
+        gyroActive = true;
+        targetRotateY = Math.max(-MAX_TILT, Math.min(MAX_TILT, e.gamma * 0.4));
+        targetRotateX = Math.max(-MAX_TILT, Math.min(MAX_TILT, (e.beta - 45) * -0.3));
+      }
+      _handleOrientation = handleOrientation;
+
+      if (
+        typeof DeviceOrientationEvent !== 'undefined' &&
+        typeof (DeviceOrientationEvent as unknown as { requestPermission?: () => Promise<string> })
+          .requestPermission === 'function'
+      ) {
+        scene.addEventListener(
+          'click',
+          async () => {
+            if (gyroActive) return;
+            try {
+              const permission = await (
+                DeviceOrientationEvent as unknown as { requestPermission: () => Promise<string> }
+              ).requestPermission();
+              if (permission === 'granted') {
+                window.addEventListener('deviceorientation', handleOrientation);
+              }
+            } catch {
+              /* user denied */
+            }
+          },
+          { once: true },
+        );
+      } else {
+        window.addEventListener('deviceorientation', handleOrientation);
+      }
+
+      scene.addEventListener(
+        'touchmove',
+        (e) => {
+          if (gyroActive) return;
+          const touch = e.touches[0];
+          const rect = scene.getBoundingClientRect();
+          const centerX = rect.left + rect.width / 2;
+          const centerY = rect.top + rect.height / 2;
+          const x = (touch.clientX - centerX) / (rect.width / 2);
+          const y = (touch.clientY - centerY) / (rect.height / 2);
+          targetRotateY = x * MAX_TILT;
+          targetRotateX = -y * MAX_TILT;
+        },
+        { passive: true },
+      );
+
+      scene.addEventListener('touchend', () => {
+        if (gyroActive) return;
+        targetRotateX = 0;
+        targetRotateY = 0;
+      });
+
+      scene.addEventListener('mousemove', (e) => {
+        const rect = scene.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        const x = (e.clientX - centerX) / (rect.width / 2);
+        const y = (e.clientY - centerY) / (rect.height / 2);
+        targetRotateY = x * MAX_TILT;
+        targetRotateX = -y * MAX_TILT;
+      });
+
+      scene.addEventListener('mouseleave', () => {
+        targetRotateX = 0;
+        targetRotateY = 0;
+      });
+    }
+
+    // --- Countdown timer ---
     const countdownEl = document.querySelector('.countdown');
     if (countdownEl && countdownEl.hasAttribute('data-target')) {
       const target = new Date(countdownEl.getAttribute('data-target')!);
@@ -90,42 +343,128 @@ const eventDate = nextEvent ? new Date(nextEvent.date) : null;
         if (minsEl) minsEl.textContent = String(mins);
       }
       updateCountdown();
-      setInterval(updateCountdown, 60000);
+      _countdownInterval = setInterval(updateCountdown, 60000);
     }
 
-    // RSVP hover animation
-    const rsvpBtn = document.getElementById('rsvp-btn');
-    if (rsvpBtn) {
-      const textEl = rsvpBtn.querySelector('.rsvp-text');
-      if (textEl) {
-        rsvpBtn.addEventListener('mouseenter', () => {
-          gsap.to(textEl, {
-            duration: 0.3,
-            ease: 'power2.out',
-            onStart: () => {
-              textEl.textContent = 'Reserve your play';
-            },
-          });
-          gsap.fromTo(
-            textEl,
-            { letterSpacing: '0.1em' },
-            { duration: 0.4, ease: 'power2.out', letterSpacing: '0.25em' },
-          );
-        });
-        rsvpBtn.addEventListener('mouseleave', () => {
-          gsap.to(textEl, {
-            duration: 0.2,
-            ease: 'power2.in',
-            letterSpacing: '0.1em',
-            onComplete: () => {
-              textEl.textContent = 'RSVP';
-            }, // RSVP is an acronym, stays uppercase
-          });
+    // --- Footer rotation: text phrases + wordmark as peers ---
+    const footerItems = document.querySelectorAll<HTMLElement>('.footer-item');
+    if (footerItems.length > 0) {
+      let activeIdx = 0;
+
+      function rotateFooter() {
+        const current = footerItems[activeIdx];
+        const nextIdx = (activeIdx + 1) % footerItems.length;
+        const next = footerItems[nextIdx];
+
+        gsap.to(current, {
+          duration: 0.3,
+          opacity: 0,
+          y: -10,
+          ease: 'power2.in',
+          onComplete: () => {
+            current.style.display = 'none';
+            next.style.display = '';
+            gsap.fromTo(
+              next,
+              { opacity: 0, y: 10 },
+              { duration: 0.3, opacity: 1, y: 0, ease: 'power2.out' },
+            );
+            activeIdx = nextIdx;
+          },
         });
       }
+
+      _phraseInterval = setInterval(rotateFooter, 2200);
     }
 
-    // Entrance animations — explicit start/end to avoid ViewTransition opacity conflicts
+    // --- Info modal ---
+    const infoBtn = document.getElementById('info-btn');
+    const modalClose = document.getElementById('modal-close');
+
+    if (infoBtn && modal && modalClose && modalSheet) {
+      function openModal() {
+        modal.setAttribute('aria-hidden', 'false');
+        modal.style.display = 'flex';
+        gsap.fromTo(modal, { opacity: 0 }, { duration: 0.25, opacity: 1, ease: 'power2.out' });
+        gsap.fromTo(
+          modalSheet,
+          { y: 40, opacity: 0 },
+          { duration: 0.35, y: 0, opacity: 1, ease: 'power3.out', delay: 0.05 },
+        );
+      }
+
+      function closeModal() {
+        gsap.to(modal, {
+          duration: 0.2,
+          opacity: 0,
+          ease: 'power2.in',
+          onComplete: () => {
+            modal.style.display = 'none';
+            modal.setAttribute('aria-hidden', 'true');
+          },
+        });
+      }
+
+      infoBtn.addEventListener('click', openModal);
+      modalClose.addEventListener('click', closeModal);
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.getAttribute('aria-hidden') === 'false') closeModal();
+      });
+    }
+
+    // --- Menu overlay (footer tap) ---
+    const footerBar = document.getElementById('footer-bar');
+    const menuClose = document.getElementById('menu-close');
+
+    if (footerBar && menuOverlay && menuContent && menuClose) {
+      function openMenu() {
+        menuOverlay.setAttribute('aria-hidden', 'false');
+        menuOverlay.style.display = 'flex';
+        gsap.fromTo(menuOverlay, { opacity: 0 }, { duration: 0.3, opacity: 1, ease: 'power2.out' });
+        gsap.fromTo(
+          menuContent,
+          { y: '100%' },
+          { duration: 0.4, y: '0%', ease: 'power3.out', delay: 0.05 },
+        );
+      }
+
+      function closeMenu() {
+        gsap.to(menuContent, {
+          duration: 0.3,
+          y: '100%',
+          ease: 'power2.in',
+        });
+        gsap.to(menuOverlay, {
+          duration: 0.25,
+          opacity: 0,
+          delay: 0.1,
+          ease: 'power2.in',
+          onComplete: () => {
+            menuOverlay.style.display = 'none';
+            menuOverlay.setAttribute('aria-hidden', 'true');
+          },
+        });
+      }
+
+      footerBar.addEventListener('click', openMenu);
+      menuClose.addEventListener('click', closeMenu);
+      menuOverlay.addEventListener('click', (e) => {
+        if (e.target === menuOverlay) closeMenu();
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && menuOverlay.getAttribute('aria-hidden') === 'false') closeMenu();
+      });
+    }
+
+    // --- Entrance animations ---
+    gsap.fromTo(
+      '.flyer-card',
+      { opacity: 0, scale: 0.9 },
+      { duration: 1, opacity: 1, scale: 1, ease: 'power3.out' },
+    );
     gsap.fromTo(
       '.wordmark',
       { opacity: 0, scale: 0.95 },
@@ -134,17 +473,17 @@ const eventDate = nextEvent ? new Date(nextEvent.date) : null;
     gsap.fromTo(
       '.countdown',
       { opacity: 0 },
-      { duration: 0.6, opacity: 1, delay: 0.4, ease: 'power2.out' },
+      { duration: 0.6, opacity: 1, delay: 0.5, ease: 'power2.out' },
     );
     gsap.fromTo(
-      '.rsvp-link',
-      { opacity: 0, y: 20 },
-      { duration: 0.8, opacity: 1, y: 0, delay: 0.6, ease: 'power3.out' },
+      '.actions',
+      { opacity: 0 },
+      { duration: 0.6, opacity: 1, delay: 0.7, ease: 'power2.out' },
     );
     gsap.fromTo(
       '.landing-footer',
       { opacity: 0 },
-      { duration: 0.6, opacity: 0.3, delay: 0.8, ease: 'power2.out' },
+      { duration: 0.6, opacity: 1, delay: 0.9, ease: 'power2.out' },
     );
   });
 </script>
@@ -156,7 +495,8 @@ const eventDate = nextEvent ? new Date(nextEvent.date) : null;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: var(--space-xl) var(--space-lg);
+    padding: var(--space-xl) var(--space-lg) 0;
+    overflow-x: hidden;
   }
 
   .landing-content {
@@ -166,15 +506,61 @@ const eventDate = nextEvent ? new Date(nextEvent.date) : null;
     text-align: center;
     flex: 1;
     justify-content: center;
+    gap: var(--space-lg);
   }
 
-  .hero-block {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-md);
+  /* ---- Interactive flyer card ---- */
+  .flyer-scene {
+    perspective: 800px;
+    width: 100%;
+    max-width: 340px;
+    cursor: grab;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
   }
 
+  @media (min-width: 768px) {
+    .flyer-scene {
+      max-width: 400px;
+    }
+  }
+
+  .flyer-card {
+    position: relative;
+    width: 100%;
+    transform-style: preserve-3d;
+    will-change: transform;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow:
+      0 8px 30px rgba(0, 0, 0, 0.2),
+      0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: box-shadow 0.3s ease;
+  }
+
+  .flyer-card:hover {
+    box-shadow:
+      0 16px 50px rgba(0, 0, 0, 0.3),
+      0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  .flyer-shine {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    border-radius: inherit;
+  }
+
+  .flyer-img {
+    display: block;
+    width: 100%;
+    height: auto;
+    pointer-events: none;
+  }
+
+  /* ---- Wordmark fallback (no flyer) ---- */
   .wordmark {
     height: 10rem;
     width: auto;
@@ -186,61 +572,255 @@ const eventDate = nextEvent ? new Date(nextEvent.date) : null;
     }
   }
 
+  /* ---- Countdown ---- */
   .countdown {
-    font-size: 0.8125rem;
-    font-weight: var(--weight-medium);
-    letter-spacing: 0.15em;
-    color: var(--color-muted);
+    font-size: 1rem;
+    font-weight: var(--weight-regular);
+    letter-spacing: -0.01em;
+    color: #231e19;
+    font-variant-numeric: tabular-nums;
   }
 
   .countdown-label {
-    margin-right: 0.25em;
+    margin-right: 0.15em;
   }
 
   .countdown-unit {
-    margin-right: 0.4em;
-    opacity: 0.5;
+    margin-right: 0.2em;
+    opacity: 0.35;
+    font-size: 0.75em;
   }
 
   .countdown-tba {
     opacity: 0.5;
+    letter-spacing: -0.01em;
   }
 
-  .rsvp-link {
-    font-size: 1rem;
-    font-weight: var(--weight-bold);
+  /* ---- Action buttons ---- */
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+  }
+
+  .action-btn {
+    font-size: 1.125rem;
+    font-weight: var(--weight-medium);
+    letter-spacing: -0.01em;
     text-decoration: none;
-    letter-spacing: 0.1em;
-    padding: var(--space-sm) var(--space-xl);
-    border: 2px solid var(--color-fg);
-    background: var(--color-fg);
-    color: var(--color-bg);
-    transition: all 0.2s ease;
+    color: #231e19;
+    background: none;
+    border: 1.5px solid #231e19;
+    cursor: pointer;
+    padding: 10px 28px;
+    font-family: inherit;
+    text-transform: lowercase;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+      background 0.2s ease,
+      color 0.2s ease,
+      transform 0.15s ease,
+      box-shadow 0.2s ease;
   }
 
-  .rsvp-link:hover {
-    background: transparent;
-    color: var(--color-fg);
+  .action-btn:hover {
+    background: #231e19;
+    color: #f5f3f0;
+    opacity: 1;
+    box-shadow: 0 4px 16px rgba(35, 30, 25, 0.2);
+  }
+
+  .action-btn:active {
+    transform: scale(0.96);
     opacity: 1;
   }
 
-  .rsvp-text {
-    display: inline-block;
+  @media (hover: none) {
+    .action-btn:active {
+      background: #231e19;
+      color: #f5f3f0;
+      box-shadow: 0 4px 16px rgba(35, 30, 25, 0.2);
+    }
   }
 
+  /* ---- Footer bar ---- */
   .landing-footer {
-    padding-top: var(--space-xl);
-    opacity: 0.3;
-    transition: opacity var(--transition);
+    width: 100vw;
+    margin-left: calc(-50vw + 50%);
+    padding: var(--space-sm) var(--space-md);
+    background: #231e19;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: opacity 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .landing-footer:hover {
-    opacity: 0.7;
+    opacity: 0.8;
   }
 
-  .admin-link {
-    font-size: 0.75rem;
-    text-decoration: none;
-    letter-spacing: var(--tracking-wide);
+  .footer-slot {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 3.5rem;
+  }
+
+  .footer-text {
+    font-size: 1.25rem;
+    letter-spacing: -0.01em;
+    color: #f5f3f0;
+    font-weight: var(--weight-regular);
+    text-transform: lowercase;
+  }
+
+  .footer-logo {
+    height: 3.5rem;
+    width: auto;
+    filter: invert(1);
+  }
+
+  @media (min-width: 768px) {
+    .footer-text {
+      font-size: 1.5rem;
+    }
+
+    .footer-logo {
+      height: 3.5rem;
+    }
+  }
+
+  /* ---- Info modal ---- */
+  .modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-overlay);
+    background: rgba(35, 30, 25, 0.55);
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-md);
+  }
+
+  .modal-sheet {
+    position: relative;
+    background: var(--color-bg);
+    width: calc(100% - var(--space-md));
+    max-width: 360px;
+    padding: var(--space-2xl) var(--space-xl);
+    border-radius: 6px;
+    box-shadow: 0 16px 48px rgba(35, 30, 25, 0.25);
+  }
+
+  .modal-close {
+    position: absolute;
+    top: var(--space-sm);
+    right: var(--space-sm);
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--color-muted);
+    cursor: pointer;
+    padding: 8px;
+    line-height: 1;
+    font-family: inherit;
+    transition: color 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .modal-close:hover {
+    color: var(--color-fg);
+  }
+
+  .modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+  }
+
+  .modal-title {
+    font-size: 1.125rem;
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-tight);
+    margin-bottom: var(--space-xs);
+  }
+
+  .modal-detail {
+    font-size: 0.9375rem;
+    color: var(--color-fg);
+    line-height: var(--leading-normal);
+  }
+
+  .modal-detail-muted {
+    color: var(--color-muted);
+    font-size: 0.875rem;
+  }
+
+  .modal-desc {
+    font-size: 0.9375rem;
+    color: var(--color-muted);
+    line-height: var(--leading-relaxed);
+    margin-top: var(--space-sm);
+  }
+
+  /* ---- Menu overlay ---- */
+  .menu-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-overlay);
+    background: rgba(0, 0, 0, 0.6);
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+
+  .menu-close {
+    position: absolute;
+    top: var(--space-lg);
+    right: var(--space-lg);
+    background: none;
+    border: none;
+    font-size: 2rem;
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    padding: 4px;
+    line-height: 1;
+    font-family: inherit;
+    transition: color 0.15s ease;
+    z-index: 1;
+  }
+
+  .menu-close:hover {
+    color: #fff;
+  }
+
+  .menu-content {
+    background: var(--color-bg);
+    padding: var(--space-3xl) var(--space-xl) var(--space-4xl);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    will-change: transform;
+  }
+
+  .menu-login {
+    width: 100%;
+    max-width: 340px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+  }
+
+  @media (max-width: 767px) {
+    .menu-content {
+      padding: var(--space-2xl) var(--space-md) var(--space-3xl);
+    }
+
+    .menu-login input {
+      font-size: 1rem;
+      padding: 14px var(--space-sm);
+    }
   }
 </style>

@@ -32,24 +32,8 @@ const timeEnd = event.time_end
 
 <Base title={`${event.title} — Stop One`} description={`RSVP for ${event.title}`}>
   <main class="event-page">
-    <a href="/" class="back-link">
-      <img src="/images/wordmark.svg" alt="Stop One" class="back-logo" />
-    </a>
+    <a href="/" class="back-btn" aria-label="Back to home">&larr;</a>
 
-    {
-      event.flyer_url && (
-        <div class="flyer-container">
-          <img
-            src={event.flyer_url}
-            alt={`${event.title} flyer`}
-            class="event-flyer"
-            loading="eager"
-          />
-        </div>
-      )
-    }
-
-    <!-- Multi-step RSVP form -->
     <div class="rsvp-section" id="rsvp-section">
       <form id="rsvp-form" method="POST" action={`/api/rsvp/${slug}`}>
         <!-- Step 1: Name -->
@@ -115,17 +99,46 @@ const timeEnd = event.time_end
   import gsap from 'gsap';
 
   document.addEventListener('astro:page-load', () => {
-    const step1 = document.getElementById('step-1')!;
-    const step2 = document.getElementById('step-2')!;
-    const step3 = document.getElementById('step-3')!;
-    const next1 = document.getElementById('next-1')!;
-    const next2 = document.getElementById('next-2')!;
-    const nameInput = document.getElementById('input-name') as HTMLInputElement;
-    const phoneInput = document.getElementById('input-phone') as HTMLInputElement;
-    const message = document.getElementById('rsvp-message')!;
-    const submitBtn = document.getElementById('rsvp-submit') as HTMLButtonElement;
+    const step1 = document.getElementById('step-1');
+    const step2 = document.getElementById('step-2');
+    const step3 = document.getElementById('step-3');
+    const next1 = document.getElementById('next-1');
+    const next2 = document.getElementById('next-2');
+    const nameInput = document.getElementById('input-name') as HTMLInputElement | null;
+    const phoneInput = document.getElementById('input-phone') as HTMLInputElement | null;
+    const message = document.getElementById('rsvp-message');
+    const submitBtn = document.getElementById('rsvp-submit') as HTMLButtonElement | null;
+    const rsvpSection = document.getElementById('rsvp-section');
 
-    if (!step1) return;
+    if (
+      !step1 ||
+      !step2 ||
+      !step3 ||
+      !next1 ||
+      !next2 ||
+      !nameInput ||
+      !phoneInput ||
+      !message ||
+      !submitBtn
+    )
+      return;
+
+    // Nuclear reset: strip all inline styles from everything in main,
+    // then re-apply the server-rendered initial states.
+    gsap.killTweensOf('main *');
+    document.querySelectorAll<HTMLElement>('main *').forEach((el) => {
+      if (el.style.length > 0) el.removeAttribute('style');
+    });
+
+    // Re-apply initial display states
+    step1.style.display = 'flex';
+    step2.style.display = 'none';
+    step3.style.display = 'none';
+    message.style.display = 'none';
+    message.className = 'rsvp-message';
+    message.innerHTML = '';
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Get on the list';
 
     function transitionStep(outEl: HTMLElement, inEl: HTMLElement, focusEl?: HTMLElement) {
       gsap.to(outEl, {
@@ -250,57 +263,52 @@ const timeEnd = event.time_end
       }
     });
 
-    // Entrance animations — explicit start/end to avoid ViewTransition opacity conflicts
-    gsap.fromTo(
-      '.flyer-container',
-      { opacity: 0 },
-      { duration: 0.8, opacity: 1, ease: 'power2.out' },
-    );
-    gsap.fromTo(
-      '.rsvp-section',
-      { opacity: 0, y: 20 },
-      { duration: 0.8, opacity: 1, y: 0, delay: 0.2, ease: 'power3.out' },
-    );
+    // Entrance animation
+    if (rsvpSection) {
+      gsap.fromTo(
+        rsvpSection,
+        { opacity: 0, y: 20 },
+        { duration: 0.8, opacity: 1, y: 0, delay: 0.1, ease: 'power3.out' },
+      );
+    }
   });
 </script>
 
 <style>
   .event-page {
-    max-width: 560px;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-xl) var(--space-lg);
+    max-width: 400px;
     margin: 0 auto;
-    padding: var(--space-lg) var(--space-md) var(--space-4xl);
   }
 
-  .back-link {
+  .back-btn {
+    position: absolute;
+    top: var(--space-lg);
+    left: var(--space-lg);
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     text-decoration: none;
-    margin-bottom: var(--space-lg);
-    opacity: 0.5;
-    transition: opacity var(--transition);
+    font-size: 1.25rem;
+    color: var(--color-muted);
+    width: 40px;
+    height: 40px;
+    transition: color 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
   }
 
-  .back-link:hover {
+  .back-btn:hover {
+    color: var(--color-fg);
     opacity: 1;
   }
 
-  .back-logo {
-    height: 2rem;
-    width: auto;
-  }
-
-  .flyer-container {
-    margin-bottom: var(--space-xl);
-  }
-
-  .event-flyer {
-    width: 100%;
-    height: auto;
-  }
-
-  /* Multi-step RSVP */
   .rsvp-section {
-    padding: var(--space-lg) 0;
+    width: 100%;
     min-height: 180px;
   }
 
@@ -362,5 +370,24 @@ const timeEnd = event.time_end
   .success-sub {
     font-size: 0.875rem;
     color: var(--color-muted);
+  }
+
+  /* Mobile touch targets */
+  @media (max-width: 767px) {
+    .event-page {
+      padding: var(--space-xl) var(--space-md);
+    }
+
+    .step input[type='text'],
+    .step input[type='tel'],
+    .step input[type='email'] {
+      font-size: 1rem;
+      padding: 14px var(--space-sm);
+    }
+
+    .btn-block {
+      padding: 14px var(--space-lg);
+      font-size: 1rem;
+    }
   }
 </style>
