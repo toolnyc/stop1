@@ -26,6 +26,7 @@ function formatDatetimeLocal(dateStr: string | null) {
   return d.toISOString().slice(0, 16);
 }
 ---
+
 <Admin title={`${event.title} — Edit`}>
   <div class="edit-layout">
     <nav class="sidebar">
@@ -42,30 +43,57 @@ function formatDatetimeLocal(dateStr: string | null) {
       {error && <div class="alert alert-error">{error}</div>}
       {success && <div class="alert alert-success">{success}</div>}
 
-      <form method="POST" action={`/api/admin/events/${slug}/update`} enctype="multipart/form-data" class="event-form" id="event-form">
+      <form
+        method="POST"
+        action={`/api/admin/events/${slug}/update`}
+        enctype="multipart/form-data"
+        class="event-form"
+        id="event-form"
+      >
         <div class="flyer-section">
           <span class="field-label">Flyer</span>
           <div class="flyer-upload" id="flyer-upload">
-            {event.flyer_url ? (
-              <div class="flyer-preview" id="flyer-preview">
-                <img src={event.flyer_url} alt="Current flyer" class="flyer-thumb" id="flyer-thumb" />
-                <div class="flyer-actions">
-                  <label class="btn btn-secondary btn-sm flyer-change-btn">
-                    Replace
-                    <input type="file" name="flyer" accept="image/*" class="sr-only" id="flyer-input" />
-                  </label>
-                  <button type="button" class="btn btn-danger btn-sm" id="flyer-remove">Remove</button>
+            {
+              event.flyer_url ? (
+                <div class="flyer-preview" id="flyer-preview">
+                  <img
+                    src={event.flyer_url}
+                    alt="Current flyer"
+                    class="flyer-thumb"
+                    id="flyer-thumb"
+                  />
+                  <div class="flyer-actions">
+                    <label class="btn btn-secondary btn-sm flyer-change-btn">
+                      Replace
+                      <input
+                        type="file"
+                        name="flyer"
+                        accept="image/*"
+                        class="sr-only"
+                        id="flyer-input"
+                      />
+                    </label>
+                    <button type="button" class="btn btn-danger btn-sm" id="flyer-remove">
+                      Remove
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div class="flyer-preview" id="flyer-preview">
-                <label class="flyer-drop" id="flyer-drop">
-                  <span class="flyer-drop-text">Drop flyer image here or click to upload</span>
-                  <small>JPEG or PNG, max 5MB. Auto-compressed to ~1200px wide.</small>
-                  <input type="file" name="flyer" accept="image/*" class="sr-only" id="flyer-input" />
-                </label>
-              </div>
-            )}
+              ) : (
+                <div class="flyer-preview" id="flyer-preview">
+                  <label class="flyer-drop" id="flyer-drop">
+                    <span class="flyer-drop-text">Drop flyer image here or click to upload</span>
+                    <small>JPEG or PNG, max 5MB. Auto-compressed to ~1200px wide.</small>
+                    <input
+                      type="file"
+                      name="flyer"
+                      accept="image/*"
+                      class="sr-only"
+                      id="flyer-input"
+                    />
+                  </label>
+                </div>
+              )
+            }
           </div>
           <input type="hidden" name="remove_flyer" value="false" id="remove-flyer-flag" />
           <div id="flyer-status" class="flyer-status"></div>
@@ -85,11 +113,20 @@ function formatDatetimeLocal(dateStr: string | null) {
         <div class="form-row">
           <label>
             <span>Start Date/Time *</span>
-            <input type="datetime-local" name="date" required value={formatDatetimeLocal(event.date)} />
+            <input
+              type="datetime-local"
+              name="date"
+              required
+              value={formatDatetimeLocal(event.date)}
+            />
           </label>
           <label>
             <span>End Date/Time</span>
-            <input type="datetime-local" name="time_end" value={formatDatetimeLocal(event.time_end)} />
+            <input
+              type="datetime-local"
+              name="time_end"
+              value={formatDatetimeLocal(event.time_end)}
+            />
           </label>
         </div>
 
@@ -111,7 +148,14 @@ function formatDatetimeLocal(dateStr: string | null) {
         <div class="form-row">
           <label>
             <span>Door Price *</span>
-            <input type="number" name="door_price" min="0" step="0.01" required value={event.door_price} />
+            <input
+              type="number"
+              name="door_price"
+              min="0"
+              step="0.01"
+              required
+              value={event.door_price}
+            />
           </label>
           <label>
             <span>Capacity</span>
@@ -121,7 +165,13 @@ function formatDatetimeLocal(dateStr: string | null) {
 
         <label>
           <span>Door PIN</span>
-          <input type="text" name="door_pin" inputmode="numeric" pattern="[0-9]*" placeholder="Leave blank to keep current" />
+          <input
+            type="text"
+            name="door_pin"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            placeholder="Leave blank to keep current"
+          />
           <small>Leave blank to keep existing PIN.</small>
         </label>
 
@@ -136,13 +186,17 @@ function formatDatetimeLocal(dateStr: string | null) {
         <button type="submit" class="btn btn-primary" id="submit-btn">Save Changes</button>
       </form>
 
-      {event.status !== 'archived' && (
-        <div class="danger-zone">
-          <form method="POST" action={`/api/admin/events/${slug}/archive`}>
-            <button type="submit" class="btn btn-danger btn-sm">Archive Event</button>
-          </form>
-        </div>
-      )}
+      {
+        event.status !== 'archived' && (
+          <div class="danger-zone">
+            <form method="POST" action={`/api/admin/events/${slug}/archive`}>
+              <button type="submit" class="btn btn-danger btn-sm">
+                Archive Event
+              </button>
+            </form>
+          </div>
+        )
+      }
     </div>
   </div>
 </Admin>
@@ -185,7 +239,7 @@ function formatDatetimeLocal(dateStr: string | null) {
             resolve(compressed);
           },
           'image/jpeg',
-          JPEG_QUALITY
+          JPEG_QUALITY,
         );
       };
       img.onerror = () => reject(new Error('Failed to load image'));
@@ -286,12 +340,11 @@ function formatDatetimeLocal(dateStr: string | null) {
       e.preventDefault();
       const formData = new FormData(form);
       formData.set('flyer', compressedFile);
-      fetch(form.action, { method: 'POST', body: formData })
-        .then((res) => {
-          if (res.redirected) {
-            window.location.href = res.url;
-          }
-        });
+      fetch(form.action, { method: 'POST', body: formData }).then((res) => {
+        if (res.redirected) {
+          window.location.href = res.url;
+        }
+      });
     }
   });
 
@@ -339,7 +392,9 @@ function formatDatetimeLocal(dateStr: string | null) {
     text-decoration: none;
     font-size: 0.875rem;
     font-weight: var(--weight-medium);
-    transition: background var(--transition), color var(--transition);
+    transition:
+      background var(--transition),
+      color var(--transition);
   }
 
   .sidebar-link:hover {
@@ -377,7 +432,9 @@ function formatDatetimeLocal(dateStr: string | null) {
   }
 
   @media (max-width: 480px) {
-    .form-row { grid-template-columns: 1fr; }
+    .form-row {
+      grid-template-columns: 1fr;
+    }
   }
 
   .alert {
@@ -403,7 +460,6 @@ function formatDatetimeLocal(dateStr: string | null) {
     font-size: 0.8125rem;
     font-weight: var(--weight-medium);
     color: var(--color-muted);
-    text-transform: uppercase;
     letter-spacing: var(--tracking-wide);
   }
 
@@ -442,7 +498,9 @@ function formatDatetimeLocal(dateStr: string | null) {
     border: 2px dashed var(--color-border);
     cursor: pointer;
     text-align: center;
-    transition: border-color var(--duration-fast) ease, background var(--duration-fast) ease;
+    transition:
+      border-color var(--duration-fast) ease,
+      background var(--duration-fast) ease;
   }
 
   .flyer-drop:hover,

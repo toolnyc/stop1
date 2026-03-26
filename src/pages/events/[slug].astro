@@ -29,40 +29,26 @@ const timeEnd = event.time_end
   ? new Date(event.time_end).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
   : null;
 ---
+
 <Base title={`${event.title} — Stop One`} description={`RSVP for ${event.title}`}>
   <main class="event-page">
-    <a href="/" class="back-link">
-      <img src="/images/wordmark.svg" alt="Stop One" class="back-logo" />
-    </a>
+    <a href="/" class="back-btn" aria-label="Back to home">&larr;</a>
 
-    {event.flyer_url && (
-      <div class="flyer-container">
-        <img src={event.flyer_url} alt={`${event.title} flyer`} class="event-flyer" loading="eager" />
-      </div>
-    )}
-
-    <div class="event-info">
-      <h1 class="event-title">{event.title}</h1>
-      <p class="event-meta">
-        {dateFormatted} &middot; {timeFormatted}{timeEnd ? ` – ${timeEnd}` : ''}
-        {event.venue_name && <> &middot; {event.venue_name}</>}
-      </p>
-      {Number(event.door_price) > 0 && (
-        <p class="event-price">${Number(event.door_price)} at the door</p>
-      )}
-      {event.description && (
-        <p class="event-description">{event.description}</p>
-      )}
-    </div>
-
-    <!-- Multi-step RSVP form -->
     <div class="rsvp-section" id="rsvp-section">
       <form id="rsvp-form" method="POST" action={`/api/rsvp/${slug}`}>
         <!-- Step 1: Name -->
         <div class="step" id="step-1">
           <label>
             <span>Your name</span>
-            <input type="text" name="name" id="input-name" required autocomplete="name" placeholder="First Last" autofocus />
+            <input
+              type="text"
+              name="name"
+              id="input-name"
+              required
+              autocomplete="name"
+              placeholder="First Last"
+              autofocus
+            />
           </label>
           <button type="button" class="btn btn-primary btn-block" id="next-1">Next</button>
         </div>
@@ -71,7 +57,14 @@ const timeEnd = event.time_end
         <div class="step" id="step-2" style="display:none;">
           <label>
             <span>Phone number</span>
-            <input type="tel" name="phone" id="input-phone" required autocomplete="tel" placeholder="(555) 123-4567" />
+            <input
+              type="tel"
+              name="phone"
+              id="input-phone"
+              required
+              autocomplete="tel"
+              placeholder="(555) 123-4567"
+            />
           </label>
           <label>
             <span>Email (optional)</span>
@@ -91,7 +84,9 @@ const timeEnd = event.time_end
             </label>
             <p class="sms-note">We'll only text you about upcoming events. No spam.</p>
           </div>
-          <button type="submit" class="btn btn-primary btn-block" id="rsvp-submit">Get on the list</button>
+          <button type="submit" class="btn btn-primary btn-block" id="rsvp-submit"
+            >Get on the list</button
+          >
         </div>
       </form>
 
@@ -104,177 +99,216 @@ const timeEnd = event.time_end
   import gsap from 'gsap';
 
   document.addEventListener('astro:page-load', () => {
-  const step1 = document.getElementById('step-1')!;
-  const step2 = document.getElementById('step-2')!;
-  const step3 = document.getElementById('step-3')!;
-  const next1 = document.getElementById('next-1')!;
-  const next2 = document.getElementById('next-2')!;
-  const nameInput = document.getElementById('input-name') as HTMLInputElement;
-  const phoneInput = document.getElementById('input-phone') as HTMLInputElement;
-  const message = document.getElementById('rsvp-message')!;
-  const submitBtn = document.getElementById('rsvp-submit') as HTMLButtonElement;
+    const step1 = document.getElementById('step-1');
+    const step2 = document.getElementById('step-2');
+    const step3 = document.getElementById('step-3');
+    const next1 = document.getElementById('next-1');
+    const next2 = document.getElementById('next-2');
+    const nameInput = document.getElementById('input-name') as HTMLInputElement | null;
+    const phoneInput = document.getElementById('input-phone') as HTMLInputElement | null;
+    const message = document.getElementById('rsvp-message');
+    const submitBtn = document.getElementById('rsvp-submit') as HTMLButtonElement | null;
+    const rsvpSection = document.getElementById('rsvp-section');
 
-  if (!step1) return;
+    if (
+      !step1 ||
+      !step2 ||
+      !step3 ||
+      !next1 ||
+      !next2 ||
+      !nameInput ||
+      !phoneInput ||
+      !message ||
+      !submitBtn
+    )
+      return;
 
-  function transitionStep(outEl: HTMLElement, inEl: HTMLElement, focusEl?: HTMLElement) {
-    gsap.to(outEl, {
-      duration: 0.3, opacity: 0, x: -30, ease: 'power2.in',
-      onComplete: () => {
-        outEl.style.display = 'none';
-        inEl.style.display = 'flex';
-        gsap.fromTo(inEl,
-          { opacity: 0, x: 30 },
-          { duration: 0.4, opacity: 1, x: 0, ease: 'power3.out' }
-        );
-        if (focusEl) setTimeout(() => focusEl.focus(), 100);
+    // Nuclear reset: strip all inline styles from everything in main,
+    // then re-apply the server-rendered initial states.
+    gsap.killTweensOf('main *');
+    document.querySelectorAll<HTMLElement>('main *').forEach((el) => {
+      if (el.style.length > 0) el.removeAttribute('style');
+    });
+
+    // Re-apply initial display states
+    step1.style.display = 'flex';
+    step2.style.display = 'none';
+    step3.style.display = 'none';
+    message.style.display = 'none';
+    message.className = 'rsvp-message';
+    message.innerHTML = '';
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Get on the list';
+
+    function transitionStep(outEl: HTMLElement, inEl: HTMLElement, focusEl?: HTMLElement) {
+      gsap.to(outEl, {
+        duration: 0.3,
+        opacity: 0,
+        x: -30,
+        ease: 'power2.in',
+        onComplete: () => {
+          outEl.style.display = 'none';
+          inEl.style.display = 'flex';
+          gsap.fromTo(
+            inEl,
+            { opacity: 0, x: 30 },
+            { duration: 0.4, opacity: 1, x: 0, ease: 'power3.out' },
+          );
+          if (focusEl) setTimeout(() => focusEl.focus(), 100);
+        },
+      });
+    }
+
+    next1.addEventListener('click', () => {
+      if (!nameInput.value.trim()) {
+        nameInput.focus();
+        return;
+      }
+      transitionStep(step1, step2, phoneInput);
+    });
+    nameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        next1.click();
       }
     });
-  }
 
-  next1.addEventListener('click', () => {
-    if (!nameInput.value.trim()) { nameInput.focus(); return; }
-    transitionStep(step1, step2, phoneInput);
-  });
-  nameInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); next1.click(); }
-  });
+    next2.addEventListener('click', () => {
+      if (!phoneInput.value.trim()) {
+        phoneInput.focus();
+        return;
+      }
+      transitionStep(step2, step3);
+    });
+    phoneInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        next2.click();
+      }
+    });
 
-  next2.addEventListener('click', () => {
-    if (!phoneInput.value.trim()) { phoneInput.focus(); return; }
-    transitionStep(step2, step3);
-  });
-  phoneInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); next2.click(); }
-  });
+    // Form submission
+    const formEl = document.getElementById('rsvp-form') as HTMLFormElement;
+    formEl?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Submitting...';
 
-  // Form submission
-  const formEl = document.getElementById('rsvp-form') as HTMLFormElement;
-  formEl?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Submitting...';
+      const formData = new FormData(formEl);
+      const data = {
+        name: formData.get('name') as string,
+        phone: (formData.get('phone') as string) || '',
+        email: (formData.get('email') as string) || '',
+        sms_opt_in: formData.get('sms_opt_in') === 'true',
+      };
 
-    const formData = new FormData(formEl);
-    const data = {
-      name: formData.get('name') as string,
-      phone: (formData.get('phone') as string) || '',
-      email: (formData.get('email') as string) || '',
-      sms_opt_in: formData.get('sms_opt_in') === 'true',
-    };
+      try {
+        const res = await fetch(formEl.action, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+        const result = await res.json();
 
-    try {
-      const res = await fetch(formEl.action, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      const result = await res.json();
-
-      if (res.ok) {
-        gsap.to(step3, {
-          duration: 0.3, opacity: 0, y: -20, ease: 'power2.in',
-          onComplete: () => {
-            step3.style.display = 'none';
-            message.className = 'rsvp-message success-message';
-            message.innerHTML = `
+        if (res.ok) {
+          gsap.to(step3, {
+            duration: 0.3,
+            opacity: 0,
+            y: -20,
+            ease: 'power2.in',
+            onComplete: () => {
+              step3.style.display = 'none';
+              message.className = 'rsvp-message success-message';
+              message.innerHTML = `
               <div class="success-check">&#10003;</div>
               <div class="success-text">You're on the list, ${data.name}!</div>
               <div class="success-sub">Check your texts for confirmation.</div>
             `;
-            message.style.display = 'block';
-            gsap.from('.success-check', { duration: 0.6, scale: 0, rotation: -180, ease: 'back.out(1.7)' });
-            gsap.from('.success-text', { duration: 0.6, opacity: 0, y: 20, delay: 0.15, ease: 'power3.out' });
-            gsap.from('.success-sub', { duration: 0.6, opacity: 0, y: 20, delay: 0.25, ease: 'power3.out' });
-          }
-        });
-      } else {
+              message.style.display = 'block';
+              gsap.from('.success-check', {
+                duration: 0.6,
+                scale: 0,
+                rotation: -180,
+                ease: 'back.out(1.7)',
+              });
+              gsap.from('.success-text', {
+                duration: 0.6,
+                opacity: 0,
+                y: 20,
+                delay: 0.15,
+                ease: 'power3.out',
+              });
+              gsap.from('.success-sub', {
+                duration: 0.6,
+                opacity: 0,
+                y: 20,
+                delay: 0.25,
+                ease: 'power3.out',
+              });
+            },
+          });
+        } else {
+          message.className = 'rsvp-message alert alert-error';
+          message.textContent = result.error || 'Something went wrong';
+          message.style.display = 'block';
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Get on the list';
+        }
+      } catch {
         message.className = 'rsvp-message alert alert-error';
-        message.textContent = result.error || 'Something went wrong';
+        message.textContent = 'Network error. Please try again.';
         message.style.display = 'block';
         submitBtn.disabled = false;
         submitBtn.textContent = 'Get on the list';
       }
-    } catch {
-      message.className = 'rsvp-message alert alert-error';
-      message.textContent = 'Network error. Please try again.';
-      message.style.display = 'block';
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Get on the list';
-    }
-  });
+    });
 
-  // Entrance animations — explicit start/end to avoid ViewTransition opacity conflicts
-  gsap.fromTo('.flyer-container', { opacity: 0 }, { duration: 0.8, opacity: 1, ease: 'power2.out' });
-  gsap.fromTo('.event-info', { opacity: 0, y: 20 }, { duration: 0.8, opacity: 1, y: 0, delay: 0.2, ease: 'power3.out' });
-  gsap.fromTo('.rsvp-section', { opacity: 0, y: 20 }, { duration: 0.8, opacity: 1, y: 0, delay: 0.4, ease: 'power3.out' });
+    // Entrance animation
+    if (rsvpSection) {
+      gsap.fromTo(
+        rsvpSection,
+        { opacity: 0, y: 20 },
+        { duration: 0.8, opacity: 1, y: 0, delay: 0.1, ease: 'power3.out' },
+      );
+    }
   });
 </script>
 
 <style>
   .event-page {
-    max-width: 560px;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-xl) var(--space-lg);
+    max-width: 400px;
     margin: 0 auto;
-    padding: var(--space-lg) var(--space-md) var(--space-4xl);
   }
 
-  .back-link {
+  .back-btn {
+    position: absolute;
+    top: var(--space-lg);
+    left: var(--space-lg);
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     text-decoration: none;
-    margin-bottom: var(--space-lg);
-    opacity: 0.5;
-    transition: opacity var(--transition);
-  }
-
-  .back-link:hover { opacity: 1; }
-
-  .back-logo {
-    height: 2rem;
-    width: auto;
-  }
-
-  .flyer-container {
-    margin-bottom: var(--space-xl);
-  }
-
-  .event-flyer {
-    width: 100%;
-    height: auto;
-  }
-
-  .event-info {
-    margin-bottom: var(--space-xl);
-  }
-
-  .event-title {
-    font-size: 1.75rem;
-    font-weight: var(--weight-bold);
-    letter-spacing: var(--tracking-tight);
-    margin-bottom: var(--space-xs);
-  }
-
-  .event-meta {
-    font-size: 0.9375rem;
+    font-size: 1.25rem;
     color: var(--color-muted);
-    margin-bottom: var(--space-sm);
+    width: 40px;
+    height: 40px;
+    transition: color 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
   }
 
-  .event-price {
-    font-size: 0.875rem;
-    margin-bottom: var(--space-sm);
+  .back-btn:hover {
+    color: var(--color-fg);
+    opacity: 1;
   }
 
-  .event-description {
-    color: var(--color-muted);
-    line-height: var(--leading-relaxed);
-    font-size: 0.9375rem;
-  }
-
-  /* Multi-step RSVP */
   .rsvp-section {
-    background: var(--color-surface);
-    border: var(--border);
-    padding: var(--space-xl) var(--space-lg);
+    width: 100%;
     min-height: 180px;
   }
 
@@ -301,23 +335,26 @@ const timeEnd = event.time_end
     gap: var(--space-sm);
   }
 
-  .checkbox-row input[type="checkbox"] {
+  .checkbox-row input[type='checkbox'] {
     width: 18px;
     height: 18px;
     accent-color: var(--color-fg);
   }
 
   .checkbox-text {
-    font-size: 0.9375rem !important;
-    color: var(--color-fg) !important;
-    font-weight: var(--weight-regular) !important;
-    text-transform: none !important;
-    letter-spacing: normal !important;
+    font-size: 0.9375rem;
+    color: var(--color-fg);
+    font-weight: var(--weight-regular);
+    letter-spacing: normal;
   }
 
-  .rsvp-message { text-align: center; }
+  .rsvp-message {
+    text-align: center;
+  }
 
-  .success-message { padding: var(--space-xl) 0; }
+  .success-message {
+    padding: var(--space-xl) 0;
+  }
 
   .success-check {
     font-size: 3rem;
@@ -333,5 +370,24 @@ const timeEnd = event.time_end
   .success-sub {
     font-size: 0.875rem;
     color: var(--color-muted);
+  }
+
+  /* Mobile touch targets */
+  @media (max-width: 767px) {
+    .event-page {
+      padding: var(--space-xl) var(--space-md);
+    }
+
+    .step input[type='text'],
+    .step input[type='tel'],
+    .step input[type='email'] {
+      font-size: 1rem;
+      padding: 14px var(--space-sm);
+    }
+
+    .btn-block {
+      padding: 14px var(--space-lg);
+      font-size: 1rem;
+    }
   }
 </style>

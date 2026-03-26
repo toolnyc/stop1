@@ -36,10 +36,15 @@ const { data: payments } = await supabaseAdmin
   .eq('event_id', event.id);
 
 const paymentList = payments ?? [];
-const cashTotal = paymentList.filter(p => p.method === 'cash').reduce((s, p) => s + Number(p.amount), 0);
-const cardTotal = paymentList.filter(p => p.method === 'card').reduce((s, p) => s + Number(p.amount), 0);
+const cashTotal = paymentList
+  .filter((p) => p.method === 'cash')
+  .reduce((s, p) => s + Number(p.amount), 0);
+const cardTotal = paymentList
+  .filter((p) => p.method === 'card')
+  .reduce((s, p) => s + Number(p.amount), 0);
 const totalRevenue = cashTotal + cardTotal;
 ---
+
 <Base title={`Summary — ${event.title}`}>
   <meta http-equiv="refresh" content="30" slot="head" />
   <main class="summary-page dark-ctx">
@@ -105,7 +110,6 @@ const totalRevenue = cashTotal + cardTotal;
     color: var(--color-muted);
     margin-bottom: var(--space-2xl);
     font-size: 0.75rem;
-    text-transform: uppercase;
     letter-spacing: var(--tracking-wide);
   }
 
@@ -134,7 +138,6 @@ const totalRevenue = cashTotal + cardTotal;
   .stat-label {
     font-size: 0.6875rem;
     color: var(--color-muted);
-    text-transform: uppercase;
     letter-spacing: var(--tracking-wide);
     font-weight: var(--weight-medium);
   }
@@ -177,7 +180,6 @@ const totalRevenue = cashTotal + cardTotal;
     font-size: 0.6875rem;
     color: var(--color-muted);
     margin-bottom: var(--space-sm);
-    text-transform: uppercase;
     letter-spacing: var(--tracking-wide);
   }
 

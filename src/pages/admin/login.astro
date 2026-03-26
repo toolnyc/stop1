@@ -3,6 +3,7 @@ import Base from '@/layouts/Base.astro';
 
 const error = Astro.url.searchParams.get('error');
 ---
+
 <Base title="Login — Stop One">
   <main class="login-page">
     <form method="POST" action="/api/admin/login" class="login-form">
@@ -15,7 +16,13 @@ const error = Astro.url.searchParams.get('error');
 
       <label>
         <span>Email</span>
-        <input type="email" name="email" required autocomplete="email" placeholder="you@example.com" />
+        <input
+          type="email"
+          name="email"
+          required
+          autocomplete="email"
+          placeholder="you@example.com"
+        />
       </label>
 
       <label>
@@ -59,7 +66,6 @@ const error = Astro.url.searchParams.get('error');
     color: var(--color-muted);
     font-size: 0.75rem;
     margin-top: var(--space-sm);
-    text-transform: uppercase;
     letter-spacing: var(--tracking-wide);
   }
 </style>

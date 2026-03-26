@@ -22,8 +22,12 @@ const { data: payments } = await supabaseAdmin
   .eq('event_id', event.id);
 
 const paymentList = payments ?? [];
-const cashTotal = paymentList.filter(p => p.method === 'cash').reduce((s, p) => s + Number(p.amount), 0);
-const cardTotal = paymentList.filter(p => p.method === 'card').reduce((s, p) => s + Number(p.amount), 0);
+const cashTotal = paymentList
+  .filter((p) => p.method === 'cash')
+  .reduce((s, p) => s + Number(p.amount), 0);
+const cardTotal = paymentList
+  .filter((p) => p.method === 'card')
+  .reduce((s, p) => s + Number(p.amount), 0);
 const revenue = cashTotal + cardTotal;
 
 const { data: collaborators } = await supabaseAdmin
@@ -65,9 +69,9 @@ type CollabSummary = {
   payouts: typeof payoutList;
 };
 
-const collabSummaries: CollabSummary[] = collabList.map(c => {
-  const collabExpenses = expenseList.filter(e => e.collaborator_id === c.id);
-  const collabPayouts = payoutList.filter(p => p.collaborator_id === c.id);
+const collabSummaries: CollabSummary[] = collabList.map((c) => {
+  const collabExpenses = expenseList.filter((e) => e.collaborator_id === c.id);
+  const collabPayouts = payoutList.filter((p) => p.collaborator_id === c.id);
   const expenseTotal = collabExpenses.reduce((s, e) => s + Number(e.amount), 0);
   const owed = profit * (Number(c.payout_pct) / 100);
   const paid = collabPayouts.reduce((s, p) => s + Number(p.amount), 0);
@@ -84,8 +88,11 @@ const collabSummaries: CollabSummary[] = collabList.map(c => {
   };
 });
 
-function fmt(n: number) { return `$${n.toFixed(2)}`; }
+function fmt(n: number) {
+  return `$${n.toFixed(2)}`;
+}
 ---
+
 <Admin title={`Budget — ${event.title}`}>
   <div class="edit-layout">
     <nav class="sidebar">
@@ -105,7 +112,9 @@ function fmt(n: number) { return `$${n.toFixed(2)}`; }
           <span class="profit-label">[Net Profit]</span>
           <span class:list={['profit-value', { negative: profit < 0 }]}>{fmt(profit)}</span>
         </div>
-        <p class="profit-formula text-muted">{fmt(revenue)} revenue &minus; {fmt(totalExpenses)} expenses</p>
+        <p class="profit-formula text-muted">
+          {fmt(revenue)} revenue &minus; {fmt(totalExpenses)} expenses
+        </p>
       </div>
 
       <!-- Income -->
@@ -121,69 +130,136 @@ function fmt(n: number) { return `$${n.toFixed(2)}`; }
       <!-- Expenses -->
       <section class="section">
         <h2>Expenses</h2>
-        {collabSummaries.map(c => (
-          <div class="collab-expenses">
-            <h3>{c.name} <span class="text-muted">({fmt(c.expenseTotal)})</span></h3>
-            {c.expenses.map(e => (
-              <div class="expense-line">
-                <span>{e.description}</span>
-                <span class="expense-right">
-                  <span>{fmt(Number(e.amount))}</span>
-                  {e.receipt_url && <a href={e.receipt_url} target="_blank" class="receipt-link">Receipt</a>}
-                </span>
-              </div>
-            ))}
-          </div>
-        ))}
+        {
+          collabSummaries.map((c) => (
+            <div class="collab-expenses">
+              <h3>
+                {c.name} <span class="text-muted">({fmt(c.expenseTotal)})</span>
+              </h3>
+              {c.expenses.map((e) => (
+                <div class="expense-line">
+                  <span>{e.description}</span>
+                  <span class="expense-right">
+                    <span>{fmt(Number(e.amount))}</span>
+                    {e.receipt_url && (
+                      <a href={e.receipt_url} target="_blank" class="receipt-link">
+                        Receipt
+                      </a>
+                    )}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ))
+        }
         <div class="data-table">
-          <div class="data-row total"><span>Total Expenses</span><span>{fmt(totalExpenses)}</span></div>
+          <div class="data-row total">
+            <span>Total Expenses</span><span>{fmt(totalExpenses)}</span>
+          </div>
         </div>
       </section>
 
       <!-- Payouts -->
       <section class="section">
         <h2>Payouts</h2>
-        {collabSummaries.map(c => (
-          <div class="collab-payout card">
-            <div class="payout-header">
-              <span class="payout-name">{c.name} <span class="text-muted">({c.payout_pct}%)</span></span>
-              <div class="payout-summary">
-                <span>Owed {fmt(c.owed)}</span>
-                <span class="text-muted">/</span>
-                <span>Paid {fmt(c.paid)}</span>
-                <span class="text-muted">/</span>
-                <span class:list={[{ 'text-accent': c.balance > 0 }]}>Bal {fmt(c.balance)}</span>
+        {
+          collabSummaries.map((c) => (
+            <div class="collab-payout card">
+              <div class="payout-header">
+                <span class="payout-name">
+                  {c.name} <span class="text-muted">({c.payout_pct}%)</span>
+                </span>
+                <div class="payout-summary">
+                  <span>Owed {fmt(c.owed)}</span>
+                  <span class="text-muted">/</span>
+                  <span>Paid {fmt(c.paid)}</span>
+                  <span class="text-muted">/</span>
+                  <span class:list={[{ 'text-accent': c.balance > 0 }]}>Bal {fmt(c.balance)}</span>
+                </div>
               </div>
+              {c.payouts.map((p) => (
+                <div class="payout-line">
+                  <span>
+                    {fmt(Number(p.amount))} via {p.method}
+                  </span>
+                  <span class="text-muted">
+                    {new Date(p.paid_at).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                    })}
+                  </span>
+                </div>
+              ))}
+              <a
+                href={`/admin/events/${slug}/budget?record_payout=${c.id}`}
+                class="btn btn-secondary btn-sm"
+              >
+                Record Payout
+              </a>
             </div>
-            {c.payouts.map(p => (
-              <div class="payout-line">
-                <span>{fmt(Number(p.amount))} via {p.method}</span>
-                <span class="text-muted">{new Date(p.paid_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-              </div>
-            ))}
-            <a href={`/admin/events/${slug}/budget?record_payout=${c.id}`} class="btn btn-secondary btn-sm">Record Payout</a>
-          </div>
-        ))}
+          ))
+        }
       </section>
     </div>
   </div>
 </Admin>
 
 <style>
-  .edit-layout { display: grid; grid-template-columns: 180px 1fr; gap: var(--space-2xl); }
+  .edit-layout {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: var(--space-2xl);
+  }
   @media (max-width: 640px) {
-    .edit-layout { grid-template-columns: 1fr; gap: var(--space-md); }
-    .sidebar { flex-direction: row !important; overflow-x: auto; gap: var(--space-xs) !important; padding-bottom: var(--space-sm); border-bottom: var(--border); }
-    .sidebar-link { white-space: nowrap; }
+    .edit-layout {
+      grid-template-columns: 1fr;
+      gap: var(--space-md);
+    }
+    .sidebar {
+      flex-direction: row !important;
+      overflow-x: auto;
+      gap: var(--space-xs) !important;
+      padding-bottom: var(--space-sm);
+      border-bottom: var(--border);
+    }
+    .sidebar-link {
+      white-space: nowrap;
+    }
   }
 
-  .sidebar { display: flex; flex-direction: column; gap: var(--space-xs); }
-  .sidebar-link { padding: var(--space-sm) var(--space-sm); color: var(--color-muted); text-decoration: none; font-size: 0.875rem; font-weight: var(--weight-medium); transition: background var(--transition), color var(--transition); }
-  .sidebar-link:hover { background: var(--color-surface); color: var(--color-fg); }
-  .sidebar-link.active { background: var(--color-surface); color: var(--color-accent); }
-  .sidebar-link.external::after { content: ' ↗'; opacity: 0.5; }
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+  }
+  .sidebar-link {
+    padding: var(--space-sm) var(--space-sm);
+    color: var(--color-muted);
+    text-decoration: none;
+    font-size: 0.875rem;
+    font-weight: var(--weight-medium);
+    transition:
+      background var(--transition),
+      color var(--transition);
+  }
+  .sidebar-link:hover {
+    background: var(--color-surface);
+    color: var(--color-fg);
+  }
+  .sidebar-link.active {
+    background: var(--color-surface);
+    color: var(--color-accent);
+  }
+  .sidebar-link.external::after {
+    content: ' ↗';
+    opacity: 0.5;
+  }
 
-  .edit-content h1 { font-size: 1.5rem; letter-spacing: var(--tracking-tight); margin-bottom: var(--space-lg); }
+  .edit-content h1 {
+    font-size: 1.5rem;
+    letter-spacing: var(--tracking-tight);
+    margin-bottom: var(--space-lg);
+  }
 
   .profit-card {
     text-align: center;
@@ -193,30 +269,110 @@ function fmt(n: number) { return `$${n.toFixed(2)}`; }
     margin-bottom: var(--space-2xl);
   }
 
-  .profit-inner { display: flex; flex-direction: column; gap: var(--space-sm); }
-  .profit-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: var(--tracking-wide); color: var(--color-muted); font-weight: var(--weight-medium); }
-  .profit-value { font-size: 2.5rem; font-weight: var(--weight-bold); color: var(--color-success); line-height: 1; }
-  .profit-value.negative { color: var(--color-error); }
-  .profit-formula { font-size: 0.8125rem; margin-top: var(--space-sm); }
+  .profit-inner {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+  .profit-label {
+    font-size: 0.75rem;
+    letter-spacing: var(--tracking-wide);
+    color: var(--color-muted);
+    font-weight: var(--weight-medium);
+  }
+  .profit-value {
+    font-size: 2.5rem;
+    font-weight: var(--weight-bold);
+    color: var(--color-success);
+    line-height: 1;
+  }
+  .profit-value.negative {
+    color: var(--color-error);
+  }
+  .profit-formula {
+    font-size: 0.8125rem;
+    margin-top: var(--space-sm);
+  }
 
-  .section { margin-bottom: var(--space-2xl); }
-  .section h2 { font-size: 1.125rem; font-weight: var(--weight-bold); margin-bottom: var(--space-md); }
+  .section {
+    margin-bottom: var(--space-2xl);
+  }
+  .section h2 {
+    font-size: 1.125rem;
+    font-weight: var(--weight-bold);
+    margin-bottom: var(--space-md);
+  }
 
-  .data-table { background: var(--color-surface); border: var(--border); overflow: hidden; }
-  .data-row { display: flex; justify-content: space-between; padding: var(--space-sm) var(--space-md); border-bottom: var(--border); font-size: 0.9375rem; }
-  .data-row:last-child { border-bottom: none; }
-  .data-row.total { font-weight: var(--weight-bold); background: color-mix(in srgb, var(--color-accent) 6%, transparent); }
+  .data-table {
+    background: var(--color-surface);
+    border: var(--border);
+    overflow: hidden;
+  }
+  .data-row {
+    display: flex;
+    justify-content: space-between;
+    padding: var(--space-sm) var(--space-md);
+    border-bottom: var(--border);
+    font-size: 0.9375rem;
+  }
+  .data-row:last-child {
+    border-bottom: none;
+  }
+  .data-row.total {
+    font-weight: var(--weight-bold);
+    background: color-mix(in srgb, var(--color-accent) 6%, transparent);
+  }
 
-  .collab-expenses { margin-bottom: var(--space-lg); }
-  .collab-expenses h3 { font-size: 0.875rem; font-weight: var(--weight-medium); margin-bottom: var(--space-sm); }
+  .collab-expenses {
+    margin-bottom: var(--space-lg);
+  }
+  .collab-expenses h3 {
+    font-size: 0.875rem;
+    font-weight: var(--weight-medium);
+    margin-bottom: var(--space-sm);
+  }
 
-  .expense-line { display: flex; justify-content: space-between; padding: var(--space-sm) 0; font-size: 0.875rem; }
-  .expense-right { display: flex; gap: var(--space-sm); align-items: center; }
-  .receipt-link { font-size: 0.75rem; color: var(--color-accent); text-decoration: none; }
+  .expense-line {
+    display: flex;
+    justify-content: space-between;
+    padding: var(--space-sm) 0;
+    font-size: 0.875rem;
+  }
+  .expense-right {
+    display: flex;
+    gap: var(--space-sm);
+    align-items: center;
+  }
+  .receipt-link {
+    font-size: 0.75rem;
+    color: var(--color-accent);
+    text-decoration: none;
+  }
 
-  .collab-payout { margin-bottom: var(--space-md); }
-  .payout-header { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.875rem; margin-bottom: var(--space-sm); flex-wrap: wrap; gap: var(--space-sm); }
-  .payout-name { font-weight: var(--weight-medium); }
-  .payout-summary { display: flex; gap: var(--space-sm); font-size: 0.8125rem; }
-  .payout-line { display: flex; justify-content: space-between; font-size: 0.875rem; padding: var(--space-xs) 0; }
+  .collab-payout {
+    margin-bottom: var(--space-md);
+  }
+  .payout-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 0.875rem;
+    margin-bottom: var(--space-sm);
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+  }
+  .payout-name {
+    font-weight: var(--weight-medium);
+  }
+  .payout-summary {
+    display: flex;
+    gap: var(--space-sm);
+    font-size: 0.8125rem;
+  }
+  .payout-line {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.875rem;
+    padding: var(--space-xs) 0;
+  }
 </style>
