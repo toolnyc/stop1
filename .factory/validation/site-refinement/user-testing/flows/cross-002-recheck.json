@@ -1,0 +1,107 @@
+{
+  "groupId": "cross-002-recheck",
+  "testedAt": "2026-03-26T13:17:44Z",
+  "isolation": {
+    "surface": "browser + repo-cli",
+    "appUrl": "http://localhost:4321",
+    "missionDir": "/Users/pete/.factory/missions/3366789e-ab50-48c4-b22b-0ffd41663dd6",
+    "assignedAssertions": ["VAL-CROSS-002"]
+  },
+  "toolsUsed": ["agent-browser", "repo-cli"],
+  "assertions": [
+    {
+      "id": "VAL-CROSS-002",
+      "title": "Landing page loads without console errors",
+      "status": "fail",
+      "steps": [
+        {
+          "action": "Open http://localhost:4321 and wait for network idle",
+          "expected": "Landing page fully renders",
+          "observed": "Page loaded successfully"
+        },
+        {
+          "action": "Verify flyer card, action buttons, footer, and countdown absence",
+          "expected": "Flyer + action buttons + footer visible; no countdown timer",
+          "observed": "flyer=true, actionButtons=[RSVP, Info], footer=true, countdownNodePresent=false, bodyHasCountdownText=false"
+        },
+        {
+          "action": "Clear logs, reload, capture console and page errors",
+          "expected": "Zero JavaScript console errors",
+          "observed": "Console contained 1 error-level entry, 3 warnings, 3 debug logs; page runtime errors list was empty"
+        },
+        {
+          "action": "Classify error source (app vs external/browser noise)",
+          "expected": "Identify source attribution for error-level message",
+          "observed": "Error text was 'Failed to load resource: the server responded with a status of 404 ()'; resource list includes external stylesheet https://use.typekit.net/YOUR_KIT_ID.css; source code links to that placeholder URL; HEAD request returns HTTP 404"
+        }
+      ],
+      "evidence": {
+        "screenshots": [
+          "site-refinement/cross-002-recheck/VAL-CROSS-002-landing-annotated.png",
+          "site-refinement/cross-002-recheck/VAL-CROSS-002-landing.png"
+        ],
+        "consoleErrors": {
+          "origin": "http://localhost:4321/",
+          "errorCount": 1,
+          "warningCount": 3,
+          "debugCount": 3,
+          "runtimeErrorCount": 0,
+          "entries": [
+            {
+              "level": "error",
+              "text": "Failed to load resource: the server responded with a status of 404 ()",
+              "timestamp": 1774530987358,
+              "source": null,
+              "url": null
+            },
+            {
+              "level": "warning",
+              "text": "GSAP target .wordmark not found. https://gsap.com",
+              "timestamp": 1774530987363,
+              "source": "gsap",
+              "url": "https://gsap.com"
+            },
+            {
+              "level": "warning",
+              "text": "GSAP target  not found. https://gsap.com",
+              "timestamp": 1774530987363,
+              "source": "gsap",
+              "url": "https://gsap.com"
+            },
+            {
+              "level": "warning",
+              "text": "GSAP target  not found. https://gsap.com",
+              "timestamp": 1774530987372,
+              "source": "gsap",
+              "url": "https://gsap.com"
+            }
+          ],
+          "rawFiles": [
+            "site-refinement/cross-002-recheck/VAL-CROSS-002-console.json",
+            "site-refinement/cross-002-recheck/VAL-CROSS-002-errors.json"
+          ]
+        },
+        "network": {
+          "summary": "No API calls needed for this assertion. Resource evidence indicates external Typekit placeholder stylesheet is requested and returns 404.",
+          "files": [
+            "site-refinement/cross-002-recheck/VAL-CROSS-002-resource-entries.json",
+            "site-refinement/cross-002-recheck/VAL-CROSS-002-typekit-source.txt",
+            "site-refinement/cross-002-recheck/VAL-CROSS-002-typekit-head.txt"
+          ]
+        },
+        "structure": "site-refinement/cross-002-recheck/VAL-CROSS-002-landing-structure.json"
+      },
+      "issues": "Contract requires zero JavaScript console errors. Observed one error-level console entry on load. This appears tied to an external stylesheet URL (Typekit placeholder) rather than an uncaught page JS runtime exception, but it is still an error-level console message during landing-page load."
+    }
+  ],
+  "frictions": [
+    {
+      "description": "agent-browser console output did not include URL/source metadata for the 404 line item.",
+      "resolved": true,
+      "resolution": "Correlated with resource performance entries, source grep, and HEAD request to identify likely external Typekit 404 source.",
+      "affectedAssertions": ["VAL-CROSS-002"]
+    }
+  ],
+  "blockers": [],
+  "summary": "Tested 1 assertion (VAL-CROSS-002): fail under contract due one error-level console entry on landing load. No uncaught JS runtime exceptions were reported by page errors."
+}

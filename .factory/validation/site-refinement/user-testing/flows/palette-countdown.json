@@ -1,0 +1,409 @@
+{
+  "groupId": "palette-countdown",
+  "testedAt": "2026-03-26T13:07:12Z",
+  "isolation": {
+    "surface": "browser + repo-cli",
+    "appUrl": "http://localhost:4321",
+    "missionDir": "/Users/pete/.factory/missions/3366789e-ab50-48c4-b22b-0ffd41663dd6",
+    "guidanceSections": ["Flow Validator Guidance: browser", "Flow Validator Guidance: repo-cli"]
+  },
+  "toolsUsed": ["agent-browser", "repo-cli", "rg", "curl"],
+  "assertions": [
+    {
+      "id": "VAL-COLOR-001",
+      "title": "CSS custom properties use standardized dark color",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run rg checks for :root --color-fg, .dark-ctx --color-bg, shadow vars in src/styles/global.css and theme-color in src/layouts/Base.astro",
+          "expected": "All required values use #1a1816 / rgba(26, 24, 22, ...)",
+          "observed": "Matches found for --color-fg:#1a1816, .dark-ctx --color-bg:#1a1816, --shadow-sm/md/lg rgba(26, 24, 22, ...), and <meta name=theme-color content=#1a1816>"
+        },
+        {
+          "action": "Open landing page and capture desktop screenshot",
+          "expected": "Palette appears with standardized dark tone",
+          "observed": "Desktop screenshot shows unified near-black palette"
+        }
+      ],
+      "evidence": {
+        "screenshots": ["site-refinement/palette-countdown/desktop-1280-default-annotated.png"],
+        "consoleErrors": "none (agent-browser errors exit 0, no entries)",
+        "network": "GET / -> 200; GET /events/stop-1-xl -> 200 (curl)",
+        "commands": [
+          {
+            "command": "rg -nU ':root\\s*\\{[^}]*--color-fg:\\s*#1a1816' src/styles/global.css",
+            "exitCode": 0,
+            "excerpt": "--color-fg: #1a1816;"
+          },
+          {
+            "command": "rg -nU '\\.dark-ctx\\s*\\{[^}]*--color-bg:\\s*#1a1816' src/styles/global.css",
+            "exitCode": 0,
+            "excerpt": ".dark-ctx { ... --color-bg: #1a1816; }"
+          },
+          {
+            "command": "rg -n -e '--shadow-(sm|md|lg):\\s*[^;]*rgba\\(26,\\s*24,\\s*22,' src/styles/global.css",
+            "exitCode": 0,
+            "excerpt": "--shadow-sm/md/lg all use rgba(26, 24, 22, ...)"
+          },
+          {
+            "command": "rg -n 'name=\"theme-color\"\\s+content=\"#1a1816\"' src/layouts/Base.astro",
+            "exitCode": 0,
+            "excerpt": "<meta name=\"theme-color\" content=\"#1a1816\" />"
+          }
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-COLOR-002",
+      "title": "Footer background uses standardized dark",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Check .landing-footer background declaration and absence of #231e19 in index.astro",
+          "expected": "Footer background #1a1816 and no #231e19",
+          "observed": "Found background: #1a1816; and #231e19 search returned no results"
+        },
+        {
+          "action": "Capture desktop/mobile screenshots including footer region",
+          "expected": "Footer visibly uses same near-black as palette",
+          "observed": "Footer appears consistent with standardized dark tone"
+        }
+      ],
+      "evidence": {
+        "screenshots": [
+          "site-refinement/palette-countdown/desktop-1024-default-full-annotated.png",
+          "site-refinement/palette-countdown/mobile-390-default-full-annotated.png"
+        ],
+        "consoleErrors": "none",
+        "network": "GET / -> 200",
+        "commands": [
+          {
+            "command": "rg -nU '\\.landing-footer\\s*\\{[^}]*background:\\s*#1a1816' src/pages/index.astro",
+            "exitCode": 0,
+            "excerpt": ".landing-footer { ... background: #1a1816; }"
+          },
+          {
+            "command": "rg -n '#231e19' src/pages/index.astro",
+            "exitCode": 1,
+            "excerpt": "no matches"
+          }
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-COLOR-003",
+      "title": "Action buttons use standardized dark",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Check action button CSS for text, border, hover/active background, and rgba shadow base",
+          "expected": "All action button dark styles use #1a1816 and rgba(26, 24, 22, ...)",
+          "observed": "Base color/border, hover background, active background, and box-shadow rgba values all use standardized dark base"
+        },
+        {
+          "action": "Capture button in default and hover states",
+          "expected": "Visible default/hover states align with palette",
+          "observed": "Default and hover screenshots confirm dark fill/border/text behavior"
+        }
+      ],
+      "evidence": {
+        "screenshots": [
+          "site-refinement/palette-countdown/desktop-1280-default-annotated.png",
+          "site-refinement/palette-countdown/desktop-1280-rsvp-hover-annotated.png"
+        ],
+        "consoleErrors": "none",
+        "network": "GET / -> 200",
+        "commands": [
+          {
+            "command": "rg -nU '\\.action-btn\\s*\\{[^}]*color:\\s*#1a1816[^}]*border:\\s*1\\.5px\\s+solid\\s+#1a1816' src/pages/index.astro",
+            "exitCode": 0,
+            "excerpt": ".action-btn { color: #1a1816; border: 1.5px solid #1a1816; }"
+          },
+          {
+            "command": "rg -nU '\\.action-btn:hover\\s*\\{[^}]*background:\\s*#1a1816' src/pages/index.astro",
+            "exitCode": 0,
+            "excerpt": ".action-btn:hover { background: #1a1816; }"
+          },
+          {
+            "command": "rg -nU '\\.action-btn:active\\s*\\{[^}]*background:\\s*#1a1816' src/pages/index.astro",
+            "exitCode": 0,
+            "excerpt": "@media (hover:none) .action-btn:active { background: #1a1816; }"
+          },
+          {
+            "command": "agent-browser eval (computed hover styles)",
+            "exitCode": 0,
+            "excerpt": "hoverBackground rgba(26, 24, 22, ...), hoverBoxShadow rgba(26, 24, 22, ...)"
+          }
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-COLOR-004",
+      "title": "No legacy dark color values remain in source",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run legacy color sweeps across src/",
+          "expected": "No matches for #231e19, #0a0a0a, rgba(35, 30, 25, rgba(26, 23, 20",
+          "observed": "All four searches returned no matches"
+        }
+      ],
+      "evidence": {
+        "screenshots": [
+          "site-refinement/palette-countdown/desktop-1024-default-full-annotated.png"
+        ],
+        "consoleErrors": "none",
+        "network": "N/A (source scan assertion)",
+        "commands": [
+          {
+            "command": "rg -n '#231e19' src/",
+            "exitCode": 1,
+            "excerpt": "no matches"
+          },
+          {
+            "command": "rg -n '#0a0a0a' src/",
+            "exitCode": 1,
+            "excerpt": "no matches"
+          },
+          {
+            "command": "rg -n 'rgba\\(35, 30, 25' src/",
+            "exitCode": 1,
+            "excerpt": "no matches"
+          },
+          {
+            "command": "rg -n 'rgba\\(26, 23, 20' src/",
+            "exitCode": 1,
+            "excerpt": "no matches"
+          }
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-COLOR-005",
+      "title": "Visual color consistency across viewports",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Capture screenshots at 390px and 768px+ viewports",
+          "expected": "Footer, button text, and button borders share unified near-black tone",
+          "observed": "Screenshots at 390 and desktop show consistent warm-dark tone"
+        },
+        {
+          "action": "Read computed styles for button text/border and footer background at both widths",
+          "expected": "All report rgb(26, 24, 22)",
+          "observed": "1024px and 390px both returned buttonColor/border/footerBackground as rgb(26, 24, 22)"
+        }
+      ],
+      "evidence": {
+        "screenshots": [
+          "site-refinement/palette-countdown/mobile-390-default-full-annotated.png",
+          "site-refinement/palette-countdown/desktop-1024-default-full-annotated.png"
+        ],
+        "consoleErrors": "none",
+        "network": "GET / -> 200",
+        "commands": [
+          {
+            "command": "agent-browser eval computed styles at 1024px",
+            "exitCode": 0,
+            "excerpt": "buttonColor/buttonBorderColor/footerBackground = rgb(26, 24, 22)"
+          },
+          {
+            "command": "agent-browser eval computed styles at 390px",
+            "exitCode": 0,
+            "excerpt": "buttonColor/buttonBorderColor/footerBackground = rgb(26, 24, 22)"
+          }
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-COLOR-006",
+      "title": "Modal backdrop and sheet use standardized rgba",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Check modal-backdrop and modal-sheet CSS in index.astro",
+          "expected": "Use rgba(26, 24, 22, ...) base",
+          "observed": "Backdrop background and modal-sheet box-shadow both use rgba(26, 24, 22, ...)"
+        },
+        {
+          "action": "Open modal and read computed styles",
+          "expected": "Computed backdrop/shadow values use rgb(26,24,22) base",
+          "observed": "backdropBackground rgba(26, 24, 22, 0.55), sheetBoxShadow rgba(26, 24, 22, 0.25)"
+        },
+        {
+          "action": "Confirm old rgba(35, 30, 25 pattern is absent from src/",
+          "expected": "Zero matches",
+          "observed": "No matches"
+        }
+      ],
+      "evidence": {
+        "screenshots": [
+          "site-refinement/palette-countdown/desktop-1024-info-modal-open-annotated.png"
+        ],
+        "consoleErrors": "none",
+        "network": "GET /events/stop-1-xl observed in browser log",
+        "commands": [
+          {
+            "command": "rg -nU '\\.modal-backdrop\\s*\\{[^}]*background:\\s*rgba\\(26,\\s*24,\\s*22,' src/pages/index.astro",
+            "exitCode": 0,
+            "excerpt": "background: rgba(26, 24, 22, 0.55);"
+          },
+          {
+            "command": "rg -nU '\\.modal-sheet\\s*\\{[^}]*box-shadow:\\s*[^;]*rgba\\(26,\\s*24,\\s*22,' src/pages/index.astro",
+            "exitCode": 0,
+            "excerpt": "box-shadow: ... rgba(26, 24, 22, 0.25);"
+          },
+          {
+            "command": "rg -n 'rgba\\(35, 30, 25' src/",
+            "exitCode": 1,
+            "excerpt": "no matches"
+          }
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-COUNT-001",
+      "title": "Countdown timer completely removed from landing page",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Search for 'countdown' in src/pages/index.astro",
+          "expected": "No countdown HTML/CSS/JS references",
+          "observed": "No matches"
+        },
+        {
+          "action": "Check rendered page for countdown classes/text",
+          "expected": "No countdown visible",
+          "observed": "countdownClassCount=0 and body text does not include 'countdown'"
+        }
+      ],
+      "evidence": {
+        "screenshots": [
+          "site-refinement/palette-countdown/desktop-1024-default-full-annotated.png"
+        ],
+        "consoleErrors": "none",
+        "network": "GET / -> 200",
+        "commands": [
+          {
+            "command": "rg -ni 'countdown' src/pages/index.astro",
+            "exitCode": 1,
+            "excerpt": "no matches"
+          },
+          {
+            "command": "agent-browser eval countdown selector/text check",
+            "exitCode": 0,
+            "excerpt": "{\"countdownClassCount\":0,\"containsCountdownText\":false}"
+          }
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-COUNT-002",
+      "title": "Landing page layout balanced after countdown removal",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Capture full-page screenshots at 390px and desktop",
+          "expected": "Flyer-to-actions spacing is balanced with no awkward gaps/collisions",
+          "observed": "Both viewports show balanced spacing between flyer and actions"
+        }
+      ],
+      "evidence": {
+        "screenshots": [
+          "site-refinement/palette-countdown/mobile-390-default-full-annotated.png",
+          "site-refinement/palette-countdown/desktop-1024-default-full-annotated.png"
+        ],
+        "consoleErrors": "none",
+        "network": "GET / -> 200",
+        "commands": [
+          {
+            "command": "agent-browser screenshot --annotate --full (390 and 1024)",
+            "exitCode": 0,
+            "excerpt": "Both captures completed; no visual gap/collision observed"
+          }
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-COUNT-003",
+      "title": "No countdown references remain in codebase",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run case-insensitive countdown search across src/",
+          "expected": "Zero matches",
+          "observed": "No matches"
+        }
+      ],
+      "evidence": {
+        "screenshots": ["site-refinement/palette-countdown/desktop-1280-default-annotated.png"],
+        "consoleErrors": "none",
+        "network": "N/A (codebase scan assertion)",
+        "commands": [
+          {
+            "command": "rg -ni 'countdown' src/",
+            "exitCode": 1,
+            "excerpt": "no matches"
+          }
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CROSS-003",
+      "title": "Mobile layout at 390px works correctly",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Set viewport to 390x844 and capture full-page screenshot",
+          "expected": "Flyer fits viewport, buttons visible/tappable, footer visible",
+          "observed": "Mobile screenshot shows flyer/actions/footer rendered correctly"
+        },
+        {
+          "action": "Check horizontal overflow and interact with Info button",
+          "expected": "No horizontal overflow; controls are tappable",
+          "observed": "hasHorizontalOverflow=false and Info button opened/closed modal successfully at 390px"
+        }
+      ],
+      "evidence": {
+        "screenshots": [
+          "site-refinement/palette-countdown/mobile-390-default-full-annotated.png",
+          "site-refinement/palette-countdown/mobile-390-info-modal-open-annotated.png"
+        ],
+        "consoleErrors": "none",
+        "network": "GET /events/stop-1-xl observed in browser log; GET / and /events/stop-1-xl both 200 via curl",
+        "commands": [
+          {
+            "command": "agent-browser eval overflow check",
+            "exitCode": 0,
+            "excerpt": "{\"innerWidth\":390,\"scrollWidth\":390,\"hasHorizontalOverflow\":false}"
+          },
+          {
+            "command": "agent-browser click Info then Close at 390px",
+            "exitCode": 0,
+            "excerpt": "Modal opened and closed successfully"
+          }
+        ]
+      },
+      "issues": null
+    }
+  ],
+  "frictions": [
+    {
+      "description": "Initial rg pattern for shadow variables started with '--' and was interpreted as an option.",
+      "resolved": true,
+      "resolution": "Re-ran with rg -e to treat it as a pattern literal prefix.",
+      "affectedAssertions": ["VAL-COLOR-001"]
+    }
+  ],
+  "blockers": [],
+  "summary": "Tested 10 assertions: 10 passed, 0 failed, 0 blocked."
+}

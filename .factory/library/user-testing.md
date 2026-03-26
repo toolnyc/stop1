@@ -24,3 +24,22 @@ The site requires a running Supabase backend (remote, configured in .env.local) 
 **Max concurrent validators:** 5
 
 All assertions test against the same landing page or email template output. No complex isolation needed — assertions are independent and stateless.
+
+### Current Run Adjustment (2026-03-26)
+
+- Observed high baseline memory usage from desktop processes; run flow validators at max concurrency **3** for this milestone to avoid resource pressure.
+
+## Flow Validator Guidance: browser
+
+- Use agent-browser with explicit non-default session IDs.
+- Shared target URL is `http://localhost:4321`.
+- Allowed interactions: landing page load, viewport resize (390px and desktop), info modal open/close, pointer movement over flyer card.
+- Do not perform destructive admin actions or any authenticated flows.
+- Keep assertions read-only from the app perspective; no data mutation required for this milestone.
+
+## Flow Validator Guidance: repo-cli
+
+- Use repository-local commands only (grep, build, test render scripts).
+- Do not modify application source while validating.
+- Write only report JSON and evidence artifacts under assigned paths.
+- For command evidence, include exact command, exit code, and key output excerpts proving assertion outcomes.

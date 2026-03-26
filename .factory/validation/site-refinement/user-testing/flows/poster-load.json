@@ -1,0 +1,155 @@
+{
+  "groupId": "poster-load",
+  "testedAt": "2026-03-26T13:07:43Z",
+  "isolation": {
+    "surface": "browser + repo-cli",
+    "appUrl": "http://localhost:4321",
+    "missionDir": "/Users/pete/.factory/missions/3366789e-ab50-48c4-b22b-0ffd41663dd6",
+    "evidenceDir": "/Users/pete/.factory/missions/3366789e-ab50-48c4-b22b-0ffd41663dd6/evidence/site-refinement/poster-load"
+  },
+  "toolsUsed": ["agent-browser", "repo-cli"],
+  "assertions": [
+    {
+      "id": "VAL-POSTER-001",
+      "title": "Maximum tilt angle reduced to subtle range",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Inspect poster interaction constants in src/pages/index.astro",
+          "expected": "MAX_TILT <= 8 and perspective >= 1000px",
+          "observed": "MAX_TILT = 6 and transform uses perspective(1200px)"
+        }
+      ],
+      "evidence": {
+        "screenshots": ["site-refinement/poster-load/VAL-CROSS-002-landing-desktop-annotated.png"],
+        "consoleErrors": "See site-refinement/poster-load/VAL-CROSS-002-console-after-reload.txt",
+        "network": "No requests captured by agent-browser network logger",
+        "repoCli": {
+          "command": "rg -n \"const MAX_TILT =|perspective\\(1200px\\)\" src/pages/index.astro",
+          "exitCode": 0,
+          "excerpt": "210: const MAX_TILT = 6; 225: perspective(1200px)"
+        }
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-POSTER-002",
+      "title": "Interaction feels organic with smooth interpolation",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Inspect interpolation and shine tuning",
+          "expected": "lerp factor <= 0.06 and shine opacity <= 0.12",
+          "observed": "lerp uses 0.05 and shine gradient uses rgba(..., 0.08)"
+        },
+        {
+          "action": "Move mouse across flyer card in browser",
+          "expected": "Gentle non-jarring tilt response",
+          "observed": "Card tilts smoothly with subtle angle; active transform matrix deviates modestly from flat"
+        }
+      ],
+      "evidence": {
+        "screenshots": ["site-refinement/poster-load/VAL-POSTER-002-tilt-active.png"],
+        "consoleErrors": "See site-refinement/poster-load/VAL-CROSS-002-console-after-reload.txt",
+        "network": "No requests captured by agent-browser network logger",
+        "repoCli": {
+          "command": "rg -n \"lerp\\(|0\\.05\\)|radial-gradient\\(circle at .*0\\.08\\)\" src/pages/index.astro",
+          "exitCode": 0,
+          "excerpt": "222-223: lerp(..., 0.05); 229: rgba(255,255,255,0.08)"
+        }
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-POSTER-003",
+      "title": "Card returns to flat position on input end",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Hover/move over flyer card then move pointer away",
+          "expected": "Card smoothly returns to flat rotation",
+          "observed": "Active matrix shows tilt, then after mouseleave matrix returns to near identity"
+        }
+      ],
+      "evidence": {
+        "screenshots": [
+          "site-refinement/poster-load/VAL-POSTER-002-tilt-active.png",
+          "site-refinement/poster-load/VAL-POSTER-003-return-flat.png"
+        ],
+        "consoleErrors": "See site-refinement/poster-load/VAL-CROSS-002-console-after-reload.txt",
+        "network": "No requests captured by agent-browser network logger",
+        "artifacts": ["site-refinement/poster-load/VAL-POSTER-003-transform-sequence.txt"]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-POSTER-004",
+      "title": "All input sources preserved and functional",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Inspect handler registrations and cleanup logic in src/pages/index.astro",
+          "expected": "Mouse/touch/gyroscope handlers present, iOS requestPermission path present, GSAP flyer entrance preserved, _rafId cleanup preserved",
+          "observed": "deviceorientation + requestPermission path present; touchmove/touchend/mousemove/mouseleave present; gsap.fromTo('.flyer-card', ...) present; _rafId cancelAnimationFrame cleanup on astro:before-swap present"
+        },
+        {
+          "action": "Exercise mouse interaction in browser",
+          "expected": "Input handling remains functional",
+          "observed": "Mouse interaction updates flyer tilt and resets on leave"
+        }
+      ],
+      "evidence": {
+        "screenshots": ["site-refinement/poster-load/VAL-POSTER-002-tilt-active.png"],
+        "consoleErrors": "See site-refinement/poster-load/VAL-CROSS-002-console-after-reload.txt",
+        "network": "No requests captured by agent-browser network logger",
+        "repoCli": {
+          "command": "rg -n \"requestPermission|deviceorientation|touchmove|touchend|mousemove|mouseleave|astro:before-swap|_rafId|cancelAnimationFrame|'\\.flyer-card'\" src/pages/index.astro",
+          "exitCode": 0,
+          "excerpt": "matches include requestPermission, touch/mouse handlers, cleanup lines 152-171, and '.flyer-card' GSAP entrance"
+        },
+        "artifacts": ["site-refinement/poster-load/VAL-POSTER-cli-evidence.txt"]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CROSS-002",
+      "title": "Landing page loads without console errors",
+      "status": "fail",
+      "steps": [
+        {
+          "action": "Load http://localhost:4321 and capture landing screenshot",
+          "expected": "Flyer card, action buttons, footer visible and countdown absent",
+          "observed": "Flyer card, 2 action buttons, and footer present; countdown element absent"
+        },
+        {
+          "action": "Check browser console after reload",
+          "expected": "Zero console errors",
+          "observed": "Console includes [error] Failed to load resource: the server responded with a status of 404 ()"
+        }
+      ],
+      "evidence": {
+        "screenshots": [
+          "site-refinement/poster-load/VAL-CROSS-002-landing-after-reload-annotated.png",
+          "site-refinement/poster-load/VAL-CROSS-002-landing-full.png"
+        ],
+        "consoleErrors": "site-refinement/poster-load/VAL-CROSS-002-console-after-reload.txt",
+        "network": "No requests captured by agent-browser network logger",
+        "artifacts": [
+          "site-refinement/poster-load/VAL-CROSS-002-dom-check.json",
+          "site-refinement/poster-load/VAL-CROSS-002-errors-after-reload.txt"
+        ]
+      },
+      "issues": "Validation failed due to console error on page load (resource 404)."
+    }
+  ],
+  "frictions": [
+    {
+      "description": "agent-browser errors output stayed empty while console still reported a page-load error and warnings",
+      "resolved": true,
+      "resolution": "Used agent-browser console output files as the authoritative console-evidence source",
+      "affectedAssertions": ["VAL-CROSS-002"]
+    }
+  ],
+  "blockers": [],
+  "summary": "Tested 5 assertions: 4 passed, 1 failed (VAL-CROSS-002 due to console load error 404)."
+}

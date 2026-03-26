@@ -1,0 +1,173 @@
+{
+  "groupId": "time-modal",
+  "testedAt": "2026-03-26T13:06:02Z",
+  "isolation": {
+    "surface": "browser + repo-cli",
+    "appUrl": "http://localhost:4321",
+    "missionDir": "/Users/pete/.factory/missions/3366789e-ab50-48c4-b22b-0ffd41663dd6",
+    "sharedDevServerPort": 4321,
+    "dataMutation": "none"
+  },
+  "toolsUsed": ["agent-browser", "repo-cli", "curl"],
+  "assertions": [
+    {
+      "id": "VAL-TIME-001",
+      "title": "Shared timezone constant exists",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Inspect src/lib/constants.ts",
+          "expected": "Shared timezone constant is defined",
+          "observed": "Found `export const EVENT_TIMEZONE = 'America/New_York';`"
+        },
+        {
+          "action": "Inspect src/ usage of EVENT_TIMEZONE and toLocale* calls",
+          "expected": "Date/time-formatting files import and use the shared constant",
+          "observed": "All files containing toLocaleDateString/toLocaleTimeString reference EVENT_TIMEZONE; 11 files with calls, 0 missing constant."
+        }
+      ],
+      "evidence": {
+        "screenshots": [],
+        "consoleErrors": "n/a (code assertion)",
+        "network": "n/a",
+        "commands": [
+          "rg \"EVENT_TIMEZONE\" src",
+          "python static check: files_with_calls=11, missing_EVENT_TIMEZONE=0"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-TIME-002",
+      "title": "Landing page info modal shows correct Eastern time",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Open http://localhost:4321 and click Info",
+          "expected": "Info modal opens with event date/time details",
+          "observed": "Modal opened and displayed date plus time range: `4:00 PM – 12:00 AM`."
+        },
+        {
+          "action": "Inspect src/pages/index.astro time formatting logic",
+          "expected": "Modal time uses toLocaleTimeString with timeZone from shared constant",
+          "observed": "Both start and end time formatters include `timeZone: EVENT_TIMEZONE`."
+        }
+      ],
+      "evidence": {
+        "screenshots": ["site-refinement/time-modal/VAL-TIME-002-modal-open.png"],
+        "consoleErrors": "[]",
+        "network": "GET / -> 200 (curl)",
+        "commands": [
+          "agent-browser --session time-modal-validator snapshot",
+          "agent-browser --session time-modal-validator screenshot .../VAL-TIME-002-modal-open.png",
+          "curl -s -o /dev/null -w \"%{http_code}\" http://localhost:4321"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-TIME-003",
+      "title": "All date/time formatting calls specify timezone",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Scan src for all toLocaleTimeString/toLocaleDateString calls",
+          "expected": "Every call includes a timeZone option using the shared constant",
+          "observed": "20 calls detected across src; automated check found 0 calls missing `timeZone`."
+        },
+        {
+          "action": "Cross-check expected file list from contract",
+          "expected": "Listed files with formatting calls are covered and use timezone",
+          "observed": "All listed files with toLocale* calls include `timeZone: EVENT_TIMEZONE` (including index, events, emails, sms, admin pages, collaborator page, reminder routes)."
+        }
+      ],
+      "evidence": {
+        "screenshots": [],
+        "consoleErrors": "n/a (code assertion)",
+        "network": "n/a",
+        "commands": [
+          "rg \"toLocale(Time|Date)String\\\\(\" src",
+          "python static check: total_calls=20, violations=0"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-TIME-004",
+      "title": "SMS RSVP confirmation uses timezone for date formatting",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Inspect src/lib/sms/rsvp-confirmation.ts",
+          "expected": "toLocaleDateString includes timeZone with shared constant",
+          "observed": "File imports EVENT_TIMEZONE and uses `timeZone: EVENT_TIMEZONE` in the SMS date formatter."
+        }
+      ],
+      "evidence": {
+        "screenshots": [],
+        "consoleErrors": "n/a (code assertion)",
+        "network": "n/a",
+        "commands": ["Read src/lib/sms/rsvp-confirmation.ts"]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-TIME-005",
+      "title": "Day-of reminder send route uses timezone",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Inspect src/pages/api/admin/events/[slug]/reminders/send-email.ts",
+          "expected": "toLocaleDateString includes timeZone with shared constant",
+          "observed": "Route imports EVENT_TIMEZONE and uses it in the `Already sent on ...` date formatting branch."
+        }
+      ],
+      "evidence": {
+        "screenshots": [],
+        "consoleErrors": "n/a (code assertion)",
+        "network": "n/a",
+        "commands": ["Read src/pages/api/admin/events/[slug]/reminders/send-email.ts"]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CROSS-004",
+      "title": "Info modal shows correct time with consistent colors",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Open Info modal on landing page",
+          "expected": "Modal shows event time and uses standardized palette",
+          "observed": "Modal showed `4:00 PM – 12:00 AM`; annotated screenshot captured the open state."
+        },
+        {
+          "action": "Inspect computed styles for modal backdrop/sheet/text",
+          "expected": "Colors use site palette values",
+          "observed": "Computed styles: sheet background `rgb(245, 243, 240)`, text `rgb(26, 24, 22)`, backdrop `rgba(26, 24, 22, 0.55)`, sheet shadow `rgba(26, 24, 22, 0.25) ...`."
+        },
+        {
+          "action": "Check browser runtime errors after modal flow",
+          "expected": "No console/runtime errors",
+          "observed": "agent-browser errors output was empty (`errors: []`)."
+        }
+      ],
+      "evidence": {
+        "screenshots": [
+          "site-refinement/time-modal/VAL-CROSS-004-info-modal-annotated.png",
+          "site-refinement/time-modal/VAL-TIME-002-modal-open.png"
+        ],
+        "consoleErrors": "[]",
+        "network": "GET / -> 200 (curl)",
+        "commands": [
+          "agent-browser --session time-modal-validator eval (computed styles)",
+          "agent-browser --session time-modal-validator errors --json",
+          "curl -s -o /dev/null -w \"%{http_code}\" http://localhost:4321"
+        ]
+      },
+      "issues": null
+    }
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "Tested 6 assertions: 6 passed, 0 failed, 0 blocked."
+}

@@ -1,0 +1,356 @@
+{
+  "groupId": "email-build",
+  "testedAt": "2026-03-26T13:14:11.005270+00:00",
+  "isolation": {
+    "surface": "repo-cli",
+    "repoRoot": "/Users/pete/Code/clubstack-events/stop1",
+    "missionDir": "/Users/pete/.factory/missions/3366789e-ab50-48c4-b22b-0ffd41663dd6",
+    "guidanceSection": "Flow Validator Guidance: repo-cli",
+    "dataMutation": "none (read/execute-only validation)"
+  },
+  "toolsUsed": ["repo-cli", "rg", "node", "pnpm build"],
+  "assertions": [
+    {
+      "id": "VAL-EMAIL-001",
+      "title": "RSVP confirmation email uses site palette",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Inspect rendered RSVP HTML colors and legacy palette values",
+          "expected": "Uses #f5f3f0 + #1a1816 and contains no legacy palette colors",
+          "observed": "Rendered RSVP HTML includes #f5f3f0/#1a1816 and legacy color grep returned no matches."
+        }
+      ],
+      "evidence": {
+        "commands": [
+          {
+            "command": "rg -n \"#f5f3f0|#1a1816\" .../rsvp-full.html .../day-of-full.html",
+            "exitCode": 0,
+            "outputExcerpt": "rsvp-full.html: background-color: #f5f3f0; color: #1a1816;"
+          },
+          {
+            "command": "rg -n \"#f0ebe4|#1a1714|#cd2e2a|#6b6560|#d0c9c1\" .../rsvp-full.html .../day-of-full.html",
+            "exitCode": 1,
+            "outputExcerpt": "No matches (expected for old palette)."
+          }
+        ],
+        "artifacts": [
+          "site-refinement/email-build/rsvp-full.html",
+          "site-refinement/email-build/render-grep.log"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-EMAIL-002",
+      "title": "RSVP confirmation includes full party details with null handling",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Render RSVP email with full event data and null-edge event data",
+          "expected": "Full render shows title/date/time range/venue/address/price; null render omits address, uses start time only, and shows Free for price=0",
+          "observed": "render-check-summary.json confirms all fullDetails=true and nullHandling=true including timeCell=\"8:00 PM\" when time_end=null."
+        }
+      ],
+      "evidence": {
+        "commands": [
+          {
+            "command": "cat .../render-check-summary.json",
+            "exitCode": 0,
+            "outputExcerpt": "\"rsvp\" -> fullDetails.hasDate/hasTime/hasVenue/hasAddress/hasPrice = true; nullHandling.omitsAddress/freePrice/timeOnlyStartInHtml/timeOnlyStartInText = true."
+          },
+          {
+            "command": "rg -n \"8:00 PM \u2013 4:00 AM\" .../rsvp-full.html .../day-of-full.html",
+            "exitCode": 0,
+            "outputExcerpt": "rsvp-full.html: Time ... 8:00 PM \u2013 4:00 AM"
+          },
+          {
+            "command": "rg -n \"Time: 8:00 PM$\" .../rsvp-null.txt .../day-of-null.txt",
+            "exitCode": 0,
+            "outputExcerpt": "rsvp-null.txt: Time: 8:00 PM"
+          }
+        ],
+        "artifacts": [
+          "site-refinement/email-build/render-check-summary.json",
+          "site-refinement/email-build/rsvp-full.html",
+          "site-refinement/email-build/rsvp-null.html",
+          "site-refinement/email-build/rsvp-full.txt",
+          "site-refinement/email-build/rsvp-null.txt",
+          "site-refinement/email-build/time-range-check.log"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-EMAIL-003",
+      "title": "Day-of reminder email uses site palette",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Inspect rendered day-of HTML colors and legacy palette values",
+          "expected": "Uses #f5f3f0 + #1a1816 and contains no legacy palette colors",
+          "observed": "Rendered day-of HTML includes #f5f3f0/#1a1816 and old palette grep returned no matches."
+        }
+      ],
+      "evidence": {
+        "commands": [
+          {
+            "command": "rg -n \"#f5f3f0|#1a1816\" .../rsvp-full.html .../day-of-full.html",
+            "exitCode": 0,
+            "outputExcerpt": "day-of-full.html includes #f5f3f0 and #1a1816."
+          },
+          {
+            "command": "rg -n \"#f0ebe4|#1a1714|#cd2e2a|#6b6560|#d0c9c1\" .../rsvp-full.html .../day-of-full.html",
+            "exitCode": 1,
+            "outputExcerpt": "No matches (expected)."
+          }
+        ],
+        "artifacts": [
+          "site-refinement/email-build/day-of-full.html",
+          "site-refinement/email-build/render-grep.log"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-EMAIL-004",
+      "title": "Day-of reminder includes full party details with null handling",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Render day-of email with full and null-edge event data",
+          "expected": "Full render includes time range/address/price; null render omits address and uses start time only with Free when price=0",
+          "observed": "render-check-summary.json dayOf.fullDetails and dayOf.nullHandling are all true."
+        }
+      ],
+      "evidence": {
+        "commands": [
+          {
+            "command": "cat .../render-check-summary.json",
+            "exitCode": 0,
+            "outputExcerpt": "\"dayOf\" -> fullDetails.* = true and nullHandling.* = true."
+          },
+          {
+            "command": "rg -n \"Address</td>\" .../rsvp-null.html .../day-of-null.html",
+            "exitCode": 1,
+            "outputExcerpt": "No Address row in null renders (expected)."
+          },
+          {
+            "command": "rg -n \"Price: Free\" .../rsvp-null.txt .../day-of-null.txt",
+            "exitCode": 0,
+            "outputExcerpt": "day-of-null.txt: Price: Free"
+          }
+        ],
+        "artifacts": [
+          "site-refinement/email-build/render-check-summary.json",
+          "site-refinement/email-build/day-of-full.html",
+          "site-refinement/email-build/day-of-null.html",
+          "site-refinement/email-build/day-of-full.txt",
+          "site-refinement/email-build/day-of-null.txt",
+          "site-refinement/email-build/render-grep.log"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-EMAIL-005",
+      "title": "Both emails include Stop One wordmark",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Check rendered HTML for wordmark image references",
+          "expected": "Both templates include <img> with stop1 wordmark asset",
+          "observed": "Both rendered files include <img src=\"https://stop1.party/images/wordmark.png\" ...>."
+        }
+      ],
+      "evidence": {
+        "commands": [
+          {
+            "command": "rg -n \"wordmark\\.(png|svg)\" .../rsvp-full.html .../day-of-full.html",
+            "exitCode": 0,
+            "outputExcerpt": "rsvp-full.html and day-of-full.html both match wordmark.png."
+          }
+        ],
+        "artifacts": [
+          "site-refinement/email-build/render-grep.log",
+          "site-refinement/email-build/rsvp-full.html",
+          "site-refinement/email-build/day-of-full.html"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-EMAIL-006",
+      "title": "Email time formatting uses correct timezone",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Inspect constant definition/import and timeZone usage in both email templates",
+          "expected": "EVENT_TIMEZONE is defined as America/New_York and used in date/time formatting options",
+          "observed": "EVENT_TIMEZONE constant exists in src/lib/constants.ts and both templates import and use timeZone: EVENT_TIMEZONE for date/start/end formatting."
+        }
+      ],
+      "evidence": {
+        "commands": [
+          {
+            "command": "rg -n \"EVENT_TIMEZONE\" src/lib/constants.ts src/lib/emails/rsvp-confirmation.ts src/lib/emails/day-of-reminder.ts",
+            "exitCode": 0,
+            "outputExcerpt": "src/lib/constants.ts: export const EVENT_TIMEZONE = 'America/New_York';"
+          },
+          {
+            "command": "rg -n \"EVENT_TIMEZONE|timeZone\" src/lib/emails/rsvp-confirmation.ts src/lib/emails/day-of-reminder.ts",
+            "exitCode": 0,
+            "outputExcerpt": "Both templates show timeZone: EVENT_TIMEZONE at date/start/end formatting lines."
+          }
+        ],
+        "artifacts": [
+          "site-refinement/email-build/timezone-constant.log",
+          "site-refinement/email-build/static-inspection.log"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-EMAIL-007",
+      "title": "RSVP API route fetches all required event fields",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Inspect RSVP API event select() fields",
+          "expected": "select includes time_end, door_price, venue_address",
+          "observed": "src/pages/api/rsvp/[slug].ts select includes 'id, status, title, date, time_end, door_price, venue_name, venue_address'."
+        }
+      ],
+      "evidence": {
+        "commands": [
+          {
+            "command": "rg -n \"select\\(|time_end|door_price|venue_address\" src/pages/api/rsvp/[slug].ts src/pages/api/admin/events/[slug]/reminders/send-email.ts",
+            "exitCode": 0,
+            "outputExcerpt": "src/pages/api/rsvp/[slug].ts:26 .select('id, status, title, date, time_end, door_price, venue_name, venue_address')"
+          }
+        ],
+        "artifacts": ["site-refinement/email-build/static-inspection.log"]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-EMAIL-008",
+      "title": "Email function signatures accept full event data",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Inspect both template event parameter types",
+          "expected": "Both signatures include time_end, door_price, venue_address types",
+          "observed": "Both templates define time_end: string | null, door_price: number, venue_address: string | null in event parameter type."
+        }
+      ],
+      "evidence": {
+        "commands": [
+          {
+            "command": "rg -n \"time_end: string \\| null|door_price: number|venue_address: string \\| null\" src/lib/emails/rsvp-confirmation.ts src/lib/emails/day-of-reminder.ts",
+            "exitCode": 0,
+            "outputExcerpt": "All three fields present in both files."
+          }
+        ],
+        "artifacts": ["site-refinement/email-build/static-inspection.log"]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-EMAIL-009",
+      "title": "Day-of reminder send route fetches required fields",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Inspect reminder send-email route event select() fields",
+          "expected": "select includes time_end and door_price (plus other required fields)",
+          "observed": "send-email.ts select includes 'id, title, date, time_end, door_price, venue_name, venue_address, reminder_email_sent_at'."
+        }
+      ],
+      "evidence": {
+        "commands": [
+          {
+            "command": "rg -n \"select\\(|time_end|door_price|venue_address\" src/pages/api/rsvp/[slug].ts src/pages/api/admin/events/[slug]/reminders/send-email.ts",
+            "exitCode": 0,
+            "outputExcerpt": "send-email.ts:32 includes 'time_end, door_price, venue_name, venue_address'."
+          }
+        ],
+        "artifacts": ["site-refinement/email-build/static-inspection.log"]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-EMAIL-010",
+      "title": "Plain text email bodies include key party details",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Inspect text fields in source and rendered text outputs for full/null cases",
+          "expected": "Text bodies include date/time/venue/address/price for full data and omit null fields",
+          "observed": "Source includes Date/Time/Venue/Address/Price lines; rendered null outputs omit Address and keep Price: Free with start-only time."
+        }
+      ],
+      "evidence": {
+        "commands": [
+          {
+            "command": "rg -n \"textParts|Date:|Time:|Venue:|Address:|Price:\" src/lib/emails/rsvp-confirmation.ts src/lib/emails/day-of-reminder.ts",
+            "exitCode": 0,
+            "outputExcerpt": "Both templates include Date/Time/Venue and conditional Address plus Price lines."
+          },
+          {
+            "command": "rg -n \"Address:\" .../rsvp-null.txt .../day-of-null.txt",
+            "exitCode": 1,
+            "outputExcerpt": "No Address line in null text renders (expected)."
+          },
+          {
+            "command": "rg -n \"Price: Free\" .../rsvp-null.txt .../day-of-null.txt",
+            "exitCode": 0,
+            "outputExcerpt": "Both null text renders include Price: Free."
+          },
+          {
+            "command": "rg -n \"Time: .*\u2013\" .../rsvp-null.txt .../day-of-null.txt",
+            "exitCode": 1,
+            "outputExcerpt": "No ranged time in null text renders (expected)."
+          }
+        ],
+        "artifacts": [
+          "site-refinement/email-build/static-inspection.log",
+          "site-refinement/email-build/render-grep.log",
+          "site-refinement/email-build/time-range-check.log",
+          "site-refinement/email-build/rsvp-null.txt",
+          "site-refinement/email-build/day-of-null.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CROSS-001",
+      "title": "Production build passes with all changes",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run production build gate command",
+          "expected": "pnpm build exits 0 with no TypeScript build failure",
+          "observed": "pnpm build completed successfully with EXIT_CODE:0 and Astro build complete."
+        }
+      ],
+      "evidence": {
+        "commands": [
+          {
+            "command": "pnpm --dir /Users/pete/Code/clubstack-events/stop1 build",
+            "exitCode": 0,
+            "outputExcerpt": "Deploy config validated; astro build complete; Server built in 3.37s."
+          }
+        ],
+        "artifacts": [
+          "site-refinement/email-build/pnpm-build.log",
+          "site-refinement/email-build/pnpm-build-exit.txt"
+        ]
+      },
+      "issues": null
+    }
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "Tested 11 assertions: 11 passed, 0 failed, 0 blocked."
+}
