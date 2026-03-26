@@ -1,65 +1,17 @@
 {
   "milestone": "site-refinement",
-  "round": 1,
-  "status": "fail",
+  "round": 2,
+  "status": "pass",
   "assertionsSummary": {
-    "total": 32,
-    "passed": 31,
-    "failed": 1,
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
     "blocked": 0
   },
-  "passedAssertions": [
-    "VAL-COLOR-001",
-    "VAL-COLOR-002",
-    "VAL-COLOR-003",
-    "VAL-COLOR-004",
-    "VAL-COLOR-005",
-    "VAL-COLOR-006",
-    "VAL-COUNT-001",
-    "VAL-COUNT-002",
-    "VAL-COUNT-003",
-    "VAL-CROSS-001",
-    "VAL-CROSS-003",
-    "VAL-CROSS-004",
-    "VAL-EMAIL-001",
-    "VAL-EMAIL-002",
-    "VAL-EMAIL-003",
-    "VAL-EMAIL-004",
-    "VAL-EMAIL-005",
-    "VAL-EMAIL-006",
-    "VAL-EMAIL-007",
-    "VAL-EMAIL-008",
-    "VAL-EMAIL-009",
-    "VAL-EMAIL-010",
-    "VAL-POSTER-001",
-    "VAL-POSTER-002",
-    "VAL-POSTER-003",
-    "VAL-POSTER-004",
-    "VAL-TIME-001",
-    "VAL-TIME-002",
-    "VAL-TIME-003",
-    "VAL-TIME-004",
-    "VAL-TIME-005"
-  ],
-  "failedAssertions": [
-    {
-      "id": "VAL-CROSS-002",
-      "reason": "Contract requires zero JavaScript console errors. Observed one error-level console entry on load. This appears tied to an external stylesheet URL (Typekit placeholder) rather than an uncaught page JS runtime exception, but it is still an error-level console message during landing-page load."
-    }
-  ],
+  "passedAssertions": ["VAL-CROSS-002"],
+  "failedAssertions": [],
   "blockedAssertions": [],
-  "appliedUpdates": [
-    {
-      "target": "user-testing.md",
-      "description": "Added Flow Validator Guidance sections for browser and repo-cli isolation boundaries.",
-      "source": "setup"
-    },
-    {
-      "target": "user-testing.md",
-      "description": "Documented current-run concurrency adjustment to max 3 validators based on observed machine load.",
-      "source": "setup"
-    }
-  ],
-  "previousRound": null,
-  "generatedAt": "2026-03-26T13:19:34.350788+00:00"
+  "appliedUpdates": [],
+  "previousRound": ".factory/validation/site-refinement/user-testing/synthesis.round1.json",
+  "generatedAt": "2026-03-26T13:27:21Z"
 }

@@ -1,0 +1,78 @@
+{
+  "groupId": "r2-val-cross-002",
+  "milestone": "site-refinement",
+  "testedAt": "2026-03-26T13:27:21Z",
+  "isolation": {
+    "surface": "browser",
+    "appUrl": "http://localhost:4321",
+    "missionDir": "/Users/pete/.factory/missions/3366789e-ab50-48c4-b22b-0ffd41663dd6"
+  },
+  "toolsUsed": ["agent-browser"],
+  "assertionsTested": ["VAL-CROSS-002"],
+  "statusByAssertion": {
+    "VAL-CROSS-002": "pass"
+  },
+  "assertions": [
+    {
+      "id": "VAL-CROSS-002",
+      "title": "Landing page loads without console errors",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Open http://localhost:4321 and wait for network idle",
+          "expected": "Landing page fully renders",
+          "observed": "Landing page rendered successfully"
+        },
+        {
+          "action": "Verify visible page sections",
+          "expected": "Flyer card, action buttons, footer visible; no countdown timer",
+          "observed": "Flyer card text (\"your first your last your only\"), action controls (RSVP + Info), and footer/sign-in area visible; no countdown text or timer element observed"
+        },
+        {
+          "action": "Check browser console/error stream on initial load",
+          "expected": "Zero error-level console entries",
+          "observed": "No error-level entries. Console contained debug logs and GSAP warnings only"
+        }
+      ],
+      "evidence": {
+        "screenshots": [
+          "site-refinement/r2-val-cross-002/VAL-CROSS-002-landing-full.png",
+          "site-refinement/r2-val-cross-002/VAL-CROSS-002-landing-annotated.png"
+        ],
+        "logs": [
+          "site-refinement/r2-val-cross-002/VAL-CROSS-002-snapshot-interactive.txt",
+          "site-refinement/r2-val-cross-002/VAL-CROSS-002-body-text.txt",
+          "site-refinement/r2-val-cross-002/VAL-CROSS-002-console.txt",
+          "site-refinement/r2-val-cross-002/VAL-CROSS-002-errors.txt"
+        ],
+        "consoleErrors": {
+          "errorLevelEntries": [],
+          "warnings": [
+            "GSAP target .wordmark not found. https://gsap.com",
+            "GSAP target  not found. https://gsap.com",
+            "GSAP target  not found. https://gsap.com"
+          ]
+        }
+      },
+      "issues": null
+    }
+  ],
+  "evidence": {
+    "screenshots": [
+      "site-refinement/r2-val-cross-002/VAL-CROSS-002-landing-full.png",
+      "site-refinement/r2-val-cross-002/VAL-CROSS-002-landing-annotated.png"
+    ],
+    "logs": [
+      "site-refinement/r2-val-cross-002/VAL-CROSS-002-snapshot-interactive.txt",
+      "site-refinement/r2-val-cross-002/VAL-CROSS-002-body-text.txt",
+      "site-refinement/r2-val-cross-002/VAL-CROSS-002-console.txt",
+      "site-refinement/r2-val-cross-002/VAL-CROSS-002-errors.txt"
+    ]
+  },
+  "frictions": [],
+  "blockers": [],
+  "reasoningByAssertion": {
+    "VAL-CROSS-002": "The page loaded and rendered the expected landing content (flyer card, action buttons, footer/sign-in area) with no countdown timer visible. Browser error stream contained zero error-level entries on initial load, so the assertion passes."
+  },
+  "summary": "Retest complete for VAL-CROSS-002: PASS. Landing page loaded successfully and produced no error-level console entries."
+}
