@@ -41,7 +41,7 @@ export function rsvpConfirmationEmail(
 
   const venue = event.venue_name || 'TBA';
 
-  const priceText = event.door_price === 0 ? 'Free' : `$${event.door_price}`;
+  const priceText = event.door_price === 0 ? 'Free' : `$${event.door_price.toFixed(2)}`;
 
   // Build details rows for HTML
   const detailRows = [

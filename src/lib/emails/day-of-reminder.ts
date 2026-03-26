@@ -15,6 +15,13 @@ export function dayOfReminderEmail(
   },
 ) {
   const eventDate = new Date(event.date);
+  const dateFormatted = eventDate.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: EVENT_TIMEZONE,
+  });
   const startTime = eventDate.toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: '2-digit',
@@ -34,10 +41,11 @@ export function dayOfReminderEmail(
 
   const venue = event.venue_name || 'TBA';
 
-  const priceText = event.door_price === 0 ? 'Free' : `$${event.door_price}`;
+  const priceText = event.door_price === 0 ? 'Free' : `$${event.door_price.toFixed(2)}`;
 
   // Build details rows for HTML
   const detailRows = [
+    `<tr><td style="color: #666666; padding: 4px 16px 4px 0; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; font-weight: 500;">Date</td><td style="padding: 4px 0;">${dateFormatted}</td></tr>`,
     `<tr><td style="color: #666666; padding: 4px 16px 4px 0; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; font-weight: 500;">Time</td><td style="padding: 4px 0;">${timeDisplay}</td></tr>`,
     `<tr><td style="color: #666666; padding: 4px 16px 4px 0; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; font-weight: 500;">Venue</td><td style="padding: 4px 0;">${venue}</td></tr>`,
   ];
@@ -55,6 +63,7 @@ export function dayOfReminderEmail(
   // Build plain text
   const textParts = [
     `Hey ${name}! Just a reminder — ${event.title} is tonight.`,
+    `Date: ${dateFormatted}`,
     `Time: ${timeDisplay}`,
     `Venue: ${venue}`,
   ];
