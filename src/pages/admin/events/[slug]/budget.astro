@@ -1,6 +1,7 @@
 ---
 import Admin from '@/layouts/Admin.astro';
 import { supabaseAdmin } from '@/lib/supabase';
+import { EVENT_TIMEZONE } from '@/lib/constants';
 
 if (!supabaseAdmin) {
   return new Response('Server configuration error', { status: 500 });
@@ -186,6 +187,7 @@ function fmt(n: number) {
                     {new Date(p.paid_at).toLocaleDateString('en-US', {
                       month: 'short',
                       day: 'numeric',
+                      timeZone: EVENT_TIMEZONE,
                     })}
                   </span>
                 </div>

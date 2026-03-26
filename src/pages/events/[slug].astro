@@ -1,6 +1,7 @@
 ---
 import Base from '@/layouts/Base.astro';
 import { supabase } from '@/lib/supabase';
+import { EVENT_TIMEZONE } from '@/lib/constants';
 
 const { slug } = Astro.params;
 
@@ -20,13 +21,19 @@ const dateFormatted = eventDate.toLocaleDateString('en-US', {
   weekday: 'long',
   month: 'long',
   day: 'numeric',
+  timeZone: EVENT_TIMEZONE,
 });
 const timeFormatted = eventDate.toLocaleTimeString('en-US', {
   hour: 'numeric',
   minute: '2-digit',
+  timeZone: EVENT_TIMEZONE,
 });
 const timeEnd = event.time_end
-  ? new Date(event.time_end).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  ? new Date(event.time_end).toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      timeZone: EVENT_TIMEZONE,
+    })
   : null;
 ---
 

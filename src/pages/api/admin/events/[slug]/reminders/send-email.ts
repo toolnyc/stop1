@@ -3,6 +3,7 @@ import { resend } from '@/lib/resend';
 import { dayOfReminderEmail } from '@/lib/emails/day-of-reminder';
 import { withLogging } from '@/lib/api';
 import { trackCall, maskEmail } from '@/lib/track';
+import { EVENT_TIMEZONE } from '@/lib/constants';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
@@ -40,12 +41,15 @@ export const POST = withLogging(async ({ params, cookies, log }) => {
   }
 
   if (event.reminder_email_sent_at) {
-    return new Response(JSON.stringify({
-      error: `Already sent on ${new Date(event.reminder_email_sent_at).toLocaleDateString()}`,
-    }), {
-      status: 409,
-      headers: JSON_HEADERS,
-    });
+    return new Response(
+      JSON.stringify({
+        error: `Already sent on ${new Date(event.reminder_email_sent_at).toLocaleDateString('en-US', { timeZone: EVENT_TIMEZONE })}`,
+      }),
+      {
+        status: 409,
+        headers: JSON_HEADERS,
+      },
+    );
   }
 
   if (!resend) {

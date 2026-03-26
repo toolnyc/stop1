@@ -1,6 +1,7 @@
 ---
 import Base from '@/layouts/Base.astro';
 import { supabase } from '@/lib/supabase';
+import { EVENT_TIMEZONE } from '@/lib/constants';
 
 // Get next upcoming published event
 const { data: events } = await supabase
@@ -16,13 +17,26 @@ const eventDate = nextEvent ? new Date(nextEvent.date) : null;
 
 // Format event details for the info modal
 const dateFormatted = eventDate
-  ? eventDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+  ? eventDate.toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      timeZone: EVENT_TIMEZONE,
+    })
   : null;
 const timeFormatted = eventDate
-  ? eventDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  ? eventDate.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      timeZone: EVENT_TIMEZONE,
+    })
   : null;
 const timeEnd = nextEvent?.time_end
-  ? new Date(nextEvent.time_end).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  ? new Date(nextEvent.time_end).toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      timeZone: EVENT_TIMEZONE,
+    })
   : null;
 ---
 

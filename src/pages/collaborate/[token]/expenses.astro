@@ -1,6 +1,7 @@
 ---
 import Base from '@/layouts/Base.astro';
 import { supabaseAdmin } from '@/lib/supabase';
+import { EVENT_TIMEZONE } from '@/lib/constants';
 
 if (!supabaseAdmin) {
   return new Response('Server configuration error', { status: 500 });
@@ -39,6 +40,7 @@ const total = expenseList.reduce((sum, e) => sum + Number(e.amount), 0);
 const error = Astro.url.searchParams.get('error');
 const success = Astro.url.searchParams.get('success');
 ---
+
 <Base title={`Expenses — ${event?.title ?? 'Event'}`}>
   <main class="expenses-page">
     <h1>{event?.title}</h1>
@@ -71,30 +73,46 @@ const success = Astro.url.searchParams.get('success');
 
     <div class="expense-list">
       <h2>Your Expenses <span class="text-muted">(${total.toFixed(2)})</span></h2>
-      {expenseList.length === 0 ? (
-        <p class="empty text-muted">No expenses yet.</p>
-      ) : (
-        <div class="expense-items">
-          {expenseList.map((e) => (
-            <div class="expense-row">
-              <div class="expense-info">
-                <span class="expense-desc">{e.description}</span>
-                <span class="expense-date text-muted">{new Date(e.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+      {
+        expenseList.length === 0 ? (
+          <p class="empty text-muted">No expenses yet.</p>
+        ) : (
+          <div class="expense-items">
+            {expenseList.map((e) => (
+              <div class="expense-row">
+                <div class="expense-info">
+                  <span class="expense-desc">{e.description}</span>
+                  <span class="expense-date text-muted">
+                    {new Date(e.created_at).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      timeZone: EVENT_TIMEZONE,
+                    })}
+                  </span>
+                </div>
+                <div class="expense-actions">
+                  <span class="expense-amount mono">${Number(e.amount).toFixed(2)}</span>
+                  {e.receipt_url && (
+                    <a href={e.receipt_url} target="_blank" class="receipt-link">
+                      Receipt
+                    </a>
+                  )}
+                  <form
+                    method="POST"
+                    action="/api/collaborators/expenses/delete"
+                    style="display:inline"
+                  >
+                    <input type="hidden" name="expense_id" value={e.id} />
+                    <button type="submit" class="btn-icon-delete" title="Delete">
+                      &times;
+                    </button>
+                  </form>
+                </div>
               </div>
-              <div class="expense-actions">
-                <span class="expense-amount mono">${Number(e.amount).toFixed(2)}</span>
-                {e.receipt_url && (
-                  <a href={e.receipt_url} target="_blank" class="receipt-link">Receipt</a>
-                )}
-                <form method="POST" action="/api/collaborators/expenses/delete" style="display:inline">
-                  <input type="hidden" name="expense_id" value={e.id} />
-                  <button type="submit" class="btn-icon-delete" title="Delete">&times;</button>
-                </form>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )
+      }
     </div>
   </main>
 </Base>
@@ -117,7 +135,9 @@ const success = Astro.url.searchParams.get('success');
     font-size: 0.9375rem;
   }
 
-  .alert { margin-bottom: var(--space-md); }
+  .alert {
+    margin-bottom: var(--space-md);
+  }
 
   .add-form {
     display: flex;
@@ -126,7 +146,10 @@ const success = Astro.url.searchParams.get('success');
     margin-bottom: var(--space-3xl);
   }
 
-  .add-form h2 { font-size: 1.125rem; font-weight: var(--weight-bold); }
+  .add-form h2 {
+    font-size: 1.125rem;
+    font-weight: var(--weight-bold);
+  }
 
   .file-input {
     font-size: 0.875rem;
@@ -139,7 +162,9 @@ const success = Astro.url.searchParams.get('success');
     margin-bottom: var(--space-md);
   }
 
-  .empty { padding: var(--space-md) 0; }
+  .empty {
+    padding: var(--space-md) 0;
+  }
 
   .expense-items {
     border: var(--border);
@@ -155,14 +180,31 @@ const success = Astro.url.searchParams.get('success');
     border-bottom: var(--border);
   }
 
-  .expense-row:last-child { border-bottom: none; }
+  .expense-row:last-child {
+    border-bottom: none;
+  }
 
-  .expense-info { display: flex; flex-direction: column; gap: 2px; }
-  .expense-desc { font-weight: var(--weight-medium); }
-  .expense-date { font-size: 0.75rem; }
+  .expense-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .expense-desc {
+    font-weight: var(--weight-medium);
+  }
+  .expense-date {
+    font-size: 0.75rem;
+  }
 
-  .expense-actions { display: flex; align-items: center; gap: var(--space-sm); flex-shrink: 0; }
-  .expense-amount { font-weight: var(--weight-medium); }
+  .expense-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    flex-shrink: 0;
+  }
+  .expense-amount {
+    font-weight: var(--weight-medium);
+  }
 
   .receipt-link {
     font-size: 0.75rem;
@@ -182,7 +224,9 @@ const success = Astro.url.searchParams.get('success');
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: border-color var(--transition), background var(--transition);
+    transition:
+      border-color var(--transition),
+      background var(--transition);
   }
 
   .btn-icon-delete:hover {

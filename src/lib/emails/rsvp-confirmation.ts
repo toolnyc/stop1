@@ -1,9 +1,11 @@
+import { EVENT_TIMEZONE } from '@/lib/constants';
+
 const EMAIL_FROM = import.meta.env.EMAIL_FROM || 'Stop One <noreply@stop1.party>';
 
 export function rsvpConfirmationEmail(
   name: string,
   email: string,
-  event: { title: string; date: string; venue_name: string | null }
+  event: { title: string; date: string; venue_name: string | null },
 ) {
   const eventDate = new Date(event.date);
   const dateFormatted = eventDate.toLocaleDateString('en-US', {
@@ -11,10 +13,12 @@ export function rsvpConfirmationEmail(
     month: 'long',
     day: 'numeric',
     year: 'numeric',
+    timeZone: EVENT_TIMEZONE,
   });
   const timeFormatted = eventDate.toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: '2-digit',
+    timeZone: EVENT_TIMEZONE,
   });
 
   const venue = event.venue_name || 'TBA';

@@ -1,6 +1,7 @@
 ---
 import Admin from '@/layouts/Admin.astro';
 import { supabaseAdmin } from '@/lib/supabase';
+import { EVENT_TIMEZONE } from '@/lib/constants';
 
 if (!supabaseAdmin) {
   return new Response('Server configuration error', { status: 500 });
@@ -23,47 +24,54 @@ function formatDate(dateStr: string) {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
+    timeZone: EVENT_TIMEZONE,
   });
 }
 
 function statusBadge(status: string) {
   switch (status) {
-    case 'published': return 'badge-success';
-    case 'draft': return 'badge-warning';
-    default: return 'badge-muted';
+    case 'published':
+      return 'badge-success';
+    case 'draft':
+      return 'badge-warning';
+    default:
+      return 'badge-muted';
   }
 }
 ---
+
 <Admin title="Events — Stop One Admin">
   <div class="dashboard-header">
     <h1>Events</h1>
     <a href="/admin/events/new" class="btn btn-primary btn-sm">New Event</a>
   </div>
 
-  {eventList.length === 0 ? (
-    <div class="empty-state">
-      <p>No events yet.</p>
-      <p class="text-muted">Create your first event to get started.</p>
-    </div>
-  ) : (
-    <div class="event-list">
-      {eventList.map((event) => {
-        const rsvpCount = (event.rsvps as unknown as { count: number }[])?.[0]?.count ?? 0;
-        return (
-          <a href={`/admin/events/${event.slug}`} class="event-row">
-            <div class="event-info">
-              <span class="event-title">{event.title}</span>
-              <span class="event-date">{formatDate(event.date)}</span>
-            </div>
-            <div class="event-meta">
-              <span class="rsvp-count mono">{rsvpCount}</span>
-              <span class={`badge ${statusBadge(event.status)}`}>{event.status}</span>
-            </div>
-          </a>
-        );
-      })}
-    </div>
-  )}
+  {
+    eventList.length === 0 ? (
+      <div class="empty-state">
+        <p>No events yet.</p>
+        <p class="text-muted">Create your first event to get started.</p>
+      </div>
+    ) : (
+      <div class="event-list">
+        {eventList.map((event) => {
+          const rsvpCount = (event.rsvps as unknown as { count: number }[])?.[0]?.count ?? 0;
+          return (
+            <a href={`/admin/events/${event.slug}`} class="event-row">
+              <div class="event-info">
+                <span class="event-title">{event.title}</span>
+                <span class="event-date">{formatDate(event.date)}</span>
+              </div>
+              <div class="event-meta">
+                <span class="rsvp-count mono">{rsvpCount}</span>
+                <span class={`badge ${statusBadge(event.status)}`}>{event.status}</span>
+              </div>
+            </a>
+          );
+        })}
+      </div>
+    )
+  }
 </Admin>
 
 <style>
