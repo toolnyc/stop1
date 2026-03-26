@@ -1,0 +1,13 @@
+commands:
+  install: pnpm install
+  build: pnpm build
+  dev: pnpm dev
+  typecheck: pnpm build
+
+services:
+  web:
+    start: cd /Users/pete/Code/clubstack-events/stop1 && PORT=4321 pnpm dev
+    stop: lsof -ti :4321 | xargs kill 2>/dev/null || true
+    healthcheck: curl -sf http://localhost:4321
+    port: 4321
+    depends_on: []
