@@ -207,7 +207,7 @@ const timeEnd = nextEvent?.time_end
     const scene = document.getElementById('flyer-scene');
 
     if (scene && card && shine) {
-      const MAX_TILT = 15;
+      const MAX_TILT = 6;
       let gyroActive = false;
       let currentRotateX = 0;
       let currentRotateY = 0;
@@ -219,14 +219,14 @@ const timeEnd = nextEvent?.time_end
       }
 
       function updateCard() {
-        currentRotateX = lerp(currentRotateX, targetRotateX, 0.08);
-        currentRotateY = lerp(currentRotateY, targetRotateY, 0.08);
+        currentRotateX = lerp(currentRotateX, targetRotateX, 0.05);
+        currentRotateY = lerp(currentRotateY, targetRotateY, 0.05);
 
-        card.style.transform = `perspective(800px) rotateX(${currentRotateX}deg) rotateY(${currentRotateY}deg)`;
+        card.style.transform = `perspective(1200px) rotateX(${currentRotateX}deg) rotateY(${currentRotateY}deg)`;
 
         const shineX = 50 + (currentRotateY / MAX_TILT) * 40;
         const shineY = 50 - (currentRotateX / MAX_TILT) * 40;
-        shine.style.background = `radial-gradient(circle at ${shineX}% ${shineY}%, rgba(255,255,255,0.18) 0%, transparent 60%)`;
+        shine.style.background = `radial-gradient(circle at ${shineX}% ${shineY}%, rgba(255,255,255,0.08) 0%, transparent 80%)`;
 
         _rafId = requestAnimationFrame(updateCard);
       }
@@ -465,7 +465,7 @@ const timeEnd = nextEvent?.time_end
 
   /* ---- Interactive flyer card ---- */
   .flyer-scene {
-    perspective: 800px;
+    perspective: 1200px;
     width: 100%;
     max-width: 340px;
     cursor: grab;
