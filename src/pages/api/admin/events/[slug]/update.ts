@@ -25,6 +25,8 @@ export const POST = withLogging(async ({ params, request, cookies, redirect, log
   const venue_address = formData.get('venue_address') as string;
   const description = formData.get('description') as string;
   const door_price = formData.get('door_price') as string;
+  const early_price = formData.get('early_price') as string;
+  const early_cutoff = formData.get('early_cutoff') as string;
   const door_pin = formData.get('door_pin') as string;
   const capacity = formData.get('capacity') as string;
   const status = formData.get('status') as string;
@@ -32,7 +34,9 @@ export const POST = withLogging(async ({ params, request, cookies, redirect, log
   const removeFlyer = formData.get('remove_flyer') as string;
 
   if (!title || !date) {
-    return redirect(`/admin/events/${slug}?error=${encodeURIComponent('Title and date are required')}`);
+    return redirect(
+      `/admin/events/${slug}?error=${encodeURIComponent('Title and date are required')}`,
+    );
   }
 
   const updates: Record<string, unknown> = {
@@ -43,6 +47,8 @@ export const POST = withLogging(async ({ params, request, cookies, redirect, log
     venue_address: venue_address || null,
     description: description || null,
     door_price: parseFloat(door_price) || 0,
+    early_price: early_price !== '' ? parseFloat(early_price) : null,
+    early_cutoff: early_cutoff || null,
     capacity: capacity ? parseInt(capacity) : null,
     status: status === 'published' ? 'published' : 'draft',
     updated_at: new Date().toISOString(),
@@ -56,7 +62,9 @@ export const POST = withLogging(async ({ params, request, cookies, redirect, log
     updates.flyer_url = null;
   } else if (flyer && flyer.size > 0) {
     if (flyer.size > 5 * 1024 * 1024) {
-      return redirect(`/admin/events/${slug}?error=${encodeURIComponent('Flyer must be under 5MB (compress client-side first)')}`);
+      return redirect(
+        `/admin/events/${slug}?error=${encodeURIComponent('Flyer must be under 5MB (compress client-side first)')}`,
+      );
     }
     const uploadResult = await trackCall({
       service: 'blob',
@@ -69,14 +77,13 @@ export const POST = withLogging(async ({ params, request, cookies, redirect, log
       updates.flyer_url = uploadResult.data;
     } else {
       log.error('event.flyer_upload_failed', { slug, error: uploadResult.error });
-      return redirect(`/admin/events/${slug}?error=${encodeURIComponent('Failed to upload flyer')}`);
+      return redirect(
+        `/admin/events/${slug}?error=${encodeURIComponent('Failed to upload flyer')}`,
+      );
     }
   }
 
-  const { error } = await supabaseAdmin
-    .from('events')
-    .update(updates)
-    .eq('slug', slug!);
+  const { error } = await supabaseAdmin.from('events').update(updates).eq('slug', slug!);
 
   if (error) {
     log.error('event.update_failed', { slug, error: error.message, code: error.code });

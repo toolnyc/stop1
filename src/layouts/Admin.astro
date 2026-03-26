@@ -6,17 +6,16 @@ export interface Props {
 }
 const { title = 'Admin — Stop One' } = Astro.props;
 ---
+
 <Base title={title}>
   <nav class="admin-nav">
-    <a href="/admin" class="admin-nav-brand">
-      <img src="/images/wordmark.svg" alt="Stop One" class="admin-nav-logo" />
-    </a>
     <div class="admin-nav-links">
       <a href="/admin" class="admin-nav-link">Events</a>
-      <form method="POST" action="/api/admin/logout" style="display:inline">
-        <button type="submit" class="btn btn-secondary btn-sm">Logout</button>
-      </form>
+      <a href="/" class="admin-nav-link admin-nav-back">Back to site</a>
     </div>
+    <form method="POST" action="/api/admin/logout" style="display:inline">
+      <button type="submit" class="btn btn-secondary btn-sm">Logout</button>
+    </form>
   </nav>
   <main class="admin-main">
     <slot />
@@ -36,17 +35,6 @@ const { title = 'Admin — Stop One' } = Astro.props;
     z-index: var(--z-sticky);
   }
 
-  .admin-nav-brand {
-    text-decoration: none;
-    display: flex;
-    align-items: center;
-  }
-
-  .admin-nav-logo {
-    height: 1.5rem;
-    width: auto;
-  }
-
   .admin-nav-links {
     display: flex;
     align-items: center;
@@ -63,6 +51,10 @@ const { title = 'Admin — Stop One' } = Astro.props;
 
   .admin-nav-link:hover {
     opacity: 0.7;
+  }
+
+  .admin-nav-back {
+    color: var(--color-faint);
   }
 
   .admin-main {

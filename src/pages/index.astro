@@ -7,7 +7,7 @@ import { EVENT_TIMEZONE } from '@/lib/constants';
 const { data: events } = await supabase
   .from('events')
   .select(
-    'title, slug, date, time_end, flyer_url, venue_name, venue_address, description, door_price',
+    'title, slug, date, time_end, flyer_url, venue_name, venue_address, description, door_price, early_price, early_cutoff',
   )
   .eq('status', 'published')
   .gte('date', new Date().toISOString())
@@ -43,12 +43,19 @@ const dateFormatted = eventDate
 const timeFormatted = eventDate ? formatTime(eventDate) : null;
 const timeEnd = nextEvent?.time_end ? formatTime(new Date(nextEvent.time_end)) : null;
 
-const priceFormatted =
-  nextEvent?.door_price === 0
-    ? 'free'
-    : nextEvent?.door_price
-      ? `$${Math.floor(nextEvent.door_price)}`
-      : null;
+const formatPrice = (price: number) => (price === 0 ? 'free' : `$${Math.floor(price)}`);
+
+const hasEarlyPricing =
+  nextEvent?.early_price !== null &&
+  nextEvent?.early_price !== undefined &&
+  nextEvent?.early_cutoff;
+
+const earlyPriceFormatted = hasEarlyPricing ? formatPrice(nextEvent.early_price!) : null;
+const earlyTimeFormatted = hasEarlyPricing ? formatTime(new Date(nextEvent.early_cutoff!)) : null;
+const doorPriceFormatted =
+  nextEvent?.door_price !== null && nextEvent?.door_price !== undefined
+    ? formatPrice(nextEvent.door_price)
+    : null;
 ---
 
 <Base title="Stop One">
@@ -111,15 +118,54 @@ const priceFormatted =
             </button>
             <div class="modal-body">
               <h2 class="modal-title">{nextEvent.title}</h2>
-              <p class="modal-detail">
-                {dateFormatted}
-                {timeFormatted && ` \u00B7 ${timeFormatted}${timeEnd ? `\u2013${timeEnd}` : ''}`}
-                {priceFormatted && ` \u00B7 ${priceFormatted}`}
-              </p>
-              {nextEvent.venue_name && <p class="modal-detail">{nextEvent.venue_name}</p>}
-              {nextEvent.venue_address && (
-                <p class="modal-detail modal-detail-muted">{nextEvent.venue_address}</p>
-              )}
+
+              <dl class="info-list">
+                {dateFormatted && (
+                  <div class="info-row">
+                    <dt class="info-label">Date</dt>
+                    <dd class="info-value">{dateFormatted}</dd>
+                  </div>
+                )}
+
+                {timeFormatted && (
+                  <div class="info-row">
+                    <dt class="info-label">Time</dt>
+                    <dd class="info-value">
+                      {timeFormatted}
+                      {timeEnd ? `\u2013${timeEnd}` : ''}
+                    </dd>
+                  </div>
+                )}
+
+                {(doorPriceFormatted || earlyPriceFormatted) && (
+                  <div class="info-row">
+                    <dt class="info-label">Price</dt>
+                    <dd class="info-value">
+                      {hasEarlyPricing ? (
+                        <span>
+                          {earlyPriceFormatted} before {earlyTimeFormatted} &middot;{' '}
+                          {doorPriceFormatted} after
+                        </span>
+                      ) : (
+                        doorPriceFormatted
+                      )}
+                    </dd>
+                  </div>
+                )}
+
+                {nextEvent.venue_name && (
+                  <div class="info-row">
+                    <dt class="info-label">Location</dt>
+                    <dd class="info-value">
+                      {nextEvent.venue_name}
+                      {nextEvent.venue_address && (
+                        <span class="info-sub">{nextEvent.venue_address}</span>
+                      )}
+                    </dd>
+                  </div>
+                )}
+              </dl>
+
               {nextEvent.description && <p class="modal-desc">{nextEvent.description}</p>}
             </div>
           </div>
@@ -200,7 +246,7 @@ const priceFormatted =
 
     // Footer items: show first, hide rest
     document.querySelectorAll<HTMLElement>('.footer-item').forEach((el, i) => {
-      el.style.display = i === 0 ? '' : 'none';
+      el.style.display = i === 0 ? 'block' : 'none';
       el.style.opacity = i === 0 ? '1' : '0';
     });
 
@@ -331,7 +377,7 @@ const priceFormatted =
           ease: 'power2.in',
           onComplete: () => {
             current.style.display = 'none';
-            next.style.display = '';
+            next.style.display = 'block';
             gsap.fromTo(
               next,
               { opacity: 0, y: 10 },
@@ -603,7 +649,7 @@ const priceFormatted =
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 2.25rem;
+    height: 2.75rem;
   }
 
   .footer-item {
@@ -624,7 +670,7 @@ const priceFormatted =
   }
 
   .footer-logo {
-    height: 2.25rem;
+    height: 2.75rem;
     width: auto;
     filter: invert(1);
     display: block;
@@ -636,7 +682,7 @@ const priceFormatted =
     }
 
     .footer-logo {
-      height: 2.25rem;
+      height: 3rem;
     }
   }
 
@@ -685,7 +731,7 @@ const priceFormatted =
   .modal-body {
     display: flex;
     flex-direction: column;
-    gap: var(--space-xs);
+    gap: var(--space-sm);
   }
 
   .modal-title {
@@ -695,15 +741,40 @@ const priceFormatted =
     margin-bottom: var(--space-xs);
   }
 
-  .modal-detail {
+  .info-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    margin: 0;
+    padding: 0;
+  }
+
+  .info-row {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .info-label {
+    font-size: 0.75rem;
+    font-weight: var(--weight-bold);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-muted);
+  }
+
+  .info-value {
     font-size: 0.9375rem;
     color: var(--color-fg);
     line-height: var(--leading-normal);
+    margin: 0;
   }
 
-  .modal-detail-muted {
+  .info-sub {
+    display: block;
+    font-size: 0.8125rem;
     color: var(--color-muted);
-    font-size: 0.875rem;
+    margin-top: 2px;
   }
 
   .modal-desc {
@@ -711,6 +782,8 @@ const priceFormatted =
     color: var(--color-muted);
     line-height: var(--leading-relaxed);
     margin-top: var(--space-sm);
+    padding-top: var(--space-sm);
+    border-top: var(--border);
   }
 
   /* ---- Menu overlay ---- */
