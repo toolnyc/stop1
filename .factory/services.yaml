@@ -3,6 +3,8 @@ commands:
   build: pnpm build
   dev: pnpm dev
   typecheck: pnpm build
+  test: pnpm test
+  lint: pnpm lint
 
 services:
   web:

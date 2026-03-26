@@ -1,0 +1,34 @@
+{
+  "featureId": "email-template-redesign",
+  "reviewedAt": "2026-03-26T12:51:03Z",
+  "commitId": "d70fe0ca0f70bbab9f8be5f4c4effab42484bebd",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The commit correctly updates palette colors, wordmark usage, timezone formatting for times, and API field propagation. However, the day-of reminder template does not include the event date even though the feature spec and expected behavior require full party details (including date) in both templates.",
+    "issues": [
+      {
+        "file": "src/lib/emails/day-of-reminder.ts",
+        "line": 40,
+        "severity": "blocking",
+        "description": "Missing event date in day-of reminder output. The HTML detail rows include only Time/Venue/Address/Price (lines 40-52), and the plain-text body also omits a Date line (lines 56-64). This conflicts with the feature requirement that both templates include full details including date (features.json expectedBehavior)."
+      },
+      {
+        "file": "src/lib/emails/rsvp-confirmation.ts",
+        "line": 44,
+        "severity": "non_blocking",
+        "description": "Price formatting uses raw string interpolation (`$${event.door_price}`) rather than currency formatting, which can render values like `$12.5` instead of `$12.50` for numeric(10,2) prices."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "Mission requirements are inconsistent about day-of email date inclusion, which likely caused implementation drift.",
+      "evidence": "features.json (email-template-redesign description + expectedBehavior) requires both templates to include date; validation-contract.md VAL-EMAIL-004 lists day-of details without date."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Review failed due to a blocking requirement miss: the day-of reminder email omits event date in both HTML and plain text despite the feature spec requiring date in both templates. Other major redesign requirements (palette, wordmark, timezone use, and API field propagation) are implemented."
+}

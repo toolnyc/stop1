@@ -1,0 +1,26 @@
+{
+  "featureId": "timezone-fix",
+  "reviewedAt": "2026-03-26T12:50:43.635898+00:00",
+  "commitId": "4a49daf43d84897b0540f003d6332691a8e6890d",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Implementation meets the timezone-fix intent: shared EVENT_TIMEZONE was introduced and all toLocaleTimeString/toLocaleDateString usages are wired to timeZone: EVENT_TIMEZONE. No blocking correctness or security regressions were found in the reviewed diff.",
+    "issues": []
+  },
+  "sharedStateObservations": [
+    {
+      "area": "knowledge",
+      "observation": "The validation contract lists src/pages/admin/events/[slug]/index.astro under timezone formatting targets, but that file uses toISOString() in formatDatetimeLocal and has no toLocale* calls. This mismatch can cause unnecessary investigation during implementation/review.",
+      "evidence": "validation-contract.md:54 includes src/pages/admin/events/[slug]/index.astro; src/pages/admin/events/[slug]/index.astro:23-26 shows formatDatetimeLocal() returning d.toISOString().slice(0, 16)"
+    },
+    {
+      "area": "skills",
+      "observation": "frontend-worker guidance says timezone-formatting features should write unit tests first, but this feature was completed and marked as following procedure with no tests added. Skill wording appears stricter than actual practice for broad cross-file formatting edits.",
+      "evidence": ".factory/skills/frontend-worker/SKILL.md:30-36 requires tests-first for timezone formatting; handoff 2026-03-26T12-34-58-221Z__timezone-fix__030bfcf5-c263-4279-9cc7-2d3d84243bb7.json:42-44 shows tests.added = []; :53 shows followedProcedure = true"
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed feature timezone-fix at commit 4a49daf. Assertions are satisfied for shared timezone constant usage and locale-format timezone application, with no blocking regressions detected. Added two shared-state observations about spec/skill clarity."
+}
