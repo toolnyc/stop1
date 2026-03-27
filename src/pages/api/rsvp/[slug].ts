@@ -9,7 +9,7 @@ import { trackCall, maskEmail } from '@/lib/track';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
-export const POST = withLogging(async ({ params, request, log }) => {
+export const POST = withLogging(async ({ params, request, log, background }) => {
   if (!supabaseAdmin) {
     log.error('supabase_admin_missing');
     return new Response(JSON.stringify({ error: 'Server configuration error' }), {
@@ -110,30 +110,34 @@ export const POST = withLogging(async ({ params, request, log }) => {
 
   log.info('rsvp.created', { slug, rsvpId: data.id });
 
-  // Fire-and-forget SMS confirmation (now tracked)
+  // Background SMS confirmation — kept alive via waitUntil on Vercel
   if (sms_opt_in) {
     const smsBody = rsvpConfirmationSms(name.trim(), event);
-    sendSms(phone, smsBody, { action: 'send-rsvp-confirmation', log }).then(result => {
-      if (!result.ok) {
-        log.error('rsvp.sms_failed', { slug, rsvpId: data.id, error: result.error });
-      }
-    });
+    background(
+      sendSms(phone, smsBody, { action: 'send-rsvp-confirmation', log }).then((result) => {
+        if (!result.ok) {
+          log.error('rsvp.sms_failed', { slug, rsvpId: data.id, error: result.error });
+        }
+      }),
+    );
   }
 
-  // Fire-and-forget email confirmation (now tracked)
+  // Background email confirmation — kept alive via waitUntil on Vercel
   if (resend && email) {
     const emailData = rsvpConfirmationEmail(name.trim(), email, event);
-    trackCall({
-      service: 'resend',
-      action: 'send-rsvp-confirmation',
-      meta: { to: maskEmail(email), slug },
-      log,
-      fn: () => resend.emails.send(emailData),
-    }).then(result => {
-      if (!result.ok) {
-        log.error('rsvp.email_failed', { slug, rsvpId: data.id, error: result.error });
-      }
-    });
+    background(
+      trackCall({
+        service: 'resend',
+        action: 'send-rsvp-confirmation',
+        meta: { to: maskEmail(email), slug },
+        log,
+        fn: () => resend.emails.send(emailData),
+      }).then((result) => {
+        if (!result.ok) {
+          log.error('rsvp.email_failed', { slug, rsvpId: data.id, error: result.error });
+        }
+      }),
+    );
   }
 
   return new Response(JSON.stringify({ success: true, rsvp: data }), {
