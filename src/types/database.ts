@@ -264,7 +264,7 @@ export type Database = {
           event_id: string;
           id: string;
           name: string;
-          phone: string;
+          phone: string | null;
           sms_opt_in: boolean;
           walk_in: boolean;
         };
@@ -275,7 +275,7 @@ export type Database = {
           event_id: string;
           id?: string;
           name: string;
-          phone: string;
+          phone?: string | null;
           sms_opt_in?: boolean;
           walk_in?: boolean;
         };
