@@ -1,6 +1,6 @@
 # Stop One
 
-Recurring DIY party series platform. RSVP pages, door check-in app, and P&L budget tracker per event.
+RSVP pages, door check-in app, and P&L budget tracker per event.
 
 ## Tech Stack
 
