@@ -21,6 +21,8 @@ const { count: arrivedCount } = await supabaseAdmin
   .select('id', { count: 'exact', head: true })
   .eq('event_id', event.id)
   .not('arrived_at', 'is', null);
+
+const stripePublishableKey = import.meta.env.PUBLIC_STRIPE_PUBLISHABLE_KEY || '';
 ---
 
 <Base title={`Check-in — ${event.title}`}>
@@ -50,26 +52,92 @@ const { count: arrivedCount } = await supabaseAdmin
 
     <button id="walkin-toggle" class="walkin-toggle">Not on list? Add walk-in</button>
 
-    <div id="walkin-form" class="walkin-form" style="display:none">
-      <input type="text" id="walkin-name" placeholder="Guest name" class="walkin-input" />
-      <input type="tel" id="walkin-phone" placeholder="Phone (optional)" class="walkin-input" />
-      <button id="walkin-submit" class="btn btn-primary">Add & Arrive</button>
-    </div>
-
     <a href={`/door/${slug}/summary`} class="summary-link">View Summary</a>
   </main>
+
+  <!-- Walk-in wizard overlay -->
+  <div id="walkin-overlay" class="walkin-overlay" style="display:none">
+    <div class="walkin-sheet">
+      <button id="walkin-close" class="walkin-close" aria-label="Close">&times;</button>
+
+      <!-- Step 1: Name -->
+      <div class="walkin-step" id="step-name">
+        <h2 class="walkin-step-title">Guest Name</h2>
+        <input
+          type="text"
+          id="walkin-name"
+          placeholder="Full name"
+          class="walkin-input"
+          autocomplete="off"
+          enterkeyhint="next"
+        />
+        <button id="btn-to-phone" class="btn btn-primary btn-block" disabled>Next</button>
+      </div>
+
+      <!-- Step 2: Phone -->
+      <div class="walkin-step" id="step-phone" style="display:none">
+        <h2 class="walkin-step-title">Phone Number</h2>
+        <input
+          type="tel"
+          id="walkin-phone"
+          placeholder="(555) 123-4567"
+          class="walkin-input"
+          autocomplete="off"
+          enterkeyhint="next"
+        />
+        <button id="btn-to-pay" class="btn btn-primary btn-block">Next</button>
+        <button id="btn-skip-phone" class="btn btn-ghost btn-block">Skip</button>
+      </div>
+
+      <!-- Step 3: Payment -->
+      <div class="walkin-step" id="step-pay" style="display:none">
+        <h2 class="walkin-step-title">
+          Payment &mdash; <span id="pay-price"></span>
+        </h2>
+        <div id="pay-buttons" class="pay-buttons">
+          <button id="btn-cash" class="btn btn-pay btn-block">
+            <span class="pay-icon">$</span>
+            Cash
+          </button>
+          <button id="btn-card" class="btn btn-pay btn-block">
+            <span class="pay-icon">&#9909;</span>
+            Card
+          </button>
+        </div>
+
+        <!-- Stripe card form (hidden until "Card" tapped) -->
+        <div id="card-form" style="display:none">
+          <div id="stripe-element" class="stripe-element"></div>
+          <div id="card-error" class="card-error"></div>
+          <button id="btn-pay-card" class="btn btn-primary btn-block" disabled>
+            Pay <span id="btn-pay-amount"></span>
+          </button>
+          <button id="btn-back-to-methods" class="btn btn-ghost btn-block">Back</button>
+        </div>
+
+        <!-- Processing state -->
+        <div id="pay-processing" class="pay-processing" style="display:none">
+          <div class="spinner"></div>
+          <p>Processing...</p>
+        </div>
+      </div>
+
+      <!-- Step 4: Done -->
+      <div class="walkin-step" id="step-done" style="display:none">
+        <div class="done-check">&#10003;</div>
+        <h2 class="walkin-step-title">Added!</h2>
+        <p id="done-name" class="done-subtitle"></p>
+        <button id="btn-done" class="btn btn-primary btn-block">Done</button>
+      </div>
+    </div>
+  </div>
 </Base>
 
-<script define:vars={{ slug, doorPrice: event.door_price }}>
+<script define:vars={{ slug, doorPrice: event.door_price, stripePublishableKey }}>
+  /* ── Search & arrive (existing RSVP guests) ── */
   const searchInput = document.getElementById('search-input');
   const results = document.getElementById('results');
   const arrivedCountEl = document.getElementById('arrived-count');
-  const walkinToggle = document.getElementById('walkin-toggle');
-  const walkinForm = document.getElementById('walkin-form');
-  const walkinName = document.getElementById('walkin-name');
-  const walkinPhone = document.getElementById('walkin-phone');
-  const walkinSubmit = document.getElementById('walkin-submit');
-
   let debounceTimer;
   let localArrivedCount = parseInt(arrivedCountEl.textContent);
 
@@ -78,16 +146,13 @@ const { count: arrivedCount } = await supabaseAdmin
     debounceTimer = setTimeout(doSearch, 150);
   });
 
+  // Load full guest list on page load
+  doSearch();
+
   async function doSearch() {
     const q = searchInput.value.trim();
-    if (!q) {
-      results.innerHTML = '';
-      return;
-    }
-
     const res = await fetch(`/api/door/${slug}/search?q=${encodeURIComponent(q)}`);
     const guests = await res.json();
-
     results.innerHTML = guests
       .map(
         (g) => `
@@ -129,34 +194,256 @@ const { count: arrivedCount } = await supabaseAdmin
     }
   };
 
-  walkinToggle.addEventListener('click', () => {
-    walkinForm.style.display = walkinForm.style.display === 'none' ? 'flex' : 'none';
-    if (walkinForm.style.display !== 'none') walkinName.focus();
+  /* ── Walk-in wizard ── */
+  const overlay = document.getElementById('walkin-overlay');
+  const walkinName = document.getElementById('walkin-name');
+  const walkinPhone = document.getElementById('walkin-phone');
+  const steps = {
+    name: document.getElementById('step-name'),
+    phone: document.getElementById('step-phone'),
+    pay: document.getElementById('step-pay'),
+    done: document.getElementById('step-done'),
+  };
+
+  const priceDisplay = `$${Number(doorPrice).toFixed(0)}`;
+
+  function showStep(key) {
+    Object.values(steps).forEach((s) => (s.style.display = 'none'));
+    steps[key].style.display = 'flex';
+  }
+
+  function openWizard() {
+    walkinName.value = '';
+    walkinPhone.value = '';
+    showStep('name');
+    overlay.style.display = 'flex';
+    // Reset card form state
+    document.getElementById('pay-buttons').style.display = 'flex';
+    document.getElementById('card-form').style.display = 'none';
+    document.getElementById('pay-processing').style.display = 'none';
+    document.getElementById('card-error').textContent = '';
+    setTimeout(() => walkinName.focus(), 50);
+  }
+
+  function closeWizard() {
+    overlay.style.display = 'none';
+  }
+
+  // Open / close
+  document.getElementById('walkin-toggle').addEventListener('click', openWizard);
+  document.getElementById('walkin-close').addEventListener('click', closeWizard);
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeWizard();
   });
 
-  walkinSubmit.addEventListener('click', async () => {
-    const name = walkinName.value.trim();
-    if (!name) return;
-    walkinSubmit.disabled = true;
-    walkinSubmit.textContent = '...';
+  // Step 1 → 2: Name → Phone
+  const btnToPhone = document.getElementById('btn-to-phone');
+  walkinName.addEventListener('input', () => {
+    btnToPhone.disabled = !walkinName.value.trim();
+  });
+  walkinName.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && walkinName.value.trim()) goToPhone();
+  });
+  btnToPhone.addEventListener('click', goToPhone);
 
-    const res = await fetch(`/api/door/${slug}/arrive`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, phone: walkinPhone.value.trim() || undefined }),
-    });
+  function goToPhone() {
+    showStep('phone');
+    setTimeout(() => walkinPhone.focus(), 50);
+  }
 
-    if (res.ok) {
-      walkinName.value = '';
-      walkinPhone.value = '';
-      walkinForm.style.display = 'none';
+  // Step 2 → 3: Phone → Pay
+  document.getElementById('btn-to-pay').addEventListener('click', goToPay);
+  document.getElementById('btn-skip-phone').addEventListener('click', () => {
+    walkinPhone.value = '';
+    goToPay();
+  });
+  walkinPhone.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') goToPay();
+  });
+
+  function goToPay() {
+    document.getElementById('pay-price').textContent = priceDisplay;
+    document.getElementById('btn-pay-amount').textContent = priceDisplay;
+    showStep('pay');
+  }
+
+  // Step 3a: Cash
+  document.getElementById('btn-cash').addEventListener('click', handleCash);
+
+  async function handleCash() {
+    showProcessing();
+    try {
+      // Record cash payment
+      const payRes = await fetch(`/api/door/${slug}/payment/cash`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: Number(doorPrice),
+          name: walkinName.value.trim(),
+        }),
+      });
+      if (!payRes.ok) throw new Error('Cash payment failed');
+
+      // Create walk-in RSVP
+      const arriveRes = await fetch(`/api/door/${slug}/arrive`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: walkinName.value.trim(),
+          phone: walkinPhone.value.trim() || undefined,
+        }),
+      });
+      if (!arriveRes.ok) throw new Error('Failed to add guest');
+
       localArrivedCount++;
       arrivedCountEl.textContent = localArrivedCount + ' in';
-      if (searchInput.value.trim()) doSearch();
+      showDone();
+    } catch (err) {
+      alert(err.message || 'Something went wrong');
+      hideProcessing();
     }
-    walkinSubmit.disabled = false;
-    walkinSubmit.textContent = 'Add & Arrive';
+  }
+
+  // Step 3b: Card (Stripe)
+  let stripeInstance = null;
+  let stripeElements = null;
+  let paymentElement = null;
+  let clientSecret = null;
+
+  document.getElementById('btn-card').addEventListener('click', handleCardStart);
+  document.getElementById('btn-back-to-methods').addEventListener('click', () => {
+    document.getElementById('card-form').style.display = 'none';
+    document.getElementById('pay-buttons').style.display = 'flex';
   });
+  document.getElementById('btn-pay-card').addEventListener('click', handleCardPay);
+
+  async function handleCardStart() {
+    document.getElementById('pay-buttons').style.display = 'none';
+    document.getElementById('card-form').style.display = 'flex';
+    document.getElementById('card-error').textContent = '';
+    document.getElementById('btn-pay-card').disabled = true;
+
+    try {
+      // Load Stripe.js on first use
+      if (!stripeInstance) {
+        const { loadStripe } = await import('@stripe/stripe-js');
+        stripeInstance = await loadStripe(stripePublishableKey);
+      }
+
+      // Create PaymentIntent
+      const intentRes = await fetch(`/api/door/${slug}/payment/create-intent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      if (!intentRes.ok) throw new Error('Could not start card payment');
+      const intentData = await intentRes.json();
+      clientSecret = intentData.clientSecret;
+
+      // Mount Payment Element
+      if (paymentElement) paymentElement.destroy();
+      stripeElements = stripeInstance.elements({
+        clientSecret,
+        appearance: {
+          theme: 'night',
+          variables: {
+            colorPrimary: '#ffffff',
+            colorBackground: '#1a1a1a',
+            colorText: '#ffffff',
+            colorDanger: '#ff4444',
+            borderRadius: '0px',
+            fontFamily: 'system-ui, sans-serif',
+          },
+        },
+      });
+      paymentElement = stripeElements.create('payment');
+      paymentElement.mount('#stripe-element');
+      paymentElement.on('change', (event) => {
+        document.getElementById('btn-pay-card').disabled = !event.complete;
+        document.getElementById('card-error').textContent = event.error ? event.error.message : '';
+      });
+    } catch (err) {
+      document.getElementById('card-error').textContent = err.message || 'Card setup failed';
+    }
+  }
+
+  async function handleCardPay() {
+    const btnPay = document.getElementById('btn-pay-card');
+    btnPay.disabled = true;
+    btnPay.textContent = 'Processing...';
+    document.getElementById('card-error').textContent = '';
+
+    try {
+      const { error, paymentIntent } = await stripeInstance.confirmPayment({
+        elements: stripeElements,
+        confirmParams: {
+          return_url: window.location.href, // fallback, shouldn't redirect
+        },
+        redirect: 'if_required',
+      });
+
+      if (error) {
+        document.getElementById('card-error').textContent = error.message;
+        btnPay.disabled = false;
+        btnPay.innerHTML = `Pay <span id="btn-pay-amount">${priceDisplay}</span>`;
+        return;
+      }
+
+      showProcessing();
+
+      // Confirm payment on server
+      const confirmRes = await fetch(`/api/door/${slug}/payment/confirm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          paymentIntentId: paymentIntent.id,
+          name: walkinName.value.trim(),
+        }),
+      });
+      if (!confirmRes.ok) throw new Error('Payment recorded but server confirmation failed');
+
+      // Create walk-in RSVP
+      const arriveRes = await fetch(`/api/door/${slug}/arrive`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: walkinName.value.trim(),
+          phone: walkinPhone.value.trim() || undefined,
+        }),
+      });
+      if (!arriveRes.ok) throw new Error('Payment succeeded but failed to add guest');
+
+      localArrivedCount++;
+      arrivedCountEl.textContent = localArrivedCount + ' in';
+      showDone();
+    } catch (err) {
+      alert(err.message || 'Something went wrong');
+      hideProcessing();
+      btnPay.disabled = false;
+      btnPay.innerHTML = `Pay <span id="btn-pay-amount">${priceDisplay}</span>`;
+    }
+  }
+
+  // Processing & done helpers
+  function showProcessing() {
+    document.getElementById('pay-buttons').style.display = 'none';
+    document.getElementById('card-form').style.display = 'none';
+    document.getElementById('pay-processing').style.display = 'flex';
+  }
+
+  function hideProcessing() {
+    document.getElementById('pay-processing').style.display = 'none';
+    document.getElementById('pay-buttons').style.display = 'flex';
+  }
+
+  function showDone() {
+    document.getElementById('done-name').textContent = walkinName.value.trim();
+    showStep('done');
+    if (searchInput.value.trim()) doSearch();
+  }
+
+  // Step 4: Done → close
+  document.getElementById('btn-done').addEventListener('click', closeWizard);
 </script>
 
 <style>
@@ -247,25 +534,6 @@ const { count: arrivedCount } = await supabaseAdmin
     color: var(--color-fg);
   }
 
-  .walkin-form {
-    display: flex;
-    gap: var(--space-sm);
-  }
-
-  .walkin-input {
-    flex: 1;
-    padding: 10px var(--space-sm);
-    background: var(--color-surface);
-    border: var(--border-width) solid var(--color-border);
-    color: var(--color-fg);
-    font-size: 1rem;
-  }
-
-  .walkin-input:focus {
-    outline: none;
-    border-color: var(--color-accent);
-  }
-
   .summary-link {
     text-align: center;
     color: var(--color-muted);
@@ -277,6 +545,200 @@ const { count: arrivedCount } = await supabaseAdmin
 
   .summary-link:hover {
     color: var(--color-fg);
+  }
+
+  /* ── Walk-in overlay ── */
+  .walkin-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+  }
+
+  .walkin-sheet {
+    position: relative;
+    width: 100%;
+    max-width: 600px;
+    max-height: 90dvh;
+    background: var(--color-bg);
+    border-top: 2px solid var(--color-border);
+    padding: var(--space-lg) var(--space-md) var(--space-xl);
+    overflow-y: auto;
+  }
+
+  .walkin-close {
+    position: absolute;
+    top: var(--space-sm);
+    right: var(--space-md);
+    background: none;
+    border: none;
+    color: var(--color-muted);
+    font-size: 1.75rem;
+    cursor: pointer;
+    padding: var(--space-xs);
+    line-height: 1;
+  }
+
+  .walkin-close:hover {
+    color: var(--color-fg);
+  }
+
+  .walkin-step {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+  }
+
+  .walkin-step-title {
+    font-size: 1.25rem;
+    font-weight: var(--weight-medium);
+    letter-spacing: var(--tracking-tight);
+  }
+
+  .walkin-input {
+    width: 100%;
+    min-height: 56px;
+    padding: var(--space-sm) var(--space-md);
+    background: var(--color-surface);
+    border: 2px solid var(--color-border);
+    color: var(--color-fg);
+    font-size: 1.125rem;
+    transition: border-color var(--transition);
+  }
+
+  .walkin-input:focus {
+    outline: none;
+    border-color: var(--color-accent);
+  }
+
+  .btn-block {
+    width: 100%;
+    min-height: 52px;
+    font-size: 1.0625rem;
+  }
+
+  .btn-ghost {
+    background: transparent;
+    border: var(--border-width) solid var(--color-border);
+    color: var(--color-muted);
+    cursor: pointer;
+    transition:
+      border-color var(--transition),
+      color var(--transition);
+  }
+
+  .btn-ghost:hover {
+    border-color: var(--color-muted);
+    color: var(--color-fg);
+  }
+
+  /* Payment method buttons */
+  .pay-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+
+  .btn-pay {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-sm);
+    min-height: 64px;
+    font-size: 1.125rem;
+    font-weight: var(--weight-medium);
+    background: var(--color-surface);
+    border: 2px solid var(--color-border);
+    color: var(--color-fg);
+    cursor: pointer;
+    transition:
+      border-color var(--transition),
+      background var(--transition);
+  }
+
+  .btn-pay:hover {
+    border-color: var(--color-accent);
+    background: var(--color-bg);
+  }
+
+  .btn-pay:active {
+    background: var(--color-surface);
+  }
+
+  .pay-icon {
+    font-size: 1.5rem;
+    line-height: 1;
+  }
+
+  /* Stripe element container */
+  .stripe-element {
+    padding: var(--space-md);
+    background: var(--color-surface);
+    border: 2px solid var(--color-border);
+    min-height: 60px;
+  }
+
+  .card-error {
+    color: var(--color-danger, #ff4444);
+    font-size: 0.875rem;
+    min-height: 1.25em;
+  }
+
+  #card-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+  }
+
+  /* Processing spinner */
+  .pay-processing {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-xl) 0;
+  }
+
+  .spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid var(--color-border);
+    border-top-color: var(--color-fg);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .pay-processing p {
+    color: var(--color-muted);
+    font-size: 0.9375rem;
+  }
+
+  /* Done step */
+  .done-check {
+    font-size: 3rem;
+    color: var(--color-success);
+    text-align: center;
+    line-height: 1;
+  }
+
+  #step-done {
+    align-items: center;
+    text-align: center;
+    padding-top: var(--space-lg);
+  }
+
+  .done-subtitle {
+    color: var(--color-muted);
+    font-size: 1rem;
   }
 </style>
 
