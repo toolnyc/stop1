@@ -57,14 +57,16 @@ export const POST = withLogging(async ({ params, request, log }) => {
   const origin = new URL(request.url).origin;
   const baseUrl = `${origin}/door/${slug}/checkin`;
 
-  // Encode walk-in or rsvp info into the success URL so the page can complete the flow
-  const successParams = new URLSearchParams({ session_id: '{CHECKOUT_SESSION_ID}' });
+  // Build success URL — {CHECKOUT_SESSION_ID} must stay unencoded for Stripe to replace it
+  const extraParams = new URLSearchParams();
   if (rsvpId) {
-    successParams.set('rsvp_id', rsvpId);
+    extraParams.set('rsvp_id', rsvpId);
   } else {
-    successParams.set('walkin_name', name.trim());
-    if (phone) successParams.set('walkin_phone', phone);
+    extraParams.set('walkin_name', name.trim());
+    if (phone) extraParams.set('walkin_phone', phone);
   }
+  const extraStr = extraParams.toString();
+  const successUrl = `${baseUrl}?session_id={CHECKOUT_SESSION_ID}${extraStr ? '&' + extraStr : ''}`;
 
   const result = await trackCall({
     service: 'stripe',
@@ -93,7 +95,7 @@ export const POST = withLogging(async ({ params, request, log }) => {
           walkin_name: rsvpId ? '' : name.trim(),
           walkin_phone: rsvpId ? '' : phone,
         },
-        success_url: `${baseUrl}?${successParams.toString()}`,
+        success_url: successUrl,
         cancel_url: baseUrl,
       }),
   });
