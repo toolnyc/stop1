@@ -68,7 +68,7 @@ export const POST = withLogging(async ({ params, request, cookies, redirect, log
     path: `/door/${slug}`,
     httpOnly: true,
     secure: import.meta.env.PROD,
-    sameSite: 'strict',
+    sameSite: 'lax',
     maxAge: 60 * 60 * 12,
   });
 
