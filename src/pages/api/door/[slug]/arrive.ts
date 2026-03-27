@@ -41,7 +41,7 @@ export const POST = withLogging(async ({ params, request, log }) => {
         event_id: event.id,
         name: name.trim(),
         email: null,
-        phone: phone || `+0000000${Date.now()}`,
+        phone: phone || null,
         sms_opt_in: !!phone,
         walk_in: true,
         arrived_at: new Date().toISOString(),
@@ -50,7 +50,11 @@ export const POST = withLogging(async ({ params, request, log }) => {
       .single();
 
     if (insertError) {
-      log.error('walkin.insert_failed', { slug, error: insertError.message, code: insertError.code });
+      log.error('walkin.insert_failed', {
+        slug,
+        error: insertError.message,
+        code: insertError.code,
+      });
       return new Response(JSON.stringify({ error: 'Failed to add walk-in' }), {
         status: 500,
         headers: JSON_HEADERS,

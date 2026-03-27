@@ -55,6 +55,53 @@ const stripePublishableKey = import.meta.env.PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
     <a href={`/door/${slug}/summary`} class="summary-link">View Summary</a>
   </main>
 
+  <!-- Arrival payment overlay (for existing RSVP guests) -->
+  <div id="arrive-overlay" class="walkin-overlay" style="display:none">
+    <div class="walkin-sheet">
+      <button id="arrive-close" class="walkin-close" aria-label="Close">&times;</button>
+
+      <!-- Payment step -->
+      <div class="walkin-step" id="arrive-step-pay">
+        <h2 class="walkin-step-title" id="arrive-guest-name"></h2>
+        <p class="arrive-subtitle">Payment &mdash; <span id="arrive-pay-price"></span></p>
+        <div id="arrive-pay-buttons" class="pay-buttons">
+          <button id="arrive-btn-cash" class="btn btn-pay btn-block">
+            <span class="pay-icon">$</span>
+            Cash
+          </button>
+          <button id="arrive-btn-card" class="btn btn-pay btn-block">
+            <span class="pay-icon">&#9909;</span>
+            Card
+          </button>
+        </div>
+
+        <!-- Stripe card form -->
+        <div id="arrive-card-form" style="display:none">
+          <div id="arrive-stripe-element" class="stripe-element"></div>
+          <div id="arrive-card-error" class="card-error"></div>
+          <button id="arrive-btn-pay-card" class="btn btn-primary btn-block" disabled>
+            Pay <span id="arrive-btn-pay-amount"></span>
+          </button>
+          <button id="arrive-btn-back" class="btn btn-ghost btn-block">Back</button>
+        </div>
+
+        <!-- Processing -->
+        <div id="arrive-processing" class="pay-processing" style="display:none">
+          <div class="spinner"></div>
+          <p>Processing...</p>
+        </div>
+      </div>
+
+      <!-- Done step -->
+      <div class="walkin-step" id="arrive-step-done" style="display:none">
+        <div class="done-check">&#10003;</div>
+        <h2 class="walkin-step-title">Checked In!</h2>
+        <p id="arrive-done-name" class="done-subtitle"></p>
+        <button id="arrive-btn-done" class="btn btn-primary btn-block">Done</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Walk-in wizard overlay -->
   <div id="walkin-overlay" class="walkin-overlay" style="display:none">
     <div class="walkin-sheet">
@@ -133,7 +180,52 @@ const stripePublishableKey = import.meta.env.PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
   </div>
 </Base>
 
+<script is:inline src="https://js.stripe.com/v3/"></script>
 <script define:vars={{ slug, doorPrice: event.door_price, stripePublishableKey }}>
+  /* ── Shared Stripe state ── */
+  let stripeInstance = null;
+  const priceDisplay = `$${Number(doorPrice).toFixed(0)}`;
+
+  function getStripe() {
+    if (!stripeInstance) {
+      stripeInstance = Stripe(stripePublishableKey);
+    }
+    return stripeInstance;
+  }
+
+  async function mountStripeElement(mountSelector, errorSelector, payBtnSelector, rsvpId) {
+    const stripe = getStripe();
+    const intentRes = await fetch(`/api/door/${slug}/payment/create-intent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rsvpId: rsvpId || undefined }),
+    });
+    if (!intentRes.ok) throw new Error('Could not start card payment');
+    const { clientSecret } = await intentRes.json();
+
+    const elements = stripe.elements({
+      clientSecret,
+      appearance: {
+        theme: 'night',
+        variables: {
+          colorPrimary: '#ffffff',
+          colorBackground: '#1a1a1a',
+          colorText: '#ffffff',
+          colorDanger: '#ff4444',
+          borderRadius: '0px',
+          fontFamily: 'system-ui, sans-serif',
+        },
+      },
+    });
+    const pe = elements.create('payment');
+    pe.mount(mountSelector);
+    pe.on('change', (event) => {
+      document.querySelector(payBtnSelector).disabled = !event.complete;
+      document.querySelector(errorSelector).textContent = event.error ? event.error.message : '';
+    });
+    return { stripe, elements, paymentElement: pe, clientSecret };
+  }
+
   /* ── Search & arrive (existing RSVP guests) ── */
   const searchInput = document.getElementById('search-input');
   const results = document.getElementById('results');
@@ -146,7 +238,6 @@ const stripePublishableKey = import.meta.env.PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
     debounceTimer = setTimeout(doSearch, 150);
   });
 
-  // Load full guest list on page load
   doSearch();
 
   async function doSearch() {
@@ -158,14 +249,14 @@ const stripePublishableKey = import.meta.env.PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
         (g) => `
       <div class="guest-card ${g.arrived_at ? 'arrived' : ''}" data-id="${g.id}">
         <div class="guest-info">
-          <span class="guest-name">${g.name}</span>
-          <span class="guest-phone">${g.phone || ''}</span>
+          <span class="guest-name">${esc(g.name)}</span>
+          <span class="guest-phone">${g.phone && !g.phone.startsWith('+0000000') ? esc(g.phone) : ''}</span>
         </div>
         <div class="guest-actions">
           ${
             g.arrived_at
               ? '<span class="guest-badge-arrived">[Arrived]</span>'
-              : `<button class="btn btn-primary btn-sm" onclick="markArrived('${g.id}', this)">Mark Arrived</button>`
+              : `<button class="btn btn-primary btn-sm" onclick="openArrivePayment('${g.id}', '${esc(g.name)}')">Mark Arrived</button>`
           }
         </div>
       </div>
@@ -174,25 +265,145 @@ const stripePublishableKey = import.meta.env.PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
       .join('');
   }
 
-  window.markArrived = async function (rsvpId, btn) {
-    btn.disabled = true;
-    btn.textContent = '...';
-    const res = await fetch(`/api/door/${slug}/arrive`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ rsvpId }),
-    });
-    if (res.ok) {
-      const card = btn.closest('.guest-card');
-      card.classList.add('arrived');
-      btn.outerHTML = '<span class="guest-badge-arrived">[Arrived]</span>';
-      localArrivedCount++;
-      arrivedCountEl.textContent = localArrivedCount + ' in';
-    } else {
-      btn.disabled = false;
-      btn.textContent = 'Mark Arrived';
+  function esc(s) {
+    const d = document.createElement('div');
+    d.textContent = s || '';
+    return d.innerHTML;
+  }
+
+  /* ── Arrival payment overlay (existing RSVP guests) ── */
+  const arriveOverlay = document.getElementById('arrive-overlay');
+  let arriveRsvpId = null;
+  let arriveGuestName = '';
+  let arriveStripeState = null;
+
+  window.openArrivePayment = function (rsvpId, name) {
+    arriveRsvpId = rsvpId;
+    arriveGuestName = name;
+    document.getElementById('arrive-guest-name').textContent = name;
+    document.getElementById('arrive-pay-price').textContent = priceDisplay;
+    document.getElementById('arrive-btn-pay-amount').textContent = priceDisplay;
+    // Reset state
+    document.getElementById('arrive-step-pay').style.display = 'flex';
+    document.getElementById('arrive-step-done').style.display = 'none';
+    document.getElementById('arrive-pay-buttons').style.display = 'flex';
+    document.getElementById('arrive-card-form').style.display = 'none';
+    document.getElementById('arrive-processing').style.display = 'none';
+    document.getElementById('arrive-card-error').textContent = '';
+    if (arriveStripeState && arriveStripeState.paymentElement) {
+      arriveStripeState.paymentElement.destroy();
+      arriveStripeState = null;
     }
+    arriveOverlay.style.display = 'flex';
   };
+
+  document.getElementById('arrive-close').addEventListener('click', () => {
+    arriveOverlay.style.display = 'none';
+  });
+  arriveOverlay.addEventListener('click', (e) => {
+    if (e.target === arriveOverlay) arriveOverlay.style.display = 'none';
+  });
+
+  // Arrive: Cash
+  document.getElementById('arrive-btn-cash').addEventListener('click', async () => {
+    document.getElementById('arrive-pay-buttons').style.display = 'none';
+    document.getElementById('arrive-processing').style.display = 'flex';
+    try {
+      const res = await fetch(`/api/door/${slug}/payment/cash`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: Number(doorPrice), rsvpId: arriveRsvpId }),
+      });
+      if (!res.ok) throw new Error('Cash payment failed');
+      arriveSuccess();
+    } catch (err) {
+      alert(err.message || 'Something went wrong');
+      document.getElementById('arrive-processing').style.display = 'none';
+      document.getElementById('arrive-pay-buttons').style.display = 'flex';
+    }
+  });
+
+  // Arrive: Card
+  document.getElementById('arrive-btn-card').addEventListener('click', async () => {
+    document.getElementById('arrive-pay-buttons').style.display = 'none';
+    document.getElementById('arrive-card-form').style.display = 'flex';
+    document.getElementById('arrive-card-error').textContent = '';
+    document.getElementById('arrive-btn-pay-card').disabled = true;
+    try {
+      arriveStripeState = await mountStripeElement(
+        '#arrive-stripe-element',
+        '#arrive-card-error',
+        '#arrive-btn-pay-card',
+        arriveRsvpId,
+      );
+    } catch (err) {
+      document.getElementById('arrive-card-error').textContent = err.message || 'Card setup failed';
+    }
+  });
+
+  document.getElementById('arrive-btn-back').addEventListener('click', () => {
+    document.getElementById('arrive-card-form').style.display = 'none';
+    document.getElementById('arrive-pay-buttons').style.display = 'flex';
+  });
+
+  document.getElementById('arrive-btn-pay-card').addEventListener('click', async () => {
+    const btn = document.getElementById('arrive-btn-pay-card');
+    btn.disabled = true;
+    btn.textContent = 'Processing...';
+    document.getElementById('arrive-card-error').textContent = '';
+
+    try {
+      const { error, paymentIntent } = await arriveStripeState.stripe.confirmPayment({
+        elements: arriveStripeState.elements,
+        confirmParams: { return_url: window.location.href },
+        redirect: 'if_required',
+      });
+
+      if (error) {
+        document.getElementById('arrive-card-error').textContent = error.message;
+        btn.disabled = false;
+        btn.innerHTML = `Pay <span id="arrive-btn-pay-amount">${priceDisplay}</span>`;
+        return;
+      }
+
+      document.getElementById('arrive-card-form').style.display = 'none';
+      document.getElementById('arrive-processing').style.display = 'flex';
+
+      const confirmRes = await fetch(`/api/door/${slug}/payment/confirm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentIntentId: paymentIntent.id, rsvpId: arriveRsvpId }),
+      });
+      if (!confirmRes.ok) throw new Error('Payment confirmation failed');
+      arriveSuccess();
+    } catch (err) {
+      alert(err.message || 'Something went wrong');
+      document.getElementById('arrive-processing').style.display = 'none';
+      document.getElementById('arrive-pay-buttons').style.display = 'flex';
+      btn.disabled = false;
+      btn.innerHTML = `Pay <span id="arrive-btn-pay-amount">${priceDisplay}</span>`;
+    }
+  });
+
+  function arriveSuccess() {
+    localArrivedCount++;
+    arrivedCountEl.textContent = localArrivedCount + ' in';
+    // Update the guest card in the list
+    const card = document.querySelector(`.guest-card[data-id="${arriveRsvpId}"]`);
+    if (card) {
+      card.classList.add('arrived');
+      const actions = card.querySelector('.guest-actions');
+      if (actions) actions.innerHTML = '<span class="guest-badge-arrived">[Arrived]</span>';
+    }
+    // Show done step
+    document.getElementById('arrive-step-pay').style.display = 'none';
+    document.getElementById('arrive-step-done').style.display = 'flex';
+    document.getElementById('arrive-done-name').textContent = arriveGuestName;
+  }
+
+  document.getElementById('arrive-btn-done').addEventListener('click', () => {
+    arriveOverlay.style.display = 'none';
+  });
 
   /* ── Walk-in wizard ── */
   const overlay = document.getElementById('walkin-overlay');
@@ -205,7 +416,7 @@ const stripePublishableKey = import.meta.env.PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
     done: document.getElementById('step-done'),
   };
 
-  const priceDisplay = `$${Number(doorPrice).toFixed(0)}`;
+  let walkinStripeState = null;
 
   function showStep(key) {
     Object.values(steps).forEach((s) => (s.style.display = 'none'));
@@ -217,11 +428,14 @@ const stripePublishableKey = import.meta.env.PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
     walkinPhone.value = '';
     showStep('name');
     overlay.style.display = 'flex';
-    // Reset card form state
     document.getElementById('pay-buttons').style.display = 'flex';
     document.getElementById('card-form').style.display = 'none';
     document.getElementById('pay-processing').style.display = 'none';
     document.getElementById('card-error').textContent = '';
+    if (walkinStripeState && walkinStripeState.paymentElement) {
+      walkinStripeState.paymentElement.destroy();
+      walkinStripeState = null;
+    }
     setTimeout(() => walkinName.focus(), 50);
   }
 
@@ -229,7 +443,6 @@ const stripePublishableKey = import.meta.env.PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
     overlay.style.display = 'none';
   }
 
-  // Open / close
   document.getElementById('walkin-toggle').addEventListener('click', openWizard);
   document.getElementById('walkin-close').addEventListener('click', closeWizard);
   overlay.addEventListener('click', (e) => {
@@ -273,7 +486,6 @@ const stripePublishableKey = import.meta.env.PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
   async function handleCash() {
     showProcessing();
     try {
-      // Record cash payment
       const payRes = await fetch(`/api/door/${slug}/payment/cash`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -284,7 +496,6 @@ const stripePublishableKey = import.meta.env.PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
       });
       if (!payRes.ok) throw new Error('Cash payment failed');
 
-      // Create walk-in RSVP
       const arriveRes = await fetch(`/api/door/${slug}/arrive`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -305,11 +516,6 @@ const stripePublishableKey = import.meta.env.PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
   }
 
   // Step 3b: Card (Stripe)
-  let stripeInstance = null;
-  let stripeElements = null;
-  let paymentElement = null;
-  let clientSecret = null;
-
   document.getElementById('btn-card').addEventListener('click', handleCardStart);
   document.getElementById('btn-back-to-methods').addEventListener('click', () => {
     document.getElementById('card-form').style.display = 'none';
@@ -324,44 +530,11 @@ const stripePublishableKey = import.meta.env.PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
     document.getElementById('btn-pay-card').disabled = true;
 
     try {
-      // Load Stripe.js on first use
-      if (!stripeInstance) {
-        const { loadStripe } = await import('@stripe/stripe-js');
-        stripeInstance = await loadStripe(stripePublishableKey);
-      }
-
-      // Create PaymentIntent
-      const intentRes = await fetch(`/api/door/${slug}/payment/create-intent`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      });
-      if (!intentRes.ok) throw new Error('Could not start card payment');
-      const intentData = await intentRes.json();
-      clientSecret = intentData.clientSecret;
-
-      // Mount Payment Element
-      if (paymentElement) paymentElement.destroy();
-      stripeElements = stripeInstance.elements({
-        clientSecret,
-        appearance: {
-          theme: 'night',
-          variables: {
-            colorPrimary: '#ffffff',
-            colorBackground: '#1a1a1a',
-            colorText: '#ffffff',
-            colorDanger: '#ff4444',
-            borderRadius: '0px',
-            fontFamily: 'system-ui, sans-serif',
-          },
-        },
-      });
-      paymentElement = stripeElements.create('payment');
-      paymentElement.mount('#stripe-element');
-      paymentElement.on('change', (event) => {
-        document.getElementById('btn-pay-card').disabled = !event.complete;
-        document.getElementById('card-error').textContent = event.error ? event.error.message : '';
-      });
+      walkinStripeState = await mountStripeElement(
+        '#stripe-element',
+        '#card-error',
+        '#btn-pay-card',
+      );
     } catch (err) {
       document.getElementById('card-error').textContent = err.message || 'Card setup failed';
     }
@@ -374,11 +547,9 @@ const stripePublishableKey = import.meta.env.PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
     document.getElementById('card-error').textContent = '';
 
     try {
-      const { error, paymentIntent } = await stripeInstance.confirmPayment({
-        elements: stripeElements,
-        confirmParams: {
-          return_url: window.location.href, // fallback, shouldn't redirect
-        },
+      const { error, paymentIntent } = await walkinStripeState.stripe.confirmPayment({
+        elements: walkinStripeState.elements,
+        confirmParams: { return_url: window.location.href },
         redirect: 'if_required',
       });
 
@@ -391,7 +562,6 @@ const stripePublishableKey = import.meta.env.PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
 
       showProcessing();
 
-      // Confirm payment on server
       const confirmRes = await fetch(`/api/door/${slug}/payment/confirm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -402,7 +572,6 @@ const stripePublishableKey = import.meta.env.PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
       });
       if (!confirmRes.ok) throw new Error('Payment recorded but server confirmation failed');
 
-      // Create walk-in RSVP
       const arriveRes = await fetch(`/api/door/${slug}/arrive`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -424,7 +593,6 @@ const stripePublishableKey = import.meta.env.PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
     }
   }
 
-  // Processing & done helpers
   function showProcessing() {
     document.getElementById('pay-buttons').style.display = 'none';
     document.getElementById('card-form').style.display = 'none';
@@ -442,7 +610,6 @@ const stripePublishableKey = import.meta.env.PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
     if (searchInput.value.trim()) doSearch();
   }
 
-  // Step 4: Done → close
   document.getElementById('btn-done').addEventListener('click', closeWizard);
 </script>
 
@@ -739,6 +906,12 @@ const stripePublishableKey = import.meta.env.PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
   .done-subtitle {
     color: var(--color-muted);
     font-size: 1rem;
+  }
+
+  .arrive-subtitle {
+    color: var(--color-muted);
+    font-size: 1rem;
+    margin-top: calc(-1 * var(--space-sm));
   }
 </style>
 
