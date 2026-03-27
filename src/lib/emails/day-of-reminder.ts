@@ -3,12 +3,13 @@ const EMAIL_FROM = import.meta.env.EMAIL_FROM || 'Stop One <noreply@stop1.party>
 export function dayOfReminderEmail(
   name: string,
   email: string,
-  event: { title: string; date: string; venue_name: string | null; venue_address: string | null }
+  event: { title: string; date: string; venue_name: string | null; venue_address: string | null },
 ) {
   const eventDate = new Date(event.date);
   const timeFormatted = eventDate.toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: '2-digit',
+    timeZone: 'America/New_York',
   });
 
   const venue = event.venue_name || 'TBA';
