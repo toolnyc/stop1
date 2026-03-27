@@ -1,6 +1,7 @@
 ---
 import Admin from '@/layouts/Admin.astro';
 import { supabaseAdmin } from '@/lib/supabase';
+import { toDatetimeLocal } from '@/lib/dates';
 
 if (!supabaseAdmin) {
   return new Response('Server configuration error', { status: 500 });
@@ -20,11 +21,7 @@ if (fetchError || !event) {
   return Astro.redirect('/admin');
 }
 
-function formatDatetimeLocal(dateStr: string | null) {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  return d.toISOString().slice(0, 16);
-}
+// Use toDatetimeLocal from @/lib/dates — converts UTC to Eastern for form display
 ---
 
 <Admin title={`${event.title} — Edit`}>
@@ -113,20 +110,11 @@ function formatDatetimeLocal(dateStr: string | null) {
         <div class="form-row">
           <label>
             <span>Start Date/Time *</span>
-            <input
-              type="datetime-local"
-              name="date"
-              required
-              value={formatDatetimeLocal(event.date)}
-            />
+            <input type="datetime-local" name="date" required value={toDatetimeLocal(event.date)} />
           </label>
           <label>
             <span>End Date/Time</span>
-            <input
-              type="datetime-local"
-              name="time_end"
-              value={formatDatetimeLocal(event.time_end)}
-            />
+            <input type="datetime-local" name="time_end" value={toDatetimeLocal(event.time_end)} />
           </label>
         </div>
 
@@ -183,7 +171,7 @@ function formatDatetimeLocal(dateStr: string | null) {
               <input
                 type="datetime-local"
                 name="early_cutoff"
-                value={formatDatetimeLocal(event.early_cutoff)}
+                value={toDatetimeLocal(event.early_cutoff)}
               />
               <small>Door price applies after this time.</small>
             </label>

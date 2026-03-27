@@ -3,18 +3,21 @@ const EMAIL_FROM = import.meta.env.EMAIL_FROM || 'Stop One <noreply@stop1.party>
 export function rsvpConfirmationEmail(
   name: string,
   email: string,
-  event: { title: string; date: string; venue_name: string | null }
+  event: { title: string; date: string; venue_name: string | null },
 ) {
   const eventDate = new Date(event.date);
+  const tz = 'America/New_York';
   const dateFormatted = eventDate.toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'long',
     day: 'numeric',
     year: 'numeric',
+    timeZone: tz,
   });
   const timeFormatted = eventDate.toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: '2-digit',
+    timeZone: tz,
   });
 
   const venue = event.venue_name || 'TBA';

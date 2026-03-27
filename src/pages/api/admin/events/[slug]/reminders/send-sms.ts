@@ -38,12 +38,15 @@ export const POST = withLogging(async ({ params, cookies, log }) => {
   }
 
   if (event.reminder_sms_sent_at) {
-    return new Response(JSON.stringify({
-      error: `Already sent on ${new Date(event.reminder_sms_sent_at).toLocaleDateString()}`,
-    }), {
-      status: 409,
-      headers: JSON_HEADERS,
-    });
+    return new Response(
+      JSON.stringify({
+        error: `Already sent on ${new Date(event.reminder_sms_sent_at).toLocaleDateString()}`,
+      }),
+      {
+        status: 409,
+        headers: JSON_HEADERS,
+      },
+    );
   }
 
   // Get opt-in RSVPs (phone is now NOT NULL)
@@ -55,7 +58,11 @@ export const POST = withLogging(async ({ params, cookies, log }) => {
 
   const rsvpList = rsvps ?? [];
 
-  const time = new Date(event.date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const time = new Date(event.date).toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: 'America/New_York',
+  });
   const venue = event.venue_name || 'TBA';
   const body = `Tonight! ${event.title} @ ${venue}, ${time}. See you there 🖤`;
 

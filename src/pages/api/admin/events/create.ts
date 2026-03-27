@@ -3,6 +3,7 @@ import { uploadFlyer } from '@/lib/blob';
 import bcrypt from 'bcryptjs';
 import { withLogging } from '@/lib/api';
 import { trackCall } from '@/lib/track';
+import { easternToISO } from '@/lib/dates';
 
 export const POST = withLogging(async ({ request, cookies, redirect, log }) => {
   if (!supabaseAdmin) {
@@ -101,14 +102,14 @@ export const POST = withLogging(async ({ request, cookies, redirect, log }) => {
     .insert({
       title,
       slug,
-      date,
-      time_end: time_end || null,
+      date: easternToISO(date),
+      time_end: time_end ? easternToISO(time_end) : null,
       venue_name: venue_name || null,
       venue_address: venue_address || null,
       description: description || null,
       door_price: parseFloat(door_price) || 0,
       early_price: early_price ? parseFloat(early_price) : null,
-      early_cutoff: early_cutoff || null,
+      early_cutoff: early_cutoff ? easternToISO(early_cutoff) : null,
       door_pin: doorPinHash,
       capacity: capacity ? parseInt(capacity) : null,
       status: (status === 'published' ? 'published' : 'draft') as 'draft' | 'published',
