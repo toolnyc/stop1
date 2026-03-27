@@ -29,15 +29,17 @@ export const GET = withLogging(async ({ params, url, log }) => {
     });
   }
 
+  const trimmed = q.trim();
+  const isSearch = !!trimmed;
+
   let query = supabaseAdmin
     .from('rsvps')
     .select('id, name, email, phone, arrived_at, walk_in')
     .eq('event_id', event.id)
     .order('name')
-    .limit(20);
+    .limit(isSearch ? 20 : 200);
 
-  if (q.trim()) {
-    const trimmed = q.trim();
+  if (isSearch) {
     if (/^[+\d]/.test(trimmed)) {
       query = query.ilike('phone', `%${trimmed}%`);
     } else {
