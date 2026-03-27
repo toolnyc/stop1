@@ -270,13 +270,18 @@ const timeEnd = event.time_end
       }
     });
 
-    // Entrance animation
+    // Entrance animation — defer until fonts are ready to prevent
+    // layout-shift flicker on first load (cached visits are fine).
     if (rsvpSection) {
-      gsap.fromTo(
-        rsvpSection,
-        { opacity: 0, y: 20 },
-        { duration: 0.8, opacity: 1, y: 0, delay: 0.1, ease: 'power3.out' },
-      );
+      gsap.set(rsvpSection, { opacity: 0, y: 20 });
+      const animate = () =>
+        gsap.to(rsvpSection, { duration: 0.8, opacity: 1, y: 0, ease: 'power3.out' });
+
+      if (document.fonts?.ready) {
+        document.fonts.ready.then(animate);
+      } else {
+        animate();
+      }
     }
   });
 </script>
