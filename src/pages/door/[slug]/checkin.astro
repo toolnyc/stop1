@@ -1,6 +1,8 @@
 ---
 import Base from '@/layouts/Base.astro';
 import { supabaseAdmin } from '@/lib/supabase';
+import { stripe } from '@/lib/stripe';
+import { normalizePhone } from '@/lib/phone';
 
 if (!supabaseAdmin) {
   return new Response('Server configuration error', { status: 500 });
@@ -16,17 +18,96 @@ const { data: event } = await supabaseAdmin
 
 if (!event) return new Response(null, { status: 404 });
 
+/* ── Handle Stripe Checkout return ── */
+let checkoutFlash = '';
+const sessionId = Astro.url.searchParams.get('session_id');
+if (sessionId && stripe) {
+  try {
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    if (session.payment_status === 'paid') {
+      const meta = session.metadata || {};
+      const rsvpId = meta.rsvp_id || Astro.url.searchParams.get('rsvp_id');
+      const walkinName = meta.walkin_name || Astro.url.searchParams.get('walkin_name');
+      const walkinPhone = meta.walkin_phone || Astro.url.searchParams.get('walkin_phone');
+
+      // Prevent double-processing: check if payment already recorded
+      const { count: existingCount } = await supabaseAdmin
+        .from('door_payments')
+        .select('id', { count: 'exact', head: true })
+        .eq('stripe_payment_intent_id', session.payment_intent as string);
+
+      if (!existingCount || existingCount === 0) {
+        if (rsvpId) {
+          // Existing RSVP: record payment + mark arrived
+          await supabaseAdmin.from('door_payments').insert({
+            event_id: event.id,
+            rsvp_id: rsvpId,
+            amount: Number(event.door_price),
+            method: 'card' as const,
+            stripe_payment_intent_id: session.payment_intent as string,
+          });
+          await supabaseAdmin
+            .from('rsvps')
+            .update({ arrived_at: new Date().toISOString() })
+            .eq('id', rsvpId)
+            .eq('event_id', event.id);
+          checkoutFlash = 'paid';
+        } else if (walkinName) {
+          // Walk-in: create RSVP + record payment
+          const phone = walkinPhone ? normalizePhone(walkinPhone) : null;
+          const { data: newRsvp } = await supabaseAdmin
+            .from('rsvps')
+            .insert({
+              event_id: event.id,
+              name: walkinName.trim(),
+              email: null,
+              phone,
+              sms_opt_in: !!phone,
+              walk_in: true,
+              arrived_at: new Date().toISOString(),
+            })
+            .select('id')
+            .single();
+
+          await supabaseAdmin.from('door_payments').insert({
+            event_id: event.id,
+            rsvp_id: newRsvp?.id || null,
+            amount: Number(event.door_price),
+            method: 'card' as const,
+            stripe_payment_intent_id: session.payment_intent as string,
+            name: walkinName.trim(),
+          });
+          checkoutFlash = 'paid';
+        }
+      } else {
+        // Already processed — still show success
+        checkoutFlash = 'paid';
+      }
+    }
+  } catch {
+    // Session retrieval failed — ignore, user can retry
+  }
+}
+
 const { count: arrivedCount } = await supabaseAdmin
   .from('rsvps')
   .select('id', { count: 'exact', head: true })
   .eq('event_id', event.id)
   .not('arrived_at', 'is', null);
-
-const stripePublishableKey = import.meta.env.PUBLIC_STRIPE_PUBLISHABLE_KEY || '';
 ---
 
 <Base title={`Check-in — ${event.title}`}>
   <main class="checkin-page dark-ctx">
+    {
+      checkoutFlash === 'paid' && (
+        <div class="checkout-flash" id="checkout-flash">
+          <span class="done-check" style="font-size:1.25rem">
+            &#10003;
+          </span>
+          Card payment confirmed
+        </div>
+      )
+    }
     <header class="checkin-header">
       <h1>{event.title}</h1>
       <span class="arrived-badge" id="arrived-count">{arrivedCount ?? 0} in</span>
@@ -73,16 +154,6 @@ const stripePublishableKey = import.meta.env.PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
             <span class="pay-icon">&#9909;</span>
             Card
           </button>
-        </div>
-
-        <!-- Stripe card form -->
-        <div id="arrive-card-form" style="display:none">
-          <div id="arrive-stripe-element" class="stripe-element"></div>
-          <div id="arrive-card-error" class="card-error"></div>
-          <button id="arrive-btn-pay-card" class="btn btn-primary btn-block" disabled>
-            Pay <span id="arrive-btn-pay-amount"></span>
-          </button>
-          <button id="arrive-btn-back" class="btn btn-ghost btn-block">Back</button>
         </div>
 
         <!-- Processing -->
@@ -152,16 +223,6 @@ const stripePublishableKey = import.meta.env.PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
           </button>
         </div>
 
-        <!-- Stripe card form (hidden until "Card" tapped) -->
-        <div id="card-form" style="display:none">
-          <div id="stripe-element" class="stripe-element"></div>
-          <div id="card-error" class="card-error"></div>
-          <button id="btn-pay-card" class="btn btn-primary btn-block" disabled>
-            Pay <span id="btn-pay-amount"></span>
-          </button>
-          <button id="btn-back-to-methods" class="btn btn-ghost btn-block">Back</button>
-        </div>
-
         <!-- Processing state -->
         <div id="pay-processing" class="pay-processing" style="display:none">
           <div class="spinner"></div>
@@ -180,50 +241,30 @@ const stripePublishableKey = import.meta.env.PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
   </div>
 </Base>
 
-<script is:inline src="https://js.stripe.com/v3/"></script>
-<script define:vars={{ slug, doorPrice: event.door_price, stripePublishableKey }}>
-  /* ── Shared Stripe state ── */
-  let stripeInstance = null;
+<script define:vars={{ slug, doorPrice: event.door_price }}>
   const priceDisplay = `$${Number(doorPrice).toFixed(0)}`;
 
-  function getStripe() {
-    if (!stripeInstance) {
-      stripeInstance = Stripe(stripePublishableKey);
-    }
-    return stripeInstance;
-  }
-
-  async function mountStripeElement(mountSelector, errorSelector, payBtnSelector, rsvpId) {
-    const stripe = getStripe();
-    const intentRes = await fetch(`/api/door/${slug}/payment/create-intent`, {
+  /* ── Redirect to Stripe Checkout ── */
+  async function redirectToCheckout(body) {
+    const res = await fetch(`/api/door/${slug}/payment/create-checkout`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ rsvpId: rsvpId || undefined }),
+      body: JSON.stringify(body),
     });
-    if (!intentRes.ok) throw new Error('Could not start card payment');
-    const { clientSecret } = await intentRes.json();
+    if (!res.ok) throw new Error('Could not start card payment');
+    const { url } = await res.json();
+    window.location.href = url;
+  }
 
-    const elements = stripe.elements({
-      clientSecret,
-      appearance: {
-        theme: 'night',
-        variables: {
-          colorPrimary: '#ffffff',
-          colorBackground: '#1a1a1a',
-          colorText: '#ffffff',
-          colorDanger: '#ff4444',
-          borderRadius: '0px',
-          fontFamily: 'system-ui, sans-serif',
-        },
-      },
-    });
-    const pe = elements.create('payment');
-    pe.mount(mountSelector);
-    pe.on('change', (event) => {
-      document.querySelector(payBtnSelector).disabled = !event.complete;
-      document.querySelector(errorSelector).textContent = event.error ? event.error.message : '';
-    });
-    return { stripe, elements, paymentElement: pe, clientSecret };
+  /* ── Auto-dismiss checkout flash ── */
+  const flash = document.getElementById('checkout-flash');
+  if (flash) {
+    // Clean the URL (remove session_id params) without reloading
+    const cleanUrl = window.location.pathname;
+    history.replaceState(null, '', cleanUrl);
+    setTimeout(() => {
+      flash.style.display = 'none';
+    }, 4000);
   }
 
   /* ── Search & arrive (existing RSVP guests) ── */
@@ -275,25 +316,17 @@ const stripePublishableKey = import.meta.env.PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
   const arriveOverlay = document.getElementById('arrive-overlay');
   let arriveRsvpId = null;
   let arriveGuestName = '';
-  let arriveStripeState = null;
 
   window.openArrivePayment = function (rsvpId, name) {
     arriveRsvpId = rsvpId;
     arriveGuestName = name;
     document.getElementById('arrive-guest-name').textContent = name;
     document.getElementById('arrive-pay-price').textContent = priceDisplay;
-    document.getElementById('arrive-btn-pay-amount').textContent = priceDisplay;
     // Reset state
     document.getElementById('arrive-step-pay').style.display = 'flex';
     document.getElementById('arrive-step-done').style.display = 'none';
     document.getElementById('arrive-pay-buttons').style.display = 'flex';
-    document.getElementById('arrive-card-form').style.display = 'none';
     document.getElementById('arrive-processing').style.display = 'none';
-    document.getElementById('arrive-card-error').textContent = '';
-    if (arriveStripeState && arriveStripeState.paymentElement) {
-      arriveStripeState.paymentElement.destroy();
-      arriveStripeState = null;
-    }
     arriveOverlay.style.display = 'flex';
   };
 
@@ -323,79 +356,28 @@ const stripePublishableKey = import.meta.env.PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
     }
   });
 
-  // Arrive: Card
+  // Arrive: Card → redirect to Stripe Checkout
   document.getElementById('arrive-btn-card').addEventListener('click', async () => {
     document.getElementById('arrive-pay-buttons').style.display = 'none';
-    document.getElementById('arrive-card-form').style.display = 'flex';
-    document.getElementById('arrive-card-error').textContent = '';
-    document.getElementById('arrive-btn-pay-card').disabled = true;
+    document.getElementById('arrive-processing').style.display = 'flex';
     try {
-      arriveStripeState = await mountStripeElement(
-        '#arrive-stripe-element',
-        '#arrive-card-error',
-        '#arrive-btn-pay-card',
-        arriveRsvpId,
-      );
-    } catch (err) {
-      document.getElementById('arrive-card-error').textContent = err.message || 'Card setup failed';
-    }
-  });
-
-  document.getElementById('arrive-btn-back').addEventListener('click', () => {
-    document.getElementById('arrive-card-form').style.display = 'none';
-    document.getElementById('arrive-pay-buttons').style.display = 'flex';
-  });
-
-  document.getElementById('arrive-btn-pay-card').addEventListener('click', async () => {
-    const btn = document.getElementById('arrive-btn-pay-card');
-    btn.disabled = true;
-    btn.textContent = 'Processing...';
-    document.getElementById('arrive-card-error').textContent = '';
-
-    try {
-      const { error, paymentIntent } = await arriveStripeState.stripe.confirmPayment({
-        elements: arriveStripeState.elements,
-        confirmParams: { return_url: window.location.href },
-        redirect: 'if_required',
-      });
-
-      if (error) {
-        document.getElementById('arrive-card-error').textContent = error.message;
-        btn.disabled = false;
-        btn.innerHTML = `Pay <span id="arrive-btn-pay-amount">${priceDisplay}</span>`;
-        return;
-      }
-
-      document.getElementById('arrive-card-form').style.display = 'none';
-      document.getElementById('arrive-processing').style.display = 'flex';
-
-      const confirmRes = await fetch(`/api/door/${slug}/payment/confirm`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paymentIntentId: paymentIntent.id, rsvpId: arriveRsvpId }),
-      });
-      if (!confirmRes.ok) throw new Error('Payment confirmation failed');
-      arriveSuccess();
+      await redirectToCheckout({ rsvpId: arriveRsvpId });
     } catch (err) {
       alert(err.message || 'Something went wrong');
       document.getElementById('arrive-processing').style.display = 'none';
       document.getElementById('arrive-pay-buttons').style.display = 'flex';
-      btn.disabled = false;
-      btn.innerHTML = `Pay <span id="arrive-btn-pay-amount">${priceDisplay}</span>`;
     }
   });
 
   function arriveSuccess() {
     localArrivedCount++;
     arrivedCountEl.textContent = localArrivedCount + ' in';
-    // Update the guest card in the list
     const card = document.querySelector(`.guest-card[data-id="${arriveRsvpId}"]`);
     if (card) {
       card.classList.add('arrived');
       const actions = card.querySelector('.guest-actions');
       if (actions) actions.innerHTML = '<span class="guest-badge-arrived">[Arrived]</span>';
     }
-    // Show done step
     document.getElementById('arrive-step-pay').style.display = 'none';
     document.getElementById('arrive-step-done').style.display = 'flex';
     document.getElementById('arrive-done-name').textContent = arriveGuestName;
@@ -416,8 +398,6 @@ const stripePublishableKey = import.meta.env.PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
     done: document.getElementById('step-done'),
   };
 
-  let walkinStripeState = null;
-
   function showStep(key) {
     Object.values(steps).forEach((s) => (s.style.display = 'none'));
     steps[key].style.display = 'flex';
@@ -429,13 +409,7 @@ const stripePublishableKey = import.meta.env.PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
     showStep('name');
     overlay.style.display = 'flex';
     document.getElementById('pay-buttons').style.display = 'flex';
-    document.getElementById('card-form').style.display = 'none';
     document.getElementById('pay-processing').style.display = 'none';
-    document.getElementById('card-error').textContent = '';
-    if (walkinStripeState && walkinStripeState.paymentElement) {
-      walkinStripeState.paymentElement.destroy();
-      walkinStripeState = null;
-    }
     setTimeout(() => walkinName.focus(), 50);
   }
 
@@ -476,14 +450,11 @@ const stripePublishableKey = import.meta.env.PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
 
   function goToPay() {
     document.getElementById('pay-price').textContent = priceDisplay;
-    document.getElementById('btn-pay-amount').textContent = priceDisplay;
     showStep('pay');
   }
 
-  // Step 3a: Cash
-  document.getElementById('btn-cash').addEventListener('click', handleCash);
-
-  async function handleCash() {
+  // Walk-in Cash
+  document.getElementById('btn-cash').addEventListener('click', async () => {
     showProcessing();
     try {
       const payRes = await fetch(`/api/door/${slug}/payment/cash`, {
@@ -513,89 +484,24 @@ const stripePublishableKey = import.meta.env.PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
       alert(err.message || 'Something went wrong');
       hideProcessing();
     }
-  }
-
-  // Step 3b: Card (Stripe)
-  document.getElementById('btn-card').addEventListener('click', handleCardStart);
-  document.getElementById('btn-back-to-methods').addEventListener('click', () => {
-    document.getElementById('card-form').style.display = 'none';
-    document.getElementById('pay-buttons').style.display = 'flex';
   });
-  document.getElementById('btn-pay-card').addEventListener('click', handleCardPay);
 
-  async function handleCardStart() {
-    document.getElementById('pay-buttons').style.display = 'none';
-    document.getElementById('card-form').style.display = 'flex';
-    document.getElementById('card-error').textContent = '';
-    document.getElementById('btn-pay-card').disabled = true;
-
+  // Walk-in Card → redirect to Stripe Checkout
+  document.getElementById('btn-card').addEventListener('click', async () => {
+    showProcessing();
     try {
-      walkinStripeState = await mountStripeElement(
-        '#stripe-element',
-        '#card-error',
-        '#btn-pay-card',
-      );
-    } catch (err) {
-      document.getElementById('card-error').textContent = err.message || 'Card setup failed';
-    }
-  }
-
-  async function handleCardPay() {
-    const btnPay = document.getElementById('btn-pay-card');
-    btnPay.disabled = true;
-    btnPay.textContent = 'Processing...';
-    document.getElementById('card-error').textContent = '';
-
-    try {
-      const { error, paymentIntent } = await walkinStripeState.stripe.confirmPayment({
-        elements: walkinStripeState.elements,
-        confirmParams: { return_url: window.location.href },
-        redirect: 'if_required',
+      await redirectToCheckout({
+        name: walkinName.value.trim(),
+        phone: walkinPhone.value.trim() || undefined,
       });
-
-      if (error) {
-        document.getElementById('card-error').textContent = error.message;
-        btnPay.disabled = false;
-        btnPay.innerHTML = `Pay <span id="btn-pay-amount">${priceDisplay}</span>`;
-        return;
-      }
-
-      showProcessing();
-
-      const confirmRes = await fetch(`/api/door/${slug}/payment/confirm`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          paymentIntentId: paymentIntent.id,
-          name: walkinName.value.trim(),
-        }),
-      });
-      if (!confirmRes.ok) throw new Error('Payment recorded but server confirmation failed');
-
-      const arriveRes = await fetch(`/api/door/${slug}/arrive`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: walkinName.value.trim(),
-          phone: walkinPhone.value.trim() || undefined,
-        }),
-      });
-      if (!arriveRes.ok) throw new Error('Payment succeeded but failed to add guest');
-
-      localArrivedCount++;
-      arrivedCountEl.textContent = localArrivedCount + ' in';
-      showDone();
     } catch (err) {
       alert(err.message || 'Something went wrong');
       hideProcessing();
-      btnPay.disabled = false;
-      btnPay.innerHTML = `Pay <span id="btn-pay-amount">${priceDisplay}</span>`;
     }
-  }
+  });
 
   function showProcessing() {
     document.getElementById('pay-buttons').style.display = 'none';
-    document.getElementById('card-form').style.display = 'none';
     document.getElementById('pay-processing').style.display = 'flex';
   }
 
@@ -840,26 +746,6 @@ const stripePublishableKey = import.meta.env.PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
     line-height: 1;
   }
 
-  /* Stripe element container */
-  .stripe-element {
-    padding: var(--space-md);
-    background: var(--color-surface);
-    border: 2px solid var(--color-border);
-    min-height: 60px;
-  }
-
-  .card-error {
-    color: var(--color-danger, #ff4444);
-    font-size: 0.875rem;
-    min-height: 1.25em;
-  }
-
-  #card-form {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-md);
-  }
-
   /* Processing spinner */
   .pay-processing {
     display: flex;
@@ -912,6 +798,18 @@ const stripePublishableKey = import.meta.env.PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
     color: var(--color-muted);
     font-size: 1rem;
     margin-top: calc(-1 * var(--space-sm));
+  }
+
+  .checkout-flash {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
+    background: var(--color-surface);
+    border: var(--border-width) solid var(--color-success);
+    color: var(--color-success);
+    font-weight: var(--weight-medium);
+    font-size: 0.9375rem;
   }
 </style>
 
