@@ -25,11 +25,13 @@ const { data: rsvps } = await supabaseAdmin
 
 const rsvpList = rsvps ?? [];
 
+const totalGuests = rsvpList.reduce((sum, r) => sum + 1 + (r.plus_one_count ?? 0), 0);
+
 if (exportCsv) {
-  const header = 'Name,Phone,Email,SMS Opt-in,RSVP Time,Arrived';
+  const header = 'Name,Phone,Email,SMS Opt-in,Plus Ones,RSVP Time,Arrived';
   const rows = rsvpList.map(
     (r) =>
-      `"${r.name}","${r.phone}","${r.email || ''}","${r.sms_opt_in ? 'Yes' : 'No'}","${r.created_at}","${r.arrived_at ? 'Yes' : 'No'}"`,
+      `"${r.name}","${r.phone}","${r.email || ''}","${r.sms_opt_in ? 'Yes' : 'No'}","${r.plus_one_count ?? 0}","${r.created_at}","${r.arrived_at ? 'Yes' : 'No'}"`,
   );
   const csv = [header, ...rows].join('\n');
   return new Response(csv, {
@@ -54,7 +56,10 @@ if (exportCsv) {
 
     <div class="edit-content">
       <div class="rsvp-header">
-        <h1>RSVPs <span class="count">({rsvpList.length})</span></h1>
+        <h1>
+          RSVPs <span class="count"
+            >({rsvpList.length} RSVPs &mdash; {totalGuests} total guests)</span>
+        </h1>
         <a href={`/admin/events/${slug}/rsvps?export=csv`} class="btn btn-secondary btn-sm"
           >Export CSV</a
         >
@@ -77,6 +82,7 @@ if (exportCsv) {
                   <th data-sort="email" class="sortable">
                     Email
                   </th>
+                  <th>Party</th>
                   <th data-sort="time" class="sortable">
                     Time
                   </th>
@@ -89,6 +95,9 @@ if (exportCsv) {
                     <td class="td-name">{r.name}</td>
                     <td>{r.phone}</td>
                     <td class="td-email">{r.email || '—'}</td>
+                    <td class="td-party">
+                      {(r.plus_one_count ?? 0) > 0 ? `1+${r.plus_one_count}` : '1'}
+                    </td>
                     <td class="td-time">
                       {new Date(r.created_at).toLocaleDateString('en-US', {
                         month: 'short',
@@ -98,8 +107,10 @@ if (exportCsv) {
                       })}
                     </td>
                     <td>
-                      {r.arrived_at ? (
+                      {r.arrived_at && (r.plus_ones_arrived ?? 0) === (r.plus_one_count ?? 0) ? (
                         <span class="badge badge-success">Arrived</span>
+                      ) : r.arrived_at || (r.plus_ones_arrived ?? 0) > 0 ? (
+                        <span class="badge badge-warning">Partial</span>
                       ) : r.walk_in ? (
                         <span class="badge badge-warning">Walk-in</span>
                       ) : (

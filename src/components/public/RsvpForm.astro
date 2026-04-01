@@ -11,7 +11,8 @@ const { slug, eventTitle } = Astro.props;
 
   <div id="rsvp-message" class="rsvp-message" style="display:none"></div>
 
-  <div id="rsvp-fields" class="rsvp-fields">
+  <!-- Step 1: contact info -->
+  <div id="rsvp-step-1" class="rsvp-fields">
     <label>
       <span>Name</span>
       <input type="text" name="name" required autocomplete="name" placeholder="Your name" />
@@ -46,7 +47,29 @@ const { slug, eventTitle } = Astro.props;
       </div>
     </label>
 
-    <button type="submit" id="rsvp-submit" class="btn btn-primary btn-block">Submit</button>
+    <button type="button" id="rsvp-next" class="btn btn-primary btn-block">Next →</button>
+  </div>
+
+  <!-- Step 2: plus ones -->
+  <div id="rsvp-step-2" class="rsvp-fields" style="display:none">
+    <div class="plus-ones-header">
+      <span class="plus-ones-title">Bringing anyone?</span>
+      <span class="plus-ones-sub">Optional — up to 3 guests</span>
+    </div>
+
+    <div class="plus-one-options" role="group" aria-label="Number of guests">
+      <button type="button" class="btn btn-count active" data-count="0">Just me</button>
+      <button type="button" class="btn btn-count" data-count="1">+1</button>
+      <button type="button" class="btn btn-count" data-count="2">+2</button>
+      <button type="button" class="btn btn-count" data-count="3">+3</button>
+    </div>
+
+    <input type="hidden" name="plus_one_count" id="plus-one-count-input" value="0" />
+
+    <div class="step-nav">
+      <button type="button" id="rsvp-back" class="btn btn-ghost">← Back</button>
+      <button type="submit" id="rsvp-submit" class="btn btn-primary">Submit RSVP</button>
+    </div>
   </div>
 </form>
 
@@ -54,9 +77,34 @@ const { slug, eventTitle } = Astro.props;
   import gsap from 'gsap';
 
   const form = document.getElementById('rsvp-form') as HTMLFormElement;
-  const fields = document.getElementById('rsvp-fields')!;
+  const step1 = document.getElementById('rsvp-step-1')!;
+  const step2 = document.getElementById('rsvp-step-2')!;
   const message = document.getElementById('rsvp-message')!;
   const submitBtn = document.getElementById('rsvp-submit') as HTMLButtonElement;
+  const nextBtn = document.getElementById('rsvp-next') as HTMLButtonElement;
+  const backBtn = document.getElementById('rsvp-back') as HTMLButtonElement;
+  const countInput = document.getElementById('plus-one-count-input') as HTMLInputElement;
+
+  // Step navigation
+  nextBtn.addEventListener('click', () => {
+    step1.style.display = 'none';
+    step2.style.display = 'flex';
+  });
+
+  backBtn.addEventListener('click', () => {
+    step2.style.display = 'none';
+    step1.style.display = 'flex';
+  });
+
+  // Plus-one count selector
+  const countBtns = document.querySelectorAll<HTMLButtonElement>('.btn-count');
+  countBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      countBtns.forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      countInput.value = btn.dataset.count!;
+    });
+  });
 
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -69,6 +117,7 @@ const { slug, eventTitle } = Astro.props;
       phone: (formData.get('phone') as string) || '',
       email: (formData.get('email') as string) || '',
       sms_opt_in: formData.get('sms_opt_in') === 'true',
+      plus_one_count: parseInt(countInput.value, 10) || 0,
     };
 
     try {
@@ -81,23 +130,26 @@ const { slug, eventTitle } = Astro.props;
       const result = await res.json();
 
       if (res.ok) {
-        // Animate form out
-        gsap.to(fields, {
+        // Animate current step out
+        gsap.to(step2, {
           duration: 0.4,
           opacity: 0,
           y: -20,
           ease: 'power2.in',
           onComplete: () => {
-            fields.style.display = 'none';
+            step2.style.display = 'none';
             message.className = 'rsvp-message success-message';
+            const guestLine =
+              data.plus_one_count > 0
+                ? `<div class="success-sub">You + ${data.plus_one_count} guest${data.plus_one_count > 1 ? 's' : ''} are on the list.</div>`
+                : `<div class="success-sub">Check your texts for confirmation.</div>`;
             message.innerHTML = `
               <div class="success-check">✓</div>
               <div class="success-text">You're on the list, ${data.name}!</div>
-              <div class="success-sub">Check your texts for confirmation.</div>
+              ${guestLine}
             `;
             message.style.display = 'block';
 
-            // Animate success in
             gsap.from('.success-check', {
               duration: 0.6,
               scale: 0,
@@ -125,14 +177,14 @@ const { slug, eventTitle } = Astro.props;
         message.textContent = result.error || 'Something went wrong';
         message.style.display = 'block';
         submitBtn.disabled = false;
-        submitBtn.textContent = 'Submit';
+        submitBtn.textContent = 'Submit RSVP';
       }
     } catch {
       message.className = 'rsvp-message alert alert-error';
       message.textContent = 'Network error. Please try again.';
       message.style.display = 'block';
       submitBtn.disabled = false;
-      submitBtn.textContent = 'Submit';
+      submitBtn.textContent = 'Submit RSVP';
     }
   });
 </script>
@@ -178,6 +230,79 @@ const { slug, eventTitle } = Astro.props;
     letter-spacing: normal;
   }
 
+  /* Plus-ones step */
+  .plus-ones-header {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .plus-ones-title {
+    font-size: 1rem;
+    font-weight: var(--weight-medium);
+  }
+
+  .plus-ones-sub {
+    font-size: 0.8125rem;
+    color: var(--color-muted);
+  }
+
+  .plus-one-options {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-sm);
+  }
+
+  .btn-count {
+    padding: var(--space-sm);
+    background: var(--color-bg);
+    border: var(--border-width) solid var(--color-border);
+    color: var(--color-muted);
+    font-size: 1rem;
+    font-weight: var(--weight-medium);
+    cursor: pointer;
+    transition:
+      border-color var(--transition),
+      color var(--transition),
+      background var(--transition);
+    min-height: 48px;
+  }
+
+  .btn-count:hover {
+    border-color: var(--color-muted);
+    color: var(--color-fg);
+  }
+
+  .btn-count.active {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+    background: var(--color-surface);
+  }
+
+  .step-nav {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: var(--space-sm);
+  }
+
+  .btn-ghost {
+    background: transparent;
+    border: var(--border-width) solid var(--color-border);
+    color: var(--color-muted);
+    cursor: pointer;
+    min-height: 48px;
+    font-size: 0.9375rem;
+    transition:
+      border-color var(--transition),
+      color var(--transition);
+  }
+
+  .btn-ghost:hover {
+    border-color: var(--color-muted);
+    color: var(--color-fg);
+  }
+
+  /* Success state */
   .rsvp-message {
     text-align: center;
   }

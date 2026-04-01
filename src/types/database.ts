@@ -265,6 +265,8 @@ export type Database = {
           id: string;
           name: string;
           phone: string | null;
+          plus_one_count: number;
+          plus_ones_arrived: number;
           sms_opt_in: boolean;
           walk_in: boolean;
         };
@@ -276,6 +278,8 @@ export type Database = {
           id?: string;
           name: string;
           phone?: string | null;
+          plus_one_count?: number;
+          plus_ones_arrived?: number;
           sms_opt_in?: boolean;
           walk_in?: boolean;
         };
@@ -286,7 +290,9 @@ export type Database = {
           event_id?: string;
           id?: string;
           name?: string;
-          phone?: string;
+          phone?: string | null;
+          plus_one_count?: number;
+          plus_ones_arrived?: number;
           sms_opt_in?: boolean;
           walk_in?: boolean;
         };

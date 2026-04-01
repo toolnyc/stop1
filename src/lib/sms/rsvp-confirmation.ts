@@ -5,6 +5,7 @@
 export function rsvpConfirmationSms(
   name: string,
   event: { title: string; date: string; venue_name: string | null },
+  plusOneCount = 0,
 ): string {
   const d = new Date(event.date);
   const date = d.toLocaleDateString('en-US', {
@@ -13,5 +14,9 @@ export function rsvpConfirmationSms(
     timeZone: 'America/New_York',
   });
   const venue = event.venue_name || 'TBA';
-  return `You're on the list for ${event.title} on ${date} @ ${venue}. See you there!`;
+  const party =
+    plusOneCount > 0
+      ? ` You + ${plusOneCount} guest${plusOneCount > 1 ? 's' : ''} are on the list.`
+      : '';
+  return `You're on the list for ${event.title} on ${date} @ ${venue}.${party} See you there!`;
 }

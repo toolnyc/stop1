@@ -10,9 +10,11 @@ const JSON_HEADERS = { 'Content-Type': 'application/json' };
  * Creates a Stripe Checkout Session for door payments.
  *
  * Body:
- *  - rsvpId?: string  — existing RSVP guest being marked arrived
- *  - name?: string    — walk-in guest name (creates RSVP on success)
- *  - phone?: string   — walk-in guest phone (optional)
+ *  - rsvpId?: string        — existing RSVP guest being marked arrived
+ *  - checkInPrimary?: bool  — whether primary is arriving (default true)
+ *  - checkInGuests?: number — how many anonymous guests are arriving (default 0)
+ *  - name?: string          — walk-in guest name (creates RSVP on success)
+ *  - phone?: string         — walk-in guest phone (optional)
  *
  * Returns: { url: string } — Stripe Checkout redirect URL
  */
@@ -27,7 +29,19 @@ export const POST = withLogging(async ({ params, request, log }) => {
 
   const { slug } = params;
   const body = await request.json();
-  const { rsvpId, name, phone: rawPhone } = body;
+  const {
+    rsvpId,
+    name,
+    phone: rawPhone,
+    checkInPrimary = true,
+    checkInGuests = 0,
+  } = body as {
+    rsvpId?: string;
+    name?: string;
+    phone?: string;
+    checkInPrimary?: boolean;
+    checkInGuests?: number;
+  };
 
   if (!rsvpId && !name) {
     return new Response(JSON.stringify({ error: 'rsvpId or name required' }), {
@@ -50,7 +64,8 @@ export const POST = withLogging(async ({ params, request, log }) => {
     });
   }
 
-  const amount = Math.round(Number(event.door_price) * 100);
+  const unitAmount = Math.round(Number(event.door_price) * 100);
+  const quantity = (checkInPrimary ? 1 : 0) + Math.max(0, checkInGuests);
   const phone = rawPhone ? normalizePhone(rawPhone) : '';
 
   // Build the success/cancel URLs
@@ -61,8 +76,10 @@ export const POST = withLogging(async ({ params, request, log }) => {
   const extraParams = new URLSearchParams();
   if (rsvpId) {
     extraParams.set('rsvp_id', rsvpId);
+    if (!checkInPrimary) extraParams.set('check_in_primary', '0');
+    if (checkInGuests > 0) extraParams.set('check_in_guests', String(checkInGuests));
   } else {
-    extraParams.set('walkin_name', name.trim());
+    extraParams.set('walkin_name', name!.trim());
     if (phone) extraParams.set('walkin_phone', phone);
   }
   const extraStr = extraParams.toString();
@@ -71,7 +88,7 @@ export const POST = withLogging(async ({ params, request, log }) => {
   const result = await trackCall({
     service: 'stripe',
     action: 'create-checkout-session',
-    meta: { slug, amount, rsvpId: rsvpId || null },
+    meta: { slug, unitAmount, quantity, rsvpId: rsvpId || null },
     log,
     fn: () =>
       stripe.checkout.sessions.create({
@@ -80,20 +97,22 @@ export const POST = withLogging(async ({ params, request, log }) => {
           {
             price_data: {
               currency: 'usd',
-              unit_amount: amount,
+              unit_amount: unitAmount,
               product_data: {
                 name: `Door — ${event.title}`,
               },
             },
-            quantity: 1,
+            quantity,
           },
         ],
         metadata: {
           event_id: event.id,
           slug: event.slug,
           rsvp_id: rsvpId || '',
-          walkin_name: rsvpId ? '' : name.trim(),
-          walkin_phone: rsvpId ? '' : phone,
+          check_in_primary: checkInPrimary ? '1' : '0',
+          check_in_guests: String(checkInGuests),
+          walkin_name: rsvpId ? '' : name!.trim(),
+          walkin_phone: rsvpId ? '' : phone || '',
         },
         success_url: successUrl,
         cancel_url: baseUrl,

@@ -6,6 +6,7 @@ import { sendSms } from '@/lib/sms';
 import { rsvpConfirmationSms } from '@/lib/sms/rsvp-confirmation';
 import { withLogging } from '@/lib/api';
 import { trackCall, maskEmail } from '@/lib/track';
+import { parsePlusOneCount } from '@/lib/plus-ones';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
@@ -37,7 +38,7 @@ export const POST = withLogging(async ({ params, request, log, background }) => 
   }
 
   const contentType = request.headers.get('content-type') || '';
-  let name: string, rawPhone: string, rawEmail: string, sms_opt_in: boolean;
+  let name: string, rawPhone: string, rawEmail: string, sms_opt_in: boolean, plus_one_count: number;
 
   if (contentType.includes('application/json')) {
     const body = await request.json();
@@ -45,12 +46,14 @@ export const POST = withLogging(async ({ params, request, log, background }) => 
     rawPhone = body.phone || '';
     rawEmail = body.email || '';
     sms_opt_in = body.sms_opt_in !== false; // default true
+    plus_one_count = parsePlusOneCount(body.plus_one_count);
   } else {
     const formData = await request.formData();
     name = formData.get('name') as string;
     rawPhone = (formData.get('phone') as string) || '';
     rawEmail = (formData.get('email') as string) || '';
     sms_opt_in = formData.get('sms_opt_in') !== 'false'; // default true
+    plus_one_count = parsePlusOneCount(formData.get('plus_one_count'));
   }
 
   // Validation
@@ -79,7 +82,7 @@ export const POST = withLogging(async ({ params, request, log, background }) => 
     });
   }
 
-  log.info('rsvp.inserting', { slug, sms_opt_in, hasEmail: !!email });
+  log.info('rsvp.inserting', { slug, sms_opt_in, hasEmail: !!email, plus_one_count });
 
   const { data, error } = await supabaseAdmin
     .from('rsvps')
@@ -89,6 +92,7 @@ export const POST = withLogging(async ({ params, request, log, background }) => 
       email,
       phone,
       sms_opt_in,
+      plus_one_count,
     })
     .select()
     .single();
@@ -112,7 +116,7 @@ export const POST = withLogging(async ({ params, request, log, background }) => 
 
   // Background SMS confirmation — kept alive via waitUntil on Vercel
   if (sms_opt_in) {
-    const smsBody = rsvpConfirmationSms(name.trim(), event);
+    const smsBody = rsvpConfirmationSms(name.trim(), event, plus_one_count);
     background(
       sendSms(phone, smsBody, { action: 'send-rsvp-confirmation', log }).then((result) => {
         if (!result.ok) {
