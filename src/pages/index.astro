@@ -1115,9 +1115,9 @@ const doorPriceFormatted =
     padding: var(--space-sm) 0 var(--space-3xl);
   }
 
-  .gl-item {
+  .gl-list :global(.gl-item) {
     display: flex;
-    text-align: center;
+    justify-content: center;
     align-items: baseline;
     gap: 0;
     padding: var(--space-md) var(--space-xl);
@@ -1129,34 +1129,34 @@ const doorPriceFormatted =
       transform 0.35s ease;
   }
 
-  .gl-item:last-child {
+  .gl-list :global(.gl-item:last-child) {
     border-bottom: none;
   }
 
-  .gl-item--visible {
+  .gl-list :global(.gl-item--visible) {
     opacity: 1;
     transform: none;
   }
 
-  .gl-item--new {
+  .gl-list :global(.gl-item--new) {
     background: color-mix(in srgb, var(--color-fg) 4%, var(--color-bg));
   }
 
-  .gl-name {
+  .gl-list :global(.gl-name) {
     font-size: 1.375rem;
     font-weight: var(--weight-medium);
     letter-spacing: -0.01em;
     color: var(--color-fg);
   }
 
-  .gl-suffix {
-    font-size: 1.0625rem;
+  .gl-list :global(.gl-suffix) {
+    font-size: 1.375rem;
     font-weight: var(--weight-regular);
     color: var(--color-muted);
   }
 
-  .gl-empty,
-  .gl-loading {
+  .gl-list :global(.gl-empty),
+  .gl-list :global(.gl-loading) {
     padding: var(--space-3xl) var(--space-xl);
     text-align: center;
     color: var(--color-muted);
