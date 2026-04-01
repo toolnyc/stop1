@@ -29,28 +29,56 @@ if (sessionId && stripe) {
       const rsvpId = meta.rsvp_id || Astro.url.searchParams.get('rsvp_id');
       const walkinName = meta.walkin_name || Astro.url.searchParams.get('walkin_name');
       const walkinPhone = meta.walkin_phone || Astro.url.searchParams.get('walkin_phone');
+      const checkInPrimary =
+        (meta.check_in_primary ?? Astro.url.searchParams.get('check_in_primary') ?? '1') !== '0';
+      const checkInGuests =
+        parseInt(
+          meta.check_in_guests ?? Astro.url.searchParams.get('check_in_guests') ?? '0',
+          10,
+        ) || 0;
 
-      // Prevent double-processing: check if payment already recorded
+      // Prevent double-processing
       const { count: existingCount } = await supabaseAdmin
         .from('door_payments')
         .select('id', { count: 'exact', head: true })
         .eq('stripe_payment_intent_id', session.payment_intent as string);
 
       if (!existingCount || existingCount === 0) {
+        const totalAmount = Number(session.amount_total ?? 0) / 100;
+
         if (rsvpId) {
-          // Existing RSVP: record payment + mark arrived
+          // Existing RSVP: record payment + mark party arrival
           await supabaseAdmin.from('door_payments').insert({
             event_id: event.id,
             rsvp_id: rsvpId,
-            amount: Number(event.door_price),
+            amount: totalAmount,
             method: 'card' as const,
             stripe_payment_intent_id: session.payment_intent as string,
           });
-          await supabaseAdmin
+
+          const { data: rsvp } = await supabaseAdmin
             .from('rsvps')
-            .update({ arrived_at: new Date().toISOString() })
+            .select('arrived_at, plus_ones_arrived')
             .eq('id', rsvpId)
-            .eq('event_id', event.id);
+            .eq('event_id', event.id)
+            .single();
+
+          if (rsvp) {
+            const updates: Record<string, unknown> = {};
+            if (checkInPrimary && !rsvp.arrived_at) {
+              updates.arrived_at = new Date().toISOString();
+            }
+            if (checkInGuests > 0) {
+              updates.plus_ones_arrived = rsvp.plus_ones_arrived + checkInGuests;
+            }
+            if (Object.keys(updates).length > 0) {
+              await supabaseAdmin
+                .from('rsvps')
+                .update(updates)
+                .eq('id', rsvpId)
+                .eq('event_id', event.id);
+            }
+          }
           checkoutFlash = 'paid';
         } else if (walkinName) {
           // Walk-in: create RSVP + record payment
@@ -72,7 +100,7 @@ if (sessionId && stripe) {
           await supabaseAdmin.from('door_payments').insert({
             event_id: event.id,
             rsvp_id: newRsvp?.id || null,
-            amount: Number(event.door_price),
+            amount: totalAmount,
             method: 'card' as const,
             stripe_payment_intent_id: session.payment_intent as string,
             name: walkinName.trim(),
@@ -80,7 +108,6 @@ if (sessionId && stripe) {
           checkoutFlash = 'paid';
         }
       } else {
-        // Already processed — still show success
         checkoutFlash = 'paid';
       }
     }
@@ -136,7 +163,7 @@ const { count: arrivedCount } = await supabaseAdmin
     <a href={`/door/${slug}/summary`} class="summary-link">View Summary</a>
   </main>
 
-  <!-- Arrival payment overlay (for existing RSVP guests) -->
+  <!-- Arrival payment overlay (existing RSVP guests) -->
   <div id="arrive-overlay" class="walkin-overlay" style="display:none">
     <div class="walkin-sheet">
       <button id="arrive-close" class="walkin-close" aria-label="Close">&times;</button>
@@ -144,19 +171,22 @@ const { count: arrivedCount } = await supabaseAdmin
       <!-- Payment step -->
       <div class="walkin-step" id="arrive-step-pay">
         <h2 class="walkin-step-title" id="arrive-guest-name"></h2>
-        <p class="arrive-subtitle">Payment &mdash; <span id="arrive-pay-price"></span></p>
+        <p class="arrive-subtitle" id="arrive-subtitle"></p>
+
+        <!-- Party member checklist (shown for parties of 2+) -->
+        <div id="arrive-party-list" class="party-list" style="display:none"></div>
+
         <div id="arrive-pay-buttons" class="pay-buttons">
           <button id="arrive-btn-cash" class="btn btn-pay btn-block">
             <span class="pay-icon">$</span>
-            Cash
+            Cash &mdash; <span id="arrive-cash-label"></span>
           </button>
           <button id="arrive-btn-card" class="btn btn-pay btn-block">
             <span class="pay-icon">&#9909;</span>
-            Card
+            Card &mdash; <span id="arrive-card-label"></span>
           </button>
         </div>
 
-        <!-- Processing -->
         <div id="arrive-processing" class="pay-processing" style="display:none">
           <div class="spinner"></div>
           <p>Processing...</p>
@@ -223,7 +253,6 @@ const { count: arrivedCount } = await supabaseAdmin
           </button>
         </div>
 
-        <!-- Processing state -->
         <div id="pay-processing" class="pay-processing" style="display:none">
           <div class="spinner"></div>
           <p>Processing...</p>
@@ -242,7 +271,8 @@ const { count: arrivedCount } = await supabaseAdmin
 </Base>
 
 <script define:vars={{ slug, doorPrice: event.door_price }}>
-  const priceDisplay = `$${Number(doorPrice).toFixed(0)}`;
+  const unitPrice = Number(doorPrice);
+  const fmt = (n) => `$${Number(n).toFixed(0)}`;
 
   /* ── Redirect to Stripe Checkout ── */
   async function redirectToCheckout(body) {
@@ -259,7 +289,6 @@ const { count: arrivedCount } = await supabaseAdmin
   /* ── Auto-dismiss checkout flash ── */
   const flash = document.getElementById('checkout-flash');
   if (flash) {
-    // Clean the URL (remove session_id params) without reloading
     const cleanUrl = window.location.pathname;
     history.replaceState(null, '', cleanUrl);
     setTimeout(() => {
@@ -267,7 +296,7 @@ const { count: arrivedCount } = await supabaseAdmin
     }, 4000);
   }
 
-  /* ── Search & arrive (existing RSVP guests) ── */
+  /* ── Search ── */
   const searchInput = document.getElementById('search-input');
   const results = document.getElementById('results');
   const arrivedCountEl = document.getElementById('arrived-count');
@@ -285,25 +314,41 @@ const { count: arrivedCount } = await supabaseAdmin
     const q = searchInput.value.trim();
     const res = await fetch(`/api/door/${slug}/search?q=${encodeURIComponent(q)}`);
     const guests = await res.json();
-    results.innerHTML = guests
-      .map(
-        (g) => `
-      <div class="guest-card ${g.arrived_at ? 'arrived' : ''}" data-id="${g.id}">
+    results.innerHTML = guests.map(renderGuestCard).join('');
+  }
+
+  function renderGuestCard(g) {
+    const plusCount = g.plus_one_count || 0;
+    const partySize = 1 + plusCount;
+    const arrivedTotal = (g.arrived_at ? 1 : 0) + (g.plus_ones_arrived || 0);
+    const fullyArrived = arrivedTotal === partySize;
+
+    let statusHtml;
+    if (fullyArrived) {
+      statusHtml = '<span class="guest-badge-arrived">[Arrived]</span>';
+    } else if (arrivedTotal > 0) {
+      statusHtml = `
+        <span class="guest-badge-partial">${arrivedTotal}/${partySize} in</span>
+        <button class="btn btn-primary btn-sm" onclick="openArrivePayment(${JSON.stringify(g)})">More In</button>
+      `;
+    } else {
+      statusHtml = `<button class="btn btn-primary btn-sm" onclick="openArrivePayment(${JSON.stringify(g)})">Mark Arrived</button>`;
+    }
+
+    const partyTag =
+      plusCount > 0
+        ? `<span class="guest-party">+${plusCount} guest${plusCount > 1 ? 's' : ''}</span>`
+        : '';
+
+    return `
+      <div class="guest-card ${fullyArrived ? 'arrived' : arrivedTotal > 0 ? 'partial' : ''}" data-id="${esc(g.id)}">
         <div class="guest-info">
-          <span class="guest-name">${esc(g.name)}</span>
+          <span class="guest-name">${esc(g.name)}${partyTag}</span>
           <span class="guest-phone">${g.phone && !g.phone.startsWith('+0000000') ? esc(g.phone) : ''}</span>
         </div>
-        <div class="guest-actions">
-          ${
-            g.arrived_at
-              ? '<span class="guest-badge-arrived">[Arrived]</span>'
-              : `<button class="btn btn-primary btn-sm" onclick="openArrivePayment('${g.id}', '${esc(g.name)}')">Mark Arrived</button>`
-          }
-        </div>
+        <div class="guest-actions">${statusHtml}</div>
       </div>
-    `,
-      )
-      .join('');
+    `;
   }
 
   function esc(s) {
@@ -312,23 +357,80 @@ const { count: arrivedCount } = await supabaseAdmin
     return d.innerHTML;
   }
 
-  /* ── Arrival payment overlay (existing RSVP guests) ── */
+  /* ── Arrival overlay ── */
   const arriveOverlay = document.getElementById('arrive-overlay');
-  let arriveRsvpId = null;
-  let arriveGuestName = '';
+  let currentRsvp = null;
+  let checkedSlots = []; // { label, isGuest, checked }
 
-  window.openArrivePayment = function (rsvpId, name) {
-    arriveRsvpId = rsvpId;
-    arriveGuestName = name;
-    document.getElementById('arrive-guest-name').textContent = name;
-    document.getElementById('arrive-pay-price').textContent = priceDisplay;
-    // Reset state
+  window.openArrivePayment = function (g) {
+    currentRsvp = g;
+    checkedSlots = [];
+
+    if (!g.arrived_at) {
+      checkedSlots.push({ label: g.name, isGuest: false, checked: true });
+    }
+    const alreadyIn = g.plus_ones_arrived || 0;
+    for (let i = alreadyIn + 1; i <= (g.plus_one_count || 0); i++) {
+      checkedSlots.push({ label: `Guest ${i}`, isGuest: true, checked: true });
+    }
+
+    document.getElementById('arrive-guest-name').textContent = g.name;
+
+    const partyList = document.getElementById('arrive-party-list');
+    if (checkedSlots.length > 1) {
+      partyList.style.display = 'flex';
+      renderPartyList();
+    } else {
+      partyList.style.display = 'none';
+    }
+
+    updateArriveButtons();
+
     document.getElementById('arrive-step-pay').style.display = 'flex';
     document.getElementById('arrive-step-done').style.display = 'none';
     document.getElementById('arrive-pay-buttons').style.display = 'flex';
     document.getElementById('arrive-processing').style.display = 'none';
     arriveOverlay.style.display = 'flex';
   };
+
+  function renderPartyList() {
+    const partyList = document.getElementById('arrive-party-list');
+    partyList.innerHTML = checkedSlots
+      .map(
+        (slot, i) => `
+      <label class="party-slot">
+        <input type="checkbox" ${slot.checked ? 'checked' : ''} onchange="toggleSlot(${i}, this.checked)" />
+        <span>${esc(slot.label)}</span>
+      </label>
+    `,
+      )
+      .join('');
+  }
+
+  window.toggleSlot = function (i, checked) {
+    checkedSlots[i].checked = checked;
+    updateArriveButtons();
+  };
+
+  function updateArriveButtons() {
+    const count = checkedSlots.filter((s) => s.checked).length;
+    const plusCount = currentRsvp.plus_one_count || 0;
+    const alreadyIn = (currentRsvp.arrived_at ? 1 : 0) + (currentRsvp.plus_ones_arrived || 0);
+    const remaining = 1 + plusCount - alreadyIn;
+
+    document.getElementById('arrive-subtitle').textContent =
+      plusCount > 0
+        ? `Select who's arriving now (${count} of ${remaining} remaining)`
+        : `Payment — ${fmt(unitPrice)}`;
+
+    const price = fmt(count * unitPrice);
+    document.getElementById('arrive-cash-label').textContent = price;
+    document.getElementById('arrive-card-label').textContent = price;
+
+    document.querySelectorAll('#arrive-pay-buttons .btn-pay').forEach((b) => {
+      b.disabled = count === 0;
+    });
+  }
 
   document.getElementById('arrive-close').addEventListener('click', () => {
     arriveOverlay.style.display = 'none';
@@ -337,18 +439,29 @@ const { count: arrivedCount } = await supabaseAdmin
     if (e.target === arriveOverlay) arriveOverlay.style.display = 'none';
   });
 
-  // Arrive: Cash
   document.getElementById('arrive-btn-cash').addEventListener('click', async () => {
+    const selected = checkedSlots.filter((s) => s.checked);
+    if (!selected.length) return;
+
     document.getElementById('arrive-pay-buttons').style.display = 'none';
     document.getElementById('arrive-processing').style.display = 'flex';
+
+    const checkInPrimary = selected.some((s) => !s.isGuest);
+    const checkInGuests = selected.filter((s) => s.isGuest).length;
+
     try {
       const res = await fetch(`/api/door/${slug}/payment/cash`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: Number(doorPrice), rsvpId: arriveRsvpId }),
+        body: JSON.stringify({
+          amount: selected.length * unitPrice,
+          rsvpId: currentRsvp.id,
+          checkInPrimary,
+          checkInGuests,
+        }),
       });
       if (!res.ok) throw new Error('Cash payment failed');
-      arriveSuccess();
+      arriveSuccess(selected);
     } catch (err) {
       alert(err.message || 'Something went wrong');
       document.getElementById('arrive-processing').style.display = 'none';
@@ -356,12 +469,19 @@ const { count: arrivedCount } = await supabaseAdmin
     }
   });
 
-  // Arrive: Card → redirect to Stripe Checkout
   document.getElementById('arrive-btn-card').addEventListener('click', async () => {
+    const selected = checkedSlots.filter((s) => s.checked);
+    if (!selected.length) return;
+
     document.getElementById('arrive-pay-buttons').style.display = 'none';
     document.getElementById('arrive-processing').style.display = 'flex';
+
     try {
-      await redirectToCheckout({ rsvpId: arriveRsvpId });
+      await redirectToCheckout({
+        rsvpId: currentRsvp.id,
+        checkInPrimary: selected.some((s) => !s.isGuest),
+        checkInGuests: selected.filter((s) => s.isGuest).length,
+      });
     } catch (err) {
       alert(err.message || 'Something went wrong');
       document.getElementById('arrive-processing').style.display = 'none';
@@ -369,18 +489,33 @@ const { count: arrivedCount } = await supabaseAdmin
     }
   });
 
-  function arriveSuccess() {
-    localArrivedCount++;
-    arrivedCountEl.textContent = localArrivedCount + ' in';
-    const card = document.querySelector(`.guest-card[data-id="${arriveRsvpId}"]`);
-    if (card) {
-      card.classList.add('arrived');
-      const actions = card.querySelector('.guest-actions');
-      if (actions) actions.innerHTML = '<span class="guest-badge-arrived">[Arrived]</span>';
+  function arriveSuccess(selected) {
+    // Update the arrived-count badge for primary arrivals
+    const primaryArriving = selected.filter((s) => !s.isGuest).length;
+    if (primaryArriving > 0 && !currentRsvp.arrived_at) {
+      localArrivedCount += primaryArriving;
+      arrivedCountEl.textContent = localArrivedCount + ' in';
     }
+
+    // Patch the guest card in-place
+    const card = document.querySelector(`.guest-card[data-id="${currentRsvp.id}"]`);
+    if (card) {
+      const updatedRsvp = {
+        ...currentRsvp,
+        arrived_at: selected.some((s) => !s.isGuest)
+          ? new Date().toISOString()
+          : currentRsvp.arrived_at,
+        plus_ones_arrived:
+          (currentRsvp.plus_ones_arrived || 0) + selected.filter((s) => s.isGuest).length,
+      };
+      card.outerHTML = renderGuestCard(updatedRsvp);
+    }
+
+    document.getElementById('arrive-done-name').textContent = selected
+      .map((s) => s.label)
+      .join(', ');
     document.getElementById('arrive-step-pay').style.display = 'none';
     document.getElementById('arrive-step-done').style.display = 'flex';
-    document.getElementById('arrive-done-name').textContent = arriveGuestName;
   }
 
   document.getElementById('arrive-btn-done').addEventListener('click', () => {
@@ -423,7 +558,6 @@ const { count: arrivedCount } = await supabaseAdmin
     if (e.target === overlay) closeWizard();
   });
 
-  // Step 1 → 2: Name → Phone
   const btnToPhone = document.getElementById('btn-to-phone');
   walkinName.addEventListener('input', () => {
     btnToPhone.disabled = !walkinName.value.trim();
@@ -438,7 +572,6 @@ const { count: arrivedCount } = await supabaseAdmin
     setTimeout(() => walkinPhone.focus(), 50);
   }
 
-  // Step 2 → 3: Phone → Pay
   document.getElementById('btn-to-pay').addEventListener('click', goToPay);
   document.getElementById('btn-skip-phone').addEventListener('click', () => {
     walkinPhone.value = '';
@@ -449,21 +582,17 @@ const { count: arrivedCount } = await supabaseAdmin
   });
 
   function goToPay() {
-    document.getElementById('pay-price').textContent = priceDisplay;
+    document.getElementById('pay-price').textContent = fmt(unitPrice);
     showStep('pay');
   }
 
-  // Walk-in Cash
   document.getElementById('btn-cash').addEventListener('click', async () => {
     showProcessing();
     try {
       const payRes = await fetch(`/api/door/${slug}/payment/cash`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: Number(doorPrice),
-          name: walkinName.value.trim(),
-        }),
+        body: JSON.stringify({ amount: unitPrice, name: walkinName.value.trim() }),
       });
       if (!payRes.ok) throw new Error('Cash payment failed');
 
@@ -486,7 +615,6 @@ const { count: arrivedCount } = await supabaseAdmin
     }
   });
 
-  // Walk-in Card → redirect to Stripe Checkout
   document.getElementById('btn-card').addEventListener('click', async () => {
     showProcessing();
     try {
@@ -620,7 +748,7 @@ const { count: arrivedCount } = await supabaseAdmin
     color: var(--color-fg);
   }
 
-  /* ── Walk-in overlay ── */
+  /* ── Overlays ── */
   .walkin-overlay {
     position: fixed;
     inset: 0;
@@ -708,7 +836,6 @@ const { count: arrivedCount } = await supabaseAdmin
     color: var(--color-fg);
   }
 
-  /* Payment method buttons */
   .pay-buttons {
     display: flex;
     flex-direction: column;
@@ -736,9 +863,12 @@ const { count: arrivedCount } = await supabaseAdmin
     border-color: var(--color-accent);
     background: var(--color-bg);
   }
-
   .btn-pay:active {
     background: var(--color-surface);
+  }
+  .btn-pay:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
   }
 
   .pay-icon {
@@ -746,7 +876,6 @@ const { count: arrivedCount } = await supabaseAdmin
     line-height: 1;
   }
 
-  /* Processing spinner */
   .pay-processing {
     display: flex;
     flex-direction: column;
@@ -775,7 +904,6 @@ const { count: arrivedCount } = await supabaseAdmin
     font-size: 0.9375rem;
   }
 
-  /* Done step */
   .done-check {
     font-size: 3rem;
     color: var(--color-success);
@@ -783,7 +911,8 @@ const { count: arrivedCount } = await supabaseAdmin
     line-height: 1;
   }
 
-  #step-done {
+  #step-done,
+  #arrive-step-done {
     align-items: center;
     text-align: center;
     padding-top: var(--space-lg);
@@ -798,6 +927,33 @@ const { count: arrivedCount } = await supabaseAdmin
     color: var(--color-muted);
     font-size: 1rem;
     margin-top: calc(-1 * var(--space-sm));
+  }
+
+  /* Party checklist */
+  .party-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    background: var(--color-surface);
+    border: var(--border-width) solid var(--color-border);
+    padding: var(--space-sm) var(--space-md);
+  }
+
+  .party-slot {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    font-size: 1rem;
+    cursor: pointer;
+    padding: var(--space-xs) 0;
+  }
+
+  .party-slot input[type='checkbox'] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--color-accent);
+    cursor: pointer;
+    flex-shrink: 0;
   }
 
   .checkout-flash {
@@ -828,6 +984,9 @@ const { count: arrivedCount } = await supabaseAdmin
   .guest-card.arrived {
     border-color: var(--color-success);
   }
+  .guest-card.partial {
+    border-color: var(--color-warning, #f59e0b);
+  }
 
   .guest-info {
     display: flex;
@@ -838,11 +997,18 @@ const { count: arrivedCount } = await supabaseAdmin
   .guest-name {
     font-weight: var(--weight-medium);
     font-size: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    flex-wrap: wrap;
   }
 
-  .guest-email {
+  .guest-party {
     font-size: 0.75rem;
+    font-weight: var(--weight-regular);
     color: var(--color-muted);
+    border: 1px solid var(--color-border);
+    padding: 1px 6px;
   }
 
   .guest-phone {
@@ -852,10 +1018,20 @@ const { count: arrivedCount } = await supabaseAdmin
 
   .guest-actions {
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
   }
 
   .guest-badge-arrived {
     color: var(--color-success);
+    font-weight: var(--weight-medium);
+    font-size: 0.8125rem;
+    letter-spacing: var(--tracking-wide);
+  }
+
+  .guest-badge-partial {
+    color: var(--color-warning, #f59e0b);
     font-weight: var(--weight-medium);
     font-size: 0.8125rem;
     letter-spacing: var(--tracking-wide);

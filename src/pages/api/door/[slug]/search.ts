@@ -34,7 +34,7 @@ export const GET = withLogging(async ({ params, url, log }) => {
 
   let query = supabaseAdmin
     .from('rsvps')
-    .select('id, name, email, phone, arrived_at, walk_in')
+    .select('id, name, email, phone, arrived_at, walk_in, plus_one_count, plus_ones_arrived')
     .eq('event_id', event.id)
     .order('name')
     .limit(isSearch ? 20 : 50);
