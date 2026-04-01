@@ -23,6 +23,10 @@ jobs:
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:4321/)
           echo "GET / -> $STATUS"
           [ "$STATUS" = "200" ] || (echo "FAIL: expected 200, got $STATUS" && exit 1)
+          # Guest list API: 404 for unknown slug (proves endpoint compiled and runs)
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:4321/api/guests/no-such-event)
+          echo "GET /api/guests/no-such-event -> $STATUS"
+          [ "$STATUS" = "404" ] || (echo "FAIL: expected 404, got $STATUS" && exit 1)
     env:
       PUBLIC_SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }}
       PUBLIC_SUPABASE_KEY: ${{ secrets.PUBLIC_SUPABASE_KEY || 'placeholder-anon-key' }}

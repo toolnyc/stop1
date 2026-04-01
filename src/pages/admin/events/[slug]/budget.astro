@@ -16,10 +16,26 @@ const { data: event } = await supabaseAdmin
 
 if (!event) return Astro.redirect('/admin');
 
-const { data: payments } = await supabaseAdmin
-  .from('door_payments')
-  .select('amount, method')
-  .eq('event_id', event.id);
+// Run all queries in parallel — they only depend on event.id
+const [{ data: payments }, { data: collaborators }, { data: expenses }, { data: payouts }] =
+  await Promise.all([
+    supabaseAdmin.from('door_payments').select('amount, method').eq('event_id', event.id),
+    supabaseAdmin
+      .from('collaborators')
+      .select('id, name, payout_pct')
+      .eq('event_id', event.id)
+      .order('name'),
+    supabaseAdmin
+      .from('expenses')
+      .select('id, collaborator_id, description, amount, receipt_url, created_at')
+      .eq('event_id', event.id)
+      .order('created_at'),
+    supabaseAdmin
+      .from('payouts')
+      .select('id, collaborator_id, amount, method, paid_at')
+      .eq('event_id', event.id)
+      .order('paid_at'),
+  ]);
 
 const paymentList = payments ?? [];
 const cashTotal = paymentList
@@ -30,28 +46,10 @@ const cardTotal = paymentList
   .reduce((s, p) => s + Number(p.amount), 0);
 const revenue = cashTotal + cardTotal;
 
-const { data: collaborators } = await supabaseAdmin
-  .from('collaborators')
-  .select('id, name, payout_pct')
-  .eq('event_id', event.id)
-  .order('name');
-
 const collabList = collaborators ?? [];
-
-const { data: expenses } = await supabaseAdmin
-  .from('expenses')
-  .select('id, collaborator_id, description, amount, receipt_url, created_at')
-  .eq('event_id', event.id)
-  .order('created_at');
 
 const expenseList = expenses ?? [];
 const totalExpenses = expenseList.reduce((s, e) => s + Number(e.amount), 0);
-
-const { data: payouts } = await supabaseAdmin
-  .from('payouts')
-  .select('id, collaborator_id, amount, method, paid_at')
-  .eq('event_id', event.id)
-  .order('paid_at');
 
 const payoutList = payouts ?? [];
 
@@ -95,7 +93,7 @@ function fmt(n: number) {
 
 <Admin title={`Budget — ${event.title}`}>
   <div class="edit-layout">
-    <nav class="sidebar">
+    <nav class="sidebar" transition:animate="none">
       <a href={`/admin/events/${slug}`} class="sidebar-link">Edit</a>
       <a href={`/admin/events/${slug}/rsvps`} class="sidebar-link">RSVPs</a>
       <a href={`/door/${slug}`} class="sidebar-link external" target="_blank">Door</a>

@@ -16,24 +16,22 @@ const { data: event } = await supabaseAdmin
 
 if (!event) return new Response(null, { status: 404 });
 
-const { count: arrivedCount } = await supabaseAdmin
-  .from('rsvps')
-  .select('id', { count: 'exact', head: true })
-  .eq('event_id', event.id)
-  .not('arrived_at', 'is', null);
-
-const { count: walkinCount } = await supabaseAdmin
-  .from('rsvps')
-  .select('id', { count: 'exact', head: true })
-  .eq('event_id', event.id)
-  .eq('walk_in', true);
+// Run all queries in parallel
+const [{ count: arrivedCount }, { count: walkinCount }, { data: payments }] = await Promise.all([
+  supabaseAdmin
+    .from('rsvps')
+    .select('id', { count: 'exact', head: true })
+    .eq('event_id', event.id)
+    .not('arrived_at', 'is', null),
+  supabaseAdmin
+    .from('rsvps')
+    .select('id', { count: 'exact', head: true })
+    .eq('event_id', event.id)
+    .eq('walk_in', true),
+  supabaseAdmin.from('door_payments').select('amount, method').eq('event_id', event.id),
+]);
 
 const rsvpArrived = (arrivedCount ?? 0) - (walkinCount ?? 0);
-
-const { data: payments } = await supabaseAdmin
-  .from('door_payments')
-  .select('amount, method')
-  .eq('event_id', event.id);
 
 const paymentList = payments ?? [];
 const cashTotal = paymentList

@@ -89,6 +89,9 @@ const doorPriceFormatted =
             <button type="button" class="action-btn" id="info-btn">
               Info
             </button>
+            <button type="button" class="action-btn" id="gl-btn" data-slug={nextEvent.slug}>
+              List
+            </button>
           </div>
         ) : null
       }
@@ -173,6 +176,29 @@ const doorPriceFormatted =
       )
     }
 
+    {/* Guest list overlay */}
+    {
+      nextEvent && (
+        <div class="gl-backdrop" id="gl-modal" aria-hidden="true">
+          <div class="gl-sheet" id="gl-sheet" role="dialog" aria-label="Guest list">
+            <div class="gl-header">
+              <span class="gl-title">guest list</span>
+              <span class="gl-count" id="gl-count" />
+              <button type="button" class="gl-close" id="gl-close" aria-label="Close">
+                &times;
+              </button>
+            </div>
+            <div class="gl-body">
+              <ul class="gl-list" id="gl-list" />
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    {/* Toast notification */}
+    <div class="gl-toast" id="gl-toast" aria-live="polite" aria-atomic="true"></div>
+
     {/* Menu overlay with login */}
     <div class="menu-overlay" id="menu-overlay" aria-hidden="true">
       <button type="button" class="menu-close" id="menu-close" aria-label="Close">&times;</button>
@@ -206,6 +232,10 @@ const doorPriceFormatted =
   let _rafId: number | null = null;
   let _handleOrientation: ((e: DeviceOrientationEvent) => void) | null = null;
   let _phraseInterval: ReturnType<typeof setInterval> | null = null;
+  let _guestPollInterval: ReturnType<typeof setInterval> | null = null;
+  let _glObserver: IntersectionObserver | null = null;
+  let _knownGuests = new Set<string>();
+  let _toastTimeout: ReturnType<typeof setTimeout> | null = null;
 
   function cleanup() {
     if (_rafId) {
@@ -220,6 +250,19 @@ const doorPriceFormatted =
       clearInterval(_phraseInterval);
       _phraseInterval = null;
     }
+    if (_guestPollInterval) {
+      clearInterval(_guestPollInterval);
+      _guestPollInterval = null;
+    }
+    if (_glObserver) {
+      _glObserver.disconnect();
+      _glObserver = null;
+    }
+    if (_toastTimeout) {
+      clearTimeout(_toastTimeout);
+      _toastTimeout = null;
+    }
+    _knownGuests = new Set();
   }
 
   document.addEventListener('astro:before-swap', cleanup);
@@ -227,21 +270,24 @@ const doorPriceFormatted =
   document.addEventListener('astro:page-load', () => {
     cleanup();
     gsap.killTweensOf(
-      '.flyer-card, .wordmark, .actions, .landing-footer, .modal-backdrop, .modal-sheet, .menu-overlay, .menu-content, .footer-text, .footer-logo',
+      '.flyer-card, .wordmark, .actions, .landing-footer, .modal-backdrop, .modal-sheet, .menu-overlay, .menu-content, .footer-text, .footer-logo, .gl-backdrop, .gl-sheet',
     );
 
-    // --- Nuclear reset: strip ALL inline styles from every element in main ---
-    // View transitions cache DOM with stale GSAP inline styles.
-    // Instead of tracking each element individually, wipe everything.
-    document.querySelectorAll<HTMLElement>('main *').forEach((el) => {
+    // Reset GSAP-animated elements to clean state (targeted, not nuclear)
+    const gsapTargets =
+      '.flyer-card, .wordmark, .actions, .landing-footer, .modal-backdrop, .modal-sheet, .menu-overlay, .menu-content, .footer-item, .gl-backdrop, .gl-sheet';
+    document.querySelectorAll<HTMLElement>(gsapTargets).forEach((el) => {
       if (el.style.length > 0) el.removeAttribute('style');
     });
 
     // Re-apply the initial display:none states that the server renders
-    const hiddenByDefault = ['#info-modal', '#menu-overlay'];
+    const hiddenByDefault = ['#info-modal', '#menu-overlay', '#gl-modal'];
     hiddenByDefault.forEach((sel) => {
       const el = document.querySelector<HTMLElement>(sel);
-      if (el) el.setAttribute('aria-hidden', 'true');
+      if (el) {
+        el.setAttribute('aria-hidden', 'true');
+        el.style.display = 'none';
+      }
     });
 
     // Footer items: show first, hide rest
@@ -429,6 +475,202 @@ const doorPriceFormatted =
       });
     }
 
+    // --- Guest list overlay ---
+    const glBtn = document.getElementById('gl-btn');
+    const glModal = document.getElementById('gl-modal');
+    const glSheet = document.getElementById('gl-sheet');
+    const glClose = document.getElementById('gl-close');
+    const glList = document.getElementById('gl-list');
+    const glCount = document.getElementById('gl-count');
+    const glToast = document.getElementById('gl-toast');
+    const eventSlug = (glBtn as HTMLElement | null)?.dataset.slug;
+
+    async function fetchGuests(): Promise<{ name: string }[]> {
+      if (!eventSlug) return [];
+      try {
+        const res = await fetch(`/api/guests/${eventSlug}`);
+        if (!res.ok) return [];
+        const data = (await res.json()) as { guests: { name: string }[] };
+        return data.guests;
+      } catch {
+        return [];
+      }
+    }
+
+    function showToast(name: string) {
+      if (!glToast) return;
+      if (_toastTimeout) clearTimeout(_toastTimeout);
+      glToast.textContent = `${name} just RSVPd!`;
+      glToast.style.display = 'block';
+      gsap.killTweensOf(glToast);
+      gsap.fromTo(
+        glToast,
+        { y: -60, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.4, ease: 'power3.out' },
+      );
+      _toastTimeout = setTimeout(() => {
+        gsap.to(glToast, {
+          y: -60,
+          opacity: 0,
+          duration: 0.3,
+          ease: 'power2.in',
+          onComplete: () => {
+            glToast.style.display = 'none';
+          },
+        });
+        _toastTimeout = null;
+      }, 3500);
+    }
+
+    function setupScrollObserver() {
+      if (_glObserver) _glObserver.disconnect();
+      _glObserver = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('gl-item--visible');
+              _glObserver?.unobserve(entry.target);
+            }
+          });
+        },
+        { threshold: 0.15 },
+      );
+      document.querySelectorAll('.gl-item:not(.gl-item--visible)').forEach((el) => {
+        _glObserver?.observe(el);
+      });
+    }
+
+    async function pollGuests() {
+      const guests = await fetchGuests();
+      const newGuests = guests.filter((g) => !_knownGuests.has(g.name));
+      if (newGuests.length === 0) return;
+
+      newGuests.forEach((g) => _knownGuests.add(g.name));
+
+      // Always show toast for latest arrival
+      showToast(newGuests[newGuests.length - 1].name);
+
+      // If list is open, prepend new items
+      if (glList && glModal?.getAttribute('aria-hidden') === 'false') {
+        glCount && (glCount.textContent = `${guests.length}`);
+        [...newGuests].reverse().forEach((g) => {
+          const li = document.createElement('li');
+          li.className = 'gl-item gl-item--visible gl-item--new';
+          li.innerHTML = `<span class="gl-name">${g.name}</span><span class="gl-suffix"> is coming</span>`;
+          glList.prepend(li);
+          gsap.fromTo(
+            li,
+            { opacity: 0, y: -16 },
+            { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' },
+          );
+        });
+      }
+    }
+
+    async function openGuestList() {
+      if (!glModal || !glSheet) return;
+      glModal.setAttribute('aria-hidden', 'false');
+      glModal.style.display = 'flex';
+      gsap.fromTo(glModal, { opacity: 0 }, { duration: 0.25, opacity: 1, ease: 'power2.out' });
+      gsap.fromTo(
+        glSheet,
+        { y: '100%' },
+        { duration: 0.4, y: '0%', ease: 'power3.out', delay: 0.05 },
+      );
+
+      // Initial load
+      if (glList) {
+        glList.innerHTML = '<li class="gl-loading">loading\u2026</li>';
+      }
+      const guests = await fetchGuests();
+      _knownGuests = new Set(guests.map((g) => g.name));
+
+      if (glList) {
+        glList.innerHTML = '';
+        if (guests.length === 0) {
+          const empty = document.createElement('li');
+          empty.className = 'gl-empty';
+          empty.textContent = 'No RSVPs yet\u2014be first!';
+          glList.appendChild(empty);
+        } else {
+          guests.forEach((g) => {
+            const li = document.createElement('li');
+            li.className = 'gl-item';
+            li.innerHTML = `<span class="gl-name">${g.name}</span><span class="gl-suffix"> is coming</span>`;
+            glList.appendChild(li);
+          });
+          // Stagger in visible items, let IntersectionObserver handle the rest
+          gsap.fromTo(
+            '.gl-item',
+            { opacity: 0, y: 14 },
+            {
+              opacity: 1,
+              y: 0,
+              duration: 0.4,
+              stagger: 0.05,
+              ease: 'power2.out',
+              onComplete: () => {
+                document
+                  .querySelectorAll('.gl-item')
+                  .forEach((el) => el.classList.add('gl-item--visible'));
+                setupScrollObserver();
+              },
+            },
+          );
+        }
+      }
+
+      if (glCount) glCount.textContent = `${guests.length}`;
+
+      // Start polling for new RSVPs
+      if (_guestPollInterval) clearInterval(_guestPollInterval);
+      _guestPollInterval = setInterval(pollGuests, 15000);
+    }
+
+    function closeGuestList() {
+      if (_guestPollInterval) {
+        clearInterval(_guestPollInterval);
+        _guestPollInterval = null;
+      }
+      if (_glObserver) {
+        _glObserver.disconnect();
+        _glObserver = null;
+      }
+      if (!glModal || !glSheet) return;
+      gsap.to(glSheet, { y: '100%', duration: 0.35, ease: 'power2.in' });
+      gsap.to(glModal, {
+        opacity: 0,
+        duration: 0.25,
+        delay: 0.1,
+        ease: 'power2.in',
+        onComplete: () => {
+          glModal.style.display = 'none';
+          glModal.setAttribute('aria-hidden', 'true');
+        },
+      });
+    }
+
+    if (glBtn && glModal && glClose) {
+      glBtn.addEventListener('click', openGuestList);
+      glClose.addEventListener('click', closeGuestList);
+      glModal.addEventListener('click', (e) => {
+        if (e.target === glModal) closeGuestList();
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && glModal.getAttribute('aria-hidden') === 'false') closeGuestList();
+      });
+    }
+
+    // Background poll (toast only) — active whenever the page is loaded with an event
+    if (eventSlug) {
+      // Seed known guests silently so first poll only toasts truly new arrivals
+      fetchGuests().then((guests) => {
+        guests.forEach((g) => _knownGuests.add(g.name));
+        // Start background poll at 30s so toasts fire even with list closed
+        _guestPollInterval = setInterval(pollGuests, 30000);
+      });
+    }
+
     // --- Menu overlay (footer tap) ---
     const footerBar = document.getElementById('footer-bar');
     const menuClose = document.getElementById('menu-close');
@@ -583,11 +825,21 @@ const doorPriceFormatted =
   .actions {
     display: flex;
     align-items: center;
-    gap: var(--space-md);
+    gap: var(--space-sm);
+    width: 100%;
+    max-width: 340px;
+  }
+
+  @media (min-width: 768px) {
+    .actions {
+      max-width: 400px;
+      gap: var(--space-md);
+    }
   }
 
   .action-btn {
-    font-size: 1.125rem;
+    flex: 1;
+    font-size: 1rem;
     font-weight: var(--weight-medium);
     letter-spacing: -0.01em;
     text-decoration: none;
@@ -595,9 +847,10 @@ const doorPriceFormatted =
     background: none;
     border: 1.5px solid #1a1816;
     cursor: pointer;
-    padding: 10px 28px;
+    padding: 10px 0;
     font-family: inherit;
     text-transform: lowercase;
+    text-align: center;
     -webkit-tap-highlight-color: transparent;
     transition:
       background 0.2s ease,
@@ -784,6 +1037,149 @@ const doorPriceFormatted =
     margin-top: var(--space-sm);
     padding-top: var(--space-sm);
     border-top: var(--border);
+  }
+
+  /* ---- Guest list overlay ---- */
+  .gl-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-overlay);
+    background: rgba(26, 24, 22, 0.6);
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+
+  .gl-sheet {
+    background: var(--color-bg);
+    height: 82dvh;
+    display: flex;
+    flex-direction: column;
+    will-change: transform;
+    border-radius: 12px 12px 0 0;
+    overflow: hidden;
+  }
+
+  .gl-header {
+    display: flex;
+    align-items: center;
+    padding: var(--space-lg) var(--space-xl);
+    border-bottom: var(--border);
+    flex-shrink: 0;
+    gap: var(--space-sm);
+  }
+
+  .gl-title {
+    font-size: 1rem;
+    font-weight: var(--weight-medium);
+    letter-spacing: -0.01em;
+    text-transform: lowercase;
+    color: var(--color-fg);
+  }
+
+  .gl-count {
+    font-size: 0.875rem;
+    color: var(--color-muted);
+    font-weight: var(--weight-regular);
+    margin-left: 2px;
+  }
+
+  .gl-close {
+    margin-left: auto;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--color-muted);
+    cursor: pointer;
+    padding: 4px 8px;
+    line-height: 1;
+    font-family: inherit;
+    transition: color 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .gl-close:hover {
+    color: var(--color-fg);
+  }
+
+  .gl-body {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  .gl-list {
+    list-style: none;
+    margin: 0;
+    padding: var(--space-sm) 0 var(--space-3xl);
+  }
+
+  .gl-item {
+    display: flex;
+    align-items: baseline;
+    gap: 0;
+    padding: var(--space-md) var(--space-xl);
+    border-bottom: var(--border);
+    opacity: 0;
+    transform: translateY(12px);
+    transition:
+      opacity 0.35s ease,
+      transform 0.35s ease;
+  }
+
+  .gl-item:last-child {
+    border-bottom: none;
+  }
+
+  .gl-item--visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  .gl-item--new {
+    background: color-mix(in srgb, var(--color-fg) 4%, var(--color-bg));
+  }
+
+  .gl-name {
+    font-size: 1.0625rem;
+    font-weight: var(--weight-medium);
+    letter-spacing: -0.01em;
+    color: var(--color-fg);
+  }
+
+  .gl-suffix {
+    font-size: 1.0625rem;
+    font-weight: var(--weight-regular);
+    color: var(--color-muted);
+  }
+
+  .gl-empty,
+  .gl-loading {
+    padding: var(--space-3xl) var(--space-xl);
+    text-align: center;
+    color: var(--color-muted);
+    font-size: 0.9375rem;
+    list-style: none;
+  }
+
+  /* ---- Toast notification ---- */
+  .gl-toast {
+    display: none;
+    position: fixed;
+    top: var(--space-lg);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: var(--z-toast);
+    background: var(--color-fg);
+    color: var(--color-bg);
+    font-size: 0.875rem;
+    font-weight: var(--weight-medium);
+    padding: 10px var(--space-lg);
+    border-radius: 100px;
+    white-space: nowrap;
+    pointer-events: none;
+    letter-spacing: -0.01em;
   }
 
   /* ---- Menu overlay ---- */

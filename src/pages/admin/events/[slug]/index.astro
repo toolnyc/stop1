@@ -26,7 +26,7 @@ if (fetchError || !event) {
 
 <Admin title={`${event.title} — Edit`}>
   <div class="edit-layout">
-    <nav class="sidebar">
+    <nav class="sidebar" transition:animate="none">
       <a href={`/admin/events/${slug}`} class="sidebar-link active">Edit</a>
       <a href={`/admin/events/${slug}/rsvps`} class="sidebar-link">RSVPs</a>
       <a href={`/door/${slug}`} class="sidebar-link external" target="_blank">Door</a>
@@ -351,15 +351,22 @@ if (fetchError || !event) {
 
   // Inject compressed file into form on submit
   form.addEventListener('submit', (e) => {
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Saving...';
     if (compressedFile) {
       e.preventDefault();
       const formData = new FormData(form);
       formData.set('flyer', compressedFile);
-      fetch(form.action, { method: 'POST', body: formData }).then((res) => {
-        if (res.redirected) {
-          window.location.href = res.url;
-        }
-      });
+      fetch(form.action, { method: 'POST', body: formData })
+        .then((res) => {
+          if (res.redirected) {
+            window.location.href = res.url;
+          }
+        })
+        .catch(() => {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Save Changes';
+        });
     }
   });
 

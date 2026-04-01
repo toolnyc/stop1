@@ -8,7 +8,7 @@ const { title = 'Admin — Stop One' } = Astro.props;
 ---
 
 <Base title={title}>
-  <nav class="admin-nav">
+  <nav class="admin-nav" transition:animate="none">
     <div class="admin-nav-links">
       <a href="/admin" class="admin-nav-link">Events</a>
       <a href="/" class="admin-nav-link admin-nav-back">Back to site</a>
@@ -21,6 +21,38 @@ const { title = 'Admin — Stop One' } = Astro.props;
     <slot />
   </main>
 </Base>
+
+<script>
+  document.addEventListener('astro:page-load', () => {
+    // Auto-loading states for all admin forms with a submit button
+    document.querySelectorAll<HTMLFormElement>('.admin-main form').forEach((form) => {
+      form.addEventListener('submit', () => {
+        const btn = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+        if (btn && !btn.disabled) {
+          btn.disabled = true;
+          btn.dataset.originalText = btn.textContent || '';
+          btn.textContent = btn.textContent?.includes('Save')
+            ? 'Saving...'
+            : btn.textContent?.includes('Create')
+              ? 'Creating...'
+              : btn.textContent?.includes('Add')
+                ? 'Adding...'
+                : btn.textContent?.includes('Archive')
+                  ? 'Archiving...'
+                  : 'Working...';
+        }
+      });
+    });
+
+    // Loading state for dangerous icon buttons (remove collaborator × etc)
+    document.querySelectorAll<HTMLButtonElement>('.btn-icon-remove').forEach((btn) => {
+      btn.closest('form')?.addEventListener('submit', () => {
+        btn.disabled = true;
+        btn.style.opacity = '0.3';
+      });
+    });
+  });
+</script>
 
 <style>
   .admin-nav {

@@ -44,7 +44,7 @@ if (exportCsv) {
 
 <Admin title={`RSVPs — ${event.title}`}>
   <div class="edit-layout">
-    <nav class="sidebar">
+    <nav class="sidebar" transition:animate="none">
       <a href={`/admin/events/${slug}`} class="sidebar-link">Edit</a>
       <a href={`/admin/events/${slug}/rsvps`} class="sidebar-link active">RSVPs</a>
       <a href={`/door/${slug}`} class="sidebar-link external" target="_blank">Door</a>
