@@ -130,10 +130,11 @@ const timeEnd = event.time_end
     )
       return;
 
-    // Nuclear reset: strip all inline styles from everything in main,
-    // then re-apply the server-rendered initial states.
-    gsap.killTweensOf('main *');
-    document.querySelectorAll<HTMLElement>('main *').forEach((el) => {
+    // Reset GSAP-animated elements to clean state (targeted, not nuclear)
+    const gsapTargets =
+      '.step, #rsvp-section, #rsvp-message, .success-check, .success-text, .success-sub';
+    gsap.killTweensOf(gsapTargets);
+    document.querySelectorAll<HTMLElement>(gsapTargets).forEach((el) => {
       if (el.style.length > 0) el.removeAttribute('style');
     });
 

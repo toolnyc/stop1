@@ -230,10 +230,10 @@ const doorPriceFormatted =
       '.flyer-card, .wordmark, .actions, .landing-footer, .modal-backdrop, .modal-sheet, .menu-overlay, .menu-content, .footer-text, .footer-logo',
     );
 
-    // --- Nuclear reset: strip ALL inline styles from every element in main ---
-    // View transitions cache DOM with stale GSAP inline styles.
-    // Instead of tracking each element individually, wipe everything.
-    document.querySelectorAll<HTMLElement>('main *').forEach((el) => {
+    // Reset GSAP-animated elements to clean state (targeted, not nuclear)
+    const gsapTargets =
+      '.flyer-card, .wordmark, .actions, .landing-footer, .modal-backdrop, .modal-sheet, .menu-overlay, .menu-content, .footer-item';
+    document.querySelectorAll<HTMLElement>(gsapTargets).forEach((el) => {
       if (el.style.length > 0) el.removeAttribute('style');
     });
 
@@ -241,7 +241,10 @@ const doorPriceFormatted =
     const hiddenByDefault = ['#info-modal', '#menu-overlay'];
     hiddenByDefault.forEach((sel) => {
       const el = document.querySelector<HTMLElement>(sel);
-      if (el) el.setAttribute('aria-hidden', 'true');
+      if (el) {
+        el.setAttribute('aria-hidden', 'true');
+        el.style.display = 'none';
+      }
     });
 
     // Footer items: show first, hide rest

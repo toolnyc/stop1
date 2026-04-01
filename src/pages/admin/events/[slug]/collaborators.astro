@@ -28,9 +28,10 @@ const collabList = collaborators ?? [];
 const totalPct = collabList.reduce((sum, c) => sum + Number(c.payout_pct), 0);
 const origin = Astro.url.origin;
 ---
+
 <Admin title={`Collaborators — ${event.title}`}>
   <div class="edit-layout">
-    <nav class="sidebar">
+    <nav class="sidebar" transition:animate="none">
       <a href={`/admin/events/${slug}`} class="sidebar-link">Edit</a>
       <a href={`/admin/events/${slug}/rsvps`} class="sidebar-link">RSVPs</a>
       <a href={`/door/${slug}`} class="sidebar-link external" target="_blank">Door</a>
@@ -49,36 +50,48 @@ const origin = Astro.url.origin;
         {totalPct > 100 && <span class="pct-warn"> (exceeds 100%)</span>}
       </div>
 
-      {collabList.length > 0 && (
-        <div class="collab-list">
-          {collabList.map((c) => (
-            <div class="collab-row">
-              <div class="collab-info">
-                <span class="collab-name">{c.name}</span>
-                <span class="collab-email text-muted">{c.email}</span>
+      {
+        collabList.length > 0 && (
+          <div class="collab-list">
+            {collabList.map((c) => (
+              <div class="collab-row">
+                <div class="collab-info">
+                  <span class="collab-name">{c.name}</span>
+                  <span class="collab-email text-muted">{c.email}</span>
+                </div>
+                <div class="collab-meta">
+                  <span class="collab-pct mono">{c.payout_pct}%</span>
+                  <span class={`badge ${c.accepted_at ? 'badge-success' : 'badge-warning'}`}>
+                    {c.accepted_at ? 'Accepted' : 'Pending'}
+                  </span>
+                  <button
+                    class="btn btn-secondary btn-sm copy-link"
+                    data-link={`${origin}/collaborate/${c.invite_token}`}
+                  >
+                    Copy Link
+                  </button>
+                  <form
+                    method="POST"
+                    action={`/api/admin/events/${slug}/collaborators/remove`}
+                    style="display:inline"
+                  >
+                    <input type="hidden" name="collaborator_id" value={c.id} />
+                    <button type="submit" class="btn-icon-remove" title="Remove">
+                      &times;
+                    </button>
+                  </form>
+                </div>
               </div>
-              <div class="collab-meta">
-                <span class="collab-pct mono">{c.payout_pct}%</span>
-                <span class={`badge ${c.accepted_at ? 'badge-success' : 'badge-warning'}`}>
-                  {c.accepted_at ? 'Accepted' : 'Pending'}
-                </span>
-                <button
-                  class="btn btn-secondary btn-sm copy-link"
-                  data-link={`${origin}/collaborate/${c.invite_token}`}
-                >
-                  Copy Link
-                </button>
-                <form method="POST" action={`/api/admin/events/${slug}/collaborators/remove`} style="display:inline">
-                  <input type="hidden" name="collaborator_id" value={c.id} />
-                  <button type="submit" class="btn-icon-remove" title="Remove">&times;</button>
-                </form>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )
+      }
 
-      <form method="POST" action={`/api/admin/events/${slug}/collaborators/add`} class="add-form card">
+      <form
+        method="POST"
+        action={`/api/admin/events/${slug}/collaborators/add`}
+        class="add-form card"
+      >
         <h2>Add Collaborator</h2>
         <div class="form-row">
           <label>
@@ -91,7 +104,15 @@ const origin = Astro.url.origin;
           </label>
           <label>
             <span>Payout % *</span>
-            <input type="number" name="payout_pct" min="0" max="100" step="0.01" required value="0" />
+            <input
+              type="number"
+              name="payout_pct"
+              min="0"
+              max="100"
+              step="0.01"
+              required
+              value="0"
+            />
           </label>
         </div>
         <button type="submit" class="btn btn-primary">Add</button>
@@ -107,28 +128,73 @@ const origin = Astro.url.origin;
       await navigator.clipboard.writeText(link);
       const original = btn.textContent;
       btn.textContent = 'Copied!';
-      setTimeout(() => { btn.textContent = original; }, 2000);
+      setTimeout(() => {
+        btn.textContent = original;
+      }, 2000);
     });
   });
 </script>
 
 <style>
-  .edit-layout { display: grid; grid-template-columns: 180px 1fr; gap: var(--space-2xl); }
+  .edit-layout {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: var(--space-2xl);
+  }
   @media (max-width: 640px) {
-    .edit-layout { grid-template-columns: 1fr; gap: var(--space-md); }
-    .sidebar { flex-direction: row !important; overflow-x: auto; gap: var(--space-xs) !important; padding-bottom: var(--space-sm); border-bottom: var(--border); }
-    .sidebar-link { white-space: nowrap; }
+    .edit-layout {
+      grid-template-columns: 1fr;
+      gap: var(--space-md);
+    }
+    .sidebar {
+      flex-direction: row !important;
+      overflow-x: auto;
+      gap: var(--space-xs) !important;
+      padding-bottom: var(--space-sm);
+      border-bottom: var(--border);
+    }
+    .sidebar-link {
+      white-space: nowrap;
+    }
   }
 
-  .sidebar { display: flex; flex-direction: column; gap: var(--space-xs); }
-  .sidebar-link { padding: var(--space-sm) var(--space-sm); color: var(--color-muted); text-decoration: none; font-size: 0.875rem; font-weight: var(--weight-medium); transition: background var(--transition), color var(--transition); }
-  .sidebar-link:hover { background: var(--color-surface); color: var(--color-fg); }
-  .sidebar-link.active { background: var(--color-surface); color: var(--color-accent); }
-  .sidebar-link.external::after { content: ' ↗'; opacity: 0.5; }
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+  }
+  .sidebar-link {
+    padding: var(--space-sm) var(--space-sm);
+    color: var(--color-muted);
+    text-decoration: none;
+    font-size: 0.875rem;
+    font-weight: var(--weight-medium);
+    transition:
+      background var(--transition),
+      color var(--transition);
+  }
+  .sidebar-link:hover {
+    background: var(--color-surface);
+    color: var(--color-fg);
+  }
+  .sidebar-link.active {
+    background: var(--color-surface);
+    color: var(--color-accent);
+  }
+  .sidebar-link.external::after {
+    content: ' ↗';
+    opacity: 0.5;
+  }
 
-  .edit-content h1 { font-size: 1.5rem; letter-spacing: var(--tracking-tight); margin-bottom: var(--space-md); }
+  .edit-content h1 {
+    font-size: 1.5rem;
+    letter-spacing: var(--tracking-tight);
+    margin-bottom: var(--space-md);
+  }
 
-  .alert { margin-bottom: var(--space-md); }
+  .alert {
+    margin-bottom: var(--space-md);
+  }
 
   .total-pct {
     font-size: 0.875rem;
@@ -136,7 +202,10 @@ const origin = Astro.url.origin;
     margin-bottom: var(--space-lg);
   }
 
-  .pct-warn { color: var(--color-warning); font-weight: var(--weight-medium); }
+  .pct-warn {
+    color: var(--color-warning);
+    font-weight: var(--weight-medium);
+  }
 
   .collab-list {
     display: flex;
@@ -156,7 +225,9 @@ const origin = Astro.url.origin;
     border-bottom: var(--border);
   }
 
-  .collab-row:last-child { border-bottom: none; }
+  .collab-row:last-child {
+    border-bottom: none;
+  }
 
   .collab-info {
     display: flex;
@@ -164,8 +235,12 @@ const origin = Astro.url.origin;
     gap: var(--space-xs);
   }
 
-  .collab-name { font-weight: var(--weight-medium); }
-  .collab-email { font-size: 0.8125rem; }
+  .collab-name {
+    font-weight: var(--weight-medium);
+  }
+  .collab-email {
+    font-size: 0.8125rem;
+  }
 
   .collab-meta {
     display: flex;
@@ -176,7 +251,10 @@ const origin = Astro.url.origin;
     flex-wrap: wrap;
   }
 
-  .collab-pct { font-size: 0.8125rem; color: var(--color-muted); }
+  .collab-pct {
+    font-size: 0.8125rem;
+    color: var(--color-muted);
+  }
 
   .btn-icon-remove {
     background: transparent;
@@ -190,7 +268,9 @@ const origin = Astro.url.origin;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: border-color var(--transition), background var(--transition);
+    transition:
+      border-color var(--transition),
+      background var(--transition);
   }
 
   .btn-icon-remove:hover {
@@ -205,7 +285,10 @@ const origin = Astro.url.origin;
     max-width: 600px;
   }
 
-  .add-form h2 { font-size: 1.125rem; font-weight: var(--weight-bold); }
+  .add-form h2 {
+    font-size: 1.125rem;
+    font-weight: var(--weight-bold);
+  }
 
   .form-row {
     display: grid;
@@ -214,6 +297,8 @@ const origin = Astro.url.origin;
   }
 
   @media (max-width: 640px) {
-    .form-row { grid-template-columns: 1fr; }
+    .form-row {
+      grid-template-columns: 1fr;
+    }
   }
 </style>

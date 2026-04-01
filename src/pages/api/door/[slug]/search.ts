@@ -37,7 +37,7 @@ export const GET = withLogging(async ({ params, url, log }) => {
     .select('id, name, email, phone, arrived_at, walk_in')
     .eq('event_id', event.id)
     .order('name')
-    .limit(isSearch ? 20 : 200);
+    .limit(isSearch ? 20 : 50);
 
   if (isSearch) {
     if (/^[+\d]/.test(trimmed)) {
@@ -59,6 +59,9 @@ export const GET = withLogging(async ({ params, url, log }) => {
 
   return new Response(JSON.stringify(data ?? []), {
     status: 200,
-    headers: JSON_HEADERS,
+    headers: {
+      ...JSON_HEADERS,
+      'Cache-Control': 'private, no-cache',
+    },
   });
 });
