@@ -1,5 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabase';
-import { resend } from '@/lib/resend';
+import { resend, RESEND_AUDIENCE_ID } from '@/lib/resend';
 import { rsvpConfirmationEmail } from '@/lib/emails/rsvp-confirmation';
 import { normalizePhone } from '@/lib/phone';
 import { sendSms } from '@/lib/sms';
@@ -139,6 +139,28 @@ export const POST = withLogging(async ({ params, request, log, background }) => 
       }).then((result) => {
         if (!result.ok) {
           log.error('rsvp.email_failed', { slug, rsvpId: data.id, error: result.error });
+        }
+      }),
+    );
+
+    // Sync contact to Resend (idempotent — safe to call on every RSVP)
+    const nameParts = name.trim().split(/\s+/);
+    background(
+      trackCall({
+        service: 'resend',
+        action: 'sync-contact',
+        meta: { email: maskEmail(email) },
+        log,
+        fn: () =>
+          resend.contacts.create({
+            audienceId: RESEND_AUDIENCE_ID,
+            email,
+            firstName: nameParts[0] || undefined,
+            lastName: nameParts.slice(1).join(' ') || undefined,
+          }),
+      }).then((result) => {
+        if (!result.ok) {
+          log.error('rsvp.contact_sync_failed', { rsvpId: data.id, error: result.error });
         }
       }),
     );
