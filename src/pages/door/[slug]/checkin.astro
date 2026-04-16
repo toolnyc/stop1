@@ -310,6 +310,13 @@ const { count: arrivedCount } = await supabaseAdmin
 
   doSearch();
 
+  results.addEventListener('click', (e) => {
+    const btn = e.target.closest('.arrive-btn');
+    if (btn) {
+      openArrivePayment(JSON.parse(btn.dataset.guest));
+    }
+  });
+
   async function doSearch() {
     const q = searchInput.value.trim();
     const res = await fetch(`/api/door/${slug}/search?q=${encodeURIComponent(q)}`);
@@ -329,10 +336,10 @@ const { count: arrivedCount } = await supabaseAdmin
     } else if (arrivedTotal > 0) {
       statusHtml = `
         <span class="guest-badge-partial">${arrivedTotal}/${partySize} in</span>
-        <button class="btn btn-primary btn-sm" onclick="openArrivePayment(${JSON.stringify(g)})">More In</button>
+        <button class="btn btn-primary btn-sm arrive-btn" data-guest='${esc(JSON.stringify(g))}'>More In</button>
       `;
     } else {
-      statusHtml = `<button class="btn btn-primary btn-sm" onclick="openArrivePayment(${JSON.stringify(g)})">Mark Arrived</button>`;
+      statusHtml = `<button class="btn btn-primary btn-sm arrive-btn" data-guest='${esc(JSON.stringify(g))}'>Mark Arrived</button>`;
     }
 
     const partyTag =
@@ -362,7 +369,7 @@ const { count: arrivedCount } = await supabaseAdmin
   let currentRsvp = null;
   let checkedSlots = []; // { label, isGuest, checked }
 
-  window.openArrivePayment = function (g) {
+  function openArrivePayment(g) {
     currentRsvp = g;
     checkedSlots = [];
 
@@ -391,7 +398,7 @@ const { count: arrivedCount } = await supabaseAdmin
     document.getElementById('arrive-pay-buttons').style.display = 'flex';
     document.getElementById('arrive-processing').style.display = 'none';
     arriveOverlay.style.display = 'flex';
-  };
+  }
 
   function renderPartyList() {
     const partyList = document.getElementById('arrive-party-list');
@@ -454,7 +461,6 @@ const { count: arrivedCount } = await supabaseAdmin
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: selected.length * unitPrice,
           rsvpId: currentRsvp.id,
           checkInPrimary,
           checkInGuests,
@@ -592,19 +598,12 @@ const { count: arrivedCount } = await supabaseAdmin
       const payRes = await fetch(`/api/door/${slug}/payment/cash`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: unitPrice, name: walkinName.value.trim() }),
-      });
-      if (!payRes.ok) throw new Error('Cash payment failed');
-
-      const arriveRes = await fetch(`/api/door/${slug}/arrive`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: walkinName.value.trim(),
           phone: walkinPhone.value.trim() || undefined,
         }),
       });
-      if (!arriveRes.ok) throw new Error('Failed to add guest');
+      if (!payRes.ok) throw new Error('Cash payment failed');
 
       localArrivedCount++;
       arrivedCountEl.textContent = localArrivedCount + ' in';
