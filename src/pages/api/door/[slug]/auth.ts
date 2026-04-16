@@ -2,6 +2,9 @@ import { supabaseAdmin } from '@/lib/supabase';
 import bcrypt from 'bcryptjs';
 import { createHmac } from 'node:crypto';
 import { withLogging } from '@/lib/api';
+import { RateLimiter, getClientIp } from '@/lib/rate-limit';
+
+const pinLimiter = new RateLimiter(5, 15 * 60 * 1000);
 
 export const POST = withLogging(async ({ params, request, cookies, redirect, log }) => {
   if (!supabaseAdmin) {
@@ -15,6 +18,24 @@ export const POST = withLogging(async ({ params, request, cookies, redirect, log
   if (!cookieSecret) {
     log.error('cookie_secret_missing');
     return new Response('Server configuration error: missing COOKIE_SECRET', { status: 500 });
+  }
+
+  const rateLimitKey = `pin:${getClientIp(request)}:${slug}`;
+  const rlCheck = pinLimiter.check(rateLimitKey);
+  if (!rlCheck.allowed) {
+    const contentType = request.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      return new Response(JSON.stringify({ error: 'Too many attempts. Try again later.' }), {
+        status: 429,
+        headers: {
+          'Content-Type': 'application/json',
+          'Retry-After': String(Math.ceil((rlCheck.retryAfterMs || 0) / 1000)),
+        },
+      });
+    }
+    return redirect(
+      `/door/${slug}/pin?error=${encodeURIComponent('Too many attempts. Try again later.')}`,
+    );
   }
 
   let pin: string;
@@ -53,6 +74,7 @@ export const POST = withLogging(async ({ params, request, cookies, redirect, log
 
   const valid = await bcrypt.compare(pin, event.door_pin);
   if (!valid) {
+    pinLimiter.hit(rateLimitKey);
     log.warn('door.pin_invalid', { slug });
     if (!contentType.includes('application/json')) {
       return redirect(`/door/${slug}/pin?error=${encodeURIComponent('Incorrect PIN')}`);

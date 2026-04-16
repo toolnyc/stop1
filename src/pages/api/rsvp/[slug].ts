@@ -7,8 +7,11 @@ import { rsvpConfirmationSms } from '@/lib/sms/rsvp-confirmation';
 import { withLogging } from '@/lib/api';
 import { trackCall, maskEmail } from '@/lib/track';
 import { parsePlusOneCount } from '@/lib/plus-ones';
+import { RateLimiter, getClientIp } from '@/lib/rate-limit';
+import { sendDiscordAlert } from '@/lib/discord';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
+const rsvpLimiter = new RateLimiter(10, 15 * 60 * 1000);
 
 export const POST = withLogging(async ({ params, request, log, background }) => {
   if (!supabaseAdmin) {
@@ -20,6 +23,21 @@ export const POST = withLogging(async ({ params, request, log, background }) => 
   }
 
   const { slug } = params;
+
+  const rateLimitKey = `rsvp:${getClientIp(request)}:${slug}`;
+  const rlCheck = rsvpLimiter.check(rateLimitKey);
+  if (!rlCheck.allowed) {
+    return new Response(
+      JSON.stringify({ error: 'Too many submissions. Please wait before trying again.' }),
+      {
+        status: 429,
+        headers: {
+          ...JSON_HEADERS,
+          'Retry-After': String(Math.ceil((rlCheck.retryAfterMs || 0) / 1000)),
+        },
+      },
+    );
+  }
 
   // Look up event
   const { data: event, error: eventError } = await supabaseAdmin
@@ -113,6 +131,7 @@ export const POST = withLogging(async ({ params, request, log, background }) => 
   }
 
   log.info('rsvp.created', { slug, rsvpId: data.id });
+  rsvpLimiter.hit(rateLimitKey);
 
   // Background SMS confirmation — kept alive via waitUntil on Vercel
   if (sms_opt_in) {
@@ -121,6 +140,17 @@ export const POST = withLogging(async ({ params, request, log, background }) => 
       sendSms(phone, smsBody, { action: 'send-rsvp-confirmation', log }).then((result) => {
         if (!result.ok) {
           log.error('rsvp.sms_failed', { slug, rsvpId: data.id, error: result.error });
+          sendDiscordAlert({
+            title: 'RSVP Confirmation Failed',
+            message: 'SMS confirmation could not be sent',
+            fields: [
+              { name: 'Service', value: 'Twilio SMS' },
+              { name: 'Event', value: `${event.title} (${slug})` },
+              { name: 'Guest', value: name.trim() },
+              { name: 'Error', value: result.error || 'Unknown error' },
+            ],
+            level: 'error',
+          });
         }
       }),
     );
@@ -139,6 +169,17 @@ export const POST = withLogging(async ({ params, request, log, background }) => 
       }).then((result) => {
         if (!result.ok) {
           log.error('rsvp.email_failed', { slug, rsvpId: data.id, error: result.error });
+          sendDiscordAlert({
+            title: 'RSVP Confirmation Failed',
+            message: 'Email confirmation could not be sent',
+            fields: [
+              { name: 'Service', value: 'Resend Email' },
+              { name: 'Event', value: `${event.title} (${slug})` },
+              { name: 'Guest', value: name.trim() },
+              { name: 'Error', value: result.error || 'Unknown error' },
+            ],
+            level: 'error',
+          });
         }
       }),
     );

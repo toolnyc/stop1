@@ -27,6 +27,22 @@ describe('normalizePhone', () => {
   it('trims whitespace', () => {
     expect(normalizePhone('  (212) 555-1234  ')).toBe('+12125551234');
   });
+
+  it('normalizes a US number with country code prefix (no plus)', () => {
+    expect(normalizePhone('12125551234')).toBe('+12125551234');
+  });
+
+  it('normalizes a compact +1 number', () => {
+    expect(normalizePhone('+12125551234')).toBe('+12125551234');
+  });
+
+  it('normalizes a US number with dashes', () => {
+    expect(normalizePhone('212-555-1234')).toBe('+12125551234');
+  });
+
+  it('normalizes an international UK number', () => {
+    expect(normalizePhone('+447911123456')).toBe('+447911123456');
+  });
 });
 
 describe('formatPhoneDisplay', () => {

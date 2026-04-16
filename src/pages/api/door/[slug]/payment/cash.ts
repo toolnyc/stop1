@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabase';
 import { withLogging } from '@/lib/api';
 import { normalizePhone } from '@/lib/phone';
+import { getEffectivePrice } from '@/lib/pricing';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
@@ -35,7 +36,7 @@ export const POST = withLogging(async ({ params, request, log }) => {
 
   const { data: event } = await supabaseAdmin
     .from('events')
-    .select('id, door_price')
+    .select('id, door_price, early_price, early_cutoff')
     .eq('slug', slug!)
     .single();
 
@@ -48,7 +49,9 @@ export const POST = withLogging(async ({ params, request, log }) => {
   }
 
   const quantity = (checkInPrimary ? 1 : 0) + Math.max(0, checkInGuests);
-  const serverAmount = quantity * Number(event.door_price);
+  const { price: effectivePrice, isEarly } = getEffectivePrice(event);
+  const serverAmount = quantity * effectivePrice;
+  log.info('payment.price_resolved', { slug, effectivePrice, isEarly, quantity, serverAmount });
 
   const { data, error } = await supabaseAdmin
     .from('door_payments')

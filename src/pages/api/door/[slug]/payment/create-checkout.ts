@@ -3,6 +3,7 @@ import { stripe } from '@/lib/stripe';
 import { normalizePhone } from '@/lib/phone';
 import { withLogging } from '@/lib/api';
 import { trackCall } from '@/lib/track';
+import { getEffectivePrice } from '@/lib/pricing';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
@@ -52,7 +53,7 @@ export const POST = withLogging(async ({ params, request, log }) => {
 
   const { data: event } = await supabaseAdmin
     .from('events')
-    .select('id, title, door_price, slug')
+    .select('id, title, door_price, slug, early_price, early_cutoff')
     .eq('slug', slug!)
     .single();
 
@@ -64,8 +65,10 @@ export const POST = withLogging(async ({ params, request, log }) => {
     });
   }
 
-  const unitAmount = Math.round(Number(event.door_price) * 100);
+  const { price: effectivePrice, isEarly } = getEffectivePrice(event);
+  const unitAmount = Math.round(effectivePrice * 100);
   const quantity = (checkInPrimary ? 1 : 0) + Math.max(0, checkInGuests);
+  log.info('payment.price_resolved', { slug, effectivePrice, isEarly, quantity });
   const phone = rawPhone ? normalizePhone(rawPhone) : '';
 
   // Build the success/cancel URLs

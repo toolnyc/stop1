@@ -3,6 +3,8 @@ import Base from '@/layouts/Base.astro';
 import { supabaseAdmin } from '@/lib/supabase';
 import { stripe } from '@/lib/stripe';
 import { normalizePhone } from '@/lib/phone';
+import { getEffectivePrice } from '@/lib/pricing';
+import { EVENT_TIMEZONE } from '@/lib/constants';
 
 if (!supabaseAdmin) {
   return new Response('Server configuration error', { status: 500 });
@@ -12,11 +14,22 @@ const { slug } = Astro.params;
 
 const { data: event } = await supabaseAdmin
   .from('events')
-  .select('id, title, door_price')
+  .select('id, title, door_price, early_price, early_cutoff, capacity')
   .eq('slug', slug!)
   .single();
 
 if (!event) return new Response(null, { status: 404 });
+
+const { price: effectivePrice, isEarly } = getEffectivePrice(event);
+const cutoffDisplay =
+  isEarly && event.early_cutoff
+    ? new Intl.DateTimeFormat('en-US', {
+        timeZone: EVENT_TIMEZONE,
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      }).format(new Date(event.early_cutoff))
+    : null;
 
 /* ── Handle Stripe Checkout return ── */
 let checkoutFlash = '';
@@ -121,6 +134,11 @@ const { count: arrivedCount } = await supabaseAdmin
   .select('id', { count: 'exact', head: true })
   .eq('event_id', event.id)
   .not('arrived_at', 'is', null);
+
+const capacity = event.capacity ?? null;
+const arrived = arrivedCount ?? 0;
+const atCapacity = capacity !== null && arrived >= capacity;
+const nearCapacity = capacity !== null && !atCapacity && arrived >= capacity * 0.9;
 ---
 
 <Base title={`Check-in — ${event.title}`}>
@@ -137,7 +155,22 @@ const { count: arrivedCount } = await supabaseAdmin
     }
     <header class="checkin-header">
       <h1>{event.title}</h1>
-      <span class="arrived-badge" id="arrived-count">{arrivedCount ?? 0} in</span>
+      <span
+        class={`arrived-badge ${atCapacity ? 'at-capacity' : nearCapacity ? 'near-capacity' : ''}`}
+        id="arrived-count"
+      >
+        {arrived}{capacity !== null ? `/${capacity}` : ''} in
+      </span>
+      {atCapacity && <span class="capacity-warn">AT CAPACITY</span>}
+      {nearCapacity && <span class="capacity-warn capacity-near">NEAR CAPACITY</span>}
+      {
+        effectivePrice === 0 ? (
+          <span class="price-badge price-free">FREE</span>
+        ) : (
+          <span class="price-badge">${effectivePrice}</span>
+        )
+      }
+      {cutoffDisplay && <span class="price-note">until {cutoffDisplay}</span>}
     </header>
 
     <div class="search-wrap">
@@ -270,7 +303,7 @@ const { count: arrivedCount } = await supabaseAdmin
   </div>
 </Base>
 
-<script define:vars={{ slug, doorPrice: event.door_price }}>
+<script define:vars={{ slug, doorPrice: effectivePrice, eventCapacity: capacity }}>
   const unitPrice = Number(doorPrice);
   const fmt = (n) => `$${Number(n).toFixed(0)}`;
 
@@ -953,6 +986,48 @@ const { count: arrivedCount } = await supabaseAdmin
     accent-color: var(--color-accent);
     cursor: pointer;
     flex-shrink: 0;
+  }
+
+  .price-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    color: var(--color-fg);
+  }
+  .price-free {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-bg);
+  }
+  .price-note {
+    font-size: 0.6875rem;
+    color: var(--color-muted);
+  }
+
+  .capacity-warn {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    background: #dc2626;
+    color: #fff;
+  }
+  .capacity-near {
+    background: #d97706;
+  }
+  .arrived-badge.at-capacity {
+    border-color: #dc2626;
+    color: #dc2626;
+  }
+  .arrived-badge.near-capacity {
+    border-color: #d97706;
+    color: #d97706;
   }
 
   .checkout-flash {
