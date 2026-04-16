@@ -87,7 +87,7 @@ export const POST = withLogging(async ({ params, request, cookies, redirect, log
 
   const sig = createHmac('sha256', cookieSecret).update(slug!).digest('hex');
   cookies.set(`door_session_${slug}`, sig, {
-    path: `/door/${slug}`,
+    path: '/',
     httpOnly: true,
     secure: import.meta.env.PROD,
     sameSite: 'lax',
