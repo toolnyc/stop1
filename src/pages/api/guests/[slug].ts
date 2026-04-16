@@ -1,30 +1,11 @@
-import type { APIContext } from 'astro';
 import { supabaseAdmin } from '@/lib/supabase';
 
-export const GET = async ({ params, cookies }: APIContext) => {
+export const GET = async ({ params }: { params: { slug?: string } }) => {
   const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
   if (!supabaseAdmin) {
     return new Response(JSON.stringify({ error: 'Server configuration error' }), {
       status: 500,
-      headers: JSON_HEADERS,
-    });
-  }
-
-  const accessToken = cookies.get('sb-access-token')?.value;
-  if (!accessToken) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: JSON_HEADERS,
-    });
-  }
-  const {
-    data: { user },
-    error: authError,
-  } = await supabaseAdmin.auth.getUser(accessToken);
-  if (authError || !user) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
       headers: JSON_HEADERS,
     });
   }
