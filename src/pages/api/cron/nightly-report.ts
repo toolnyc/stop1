@@ -8,7 +8,7 @@ const CRON_SECRET = import.meta.env.CRON_SECRET;
 export const GET: APIRoute = async ({ request }) => {
   // Verify Vercel cron secret
   const auth = request.headers.get('authorization');
-  if (CRON_SECRET && auth !== `Bearer ${CRON_SECRET}`) {
+  if (!CRON_SECRET || auth !== `Bearer ${CRON_SECRET}`) {
     return new Response('Unauthorized', { status: 401 });
   }
 

@@ -3,6 +3,10 @@ import { withLogging } from '@/lib/api';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
+function escapeIlike(str: string): string {
+  return str.replace(/[%_\\]/g, '\\$&');
+}
+
 export const GET = withLogging(async ({ params, url, log }) => {
   if (!supabaseAdmin) {
     log.error('supabase_admin_missing');
@@ -41,9 +45,9 @@ export const GET = withLogging(async ({ params, url, log }) => {
 
   if (isSearch) {
     if (/^[+\d]/.test(trimmed)) {
-      query = query.ilike('phone', `%${trimmed}%`);
+      query = query.ilike('phone', `%${escapeIlike(trimmed)}%`);
     } else {
-      query = query.ilike('name', `%${trimmed}%`);
+      query = query.ilike('name', `%${escapeIlike(trimmed)}%`);
     }
   }
 
