@@ -402,7 +402,7 @@ const nearCapacity = capacity !== null && !atCapacity && arrived >= capacity * 0
   let currentRsvp = null;
   let checkedSlots = []; // { label, isGuest, checked }
 
-  function openArrivePayment(g) {
+  async function openArrivePayment(g) {
     currentRsvp = g;
     checkedSlots = [];
 
@@ -412,6 +412,45 @@ const nearCapacity = capacity !== null && !atCapacity && arrived >= capacity * 0
     const alreadyIn = g.plus_ones_arrived || 0;
     for (let i = alreadyIn + 1; i <= (g.plus_one_count || 0); i++) {
       checkedSlots.push({ label: `Guest ${i}`, isGuest: true, checked: true });
+    }
+
+    // Free entry: skip payment overlay entirely, just mark arrived
+    if (unitPrice === 0) {
+      const selected = checkedSlots.filter((s) => s.checked);
+      if (!selected.length) return;
+      try {
+        const checkInPrimary = selected.some((s) => !s.isGuest);
+        const checkInGuests = selected.filter((s) => s.isGuest).length;
+        const res = await fetch(`/api/door/${slug}/arrive-party`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            rsvpId: g.id,
+            checkInPrimary,
+            checkInGuests,
+          }),
+        });
+        if (!res.ok) {
+          // Fallback to simple arrive
+          await fetch(`/api/door/${slug}/arrive`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rsvpId: g.id }),
+          });
+        }
+        arriveSuccess(selected);
+        // Show done overlay briefly
+        document.getElementById('arrive-guest-name').textContent = g.name;
+        document.getElementById('arrive-step-pay').style.display = 'none';
+        document.getElementById('arrive-step-done').style.display = 'flex';
+        document.getElementById('arrive-done-name').textContent = selected
+          .map((s) => s.label)
+          .join(', ');
+        arriveOverlay.style.display = 'flex';
+      } catch (err) {
+        alert(err.message || 'Something went wrong');
+      }
+      return;
     }
 
     document.getElementById('arrive-guest-name').textContent = g.name;
@@ -620,7 +659,30 @@ const nearCapacity = capacity !== null && !atCapacity && arrived >= capacity * 0
     if (e.key === 'Enter') goToPay();
   });
 
-  function goToPay() {
+  async function goToPay() {
+    // Free entry: skip payment, create walk-in directly
+    if (unitPrice === 0) {
+      showStep('pay');
+      showProcessing();
+      try {
+        const res = await fetch(`/api/door/${slug}/arrive`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: walkinName.value.trim(),
+            phone: walkinPhone.value.trim() || undefined,
+          }),
+        });
+        if (!res.ok) throw new Error('Failed to add walk-in');
+        localArrivedCount++;
+        arrivedCountEl.textContent = localArrivedCount + ' in';
+        showDone();
+      } catch (err) {
+        alert(err.message || 'Something went wrong');
+        hideProcessing();
+      }
+      return;
+    }
     document.getElementById('pay-price').textContent = fmt(unitPrice);
     showStep('pay');
   }

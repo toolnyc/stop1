@@ -4,7 +4,7 @@ import { createHmac } from 'node:crypto';
 import { withLogging } from '@/lib/api';
 import { RateLimiter, getClientIp } from '@/lib/rate-limit';
 
-const pinLimiter = new RateLimiter(5, 15 * 60 * 1000);
+const pinLimiter = new RateLimiter(5, 5 * 60 * 1000);
 
 export const POST = withLogging(async ({ params, request, cookies, redirect, log }) => {
   if (!supabaseAdmin) {
@@ -33,9 +33,8 @@ export const POST = withLogging(async ({ params, request, cookies, redirect, log
         },
       });
     }
-    return redirect(
-      `/door/${slug}/pin?error=${encodeURIComponent('Too many attempts. Try again later.')}`,
-    );
+    const retrySeconds = Math.ceil((rlCheck.retryAfterMs || 0) / 1000);
+    return redirect(`/door/${slug}/pin?error=rate_limited&retry=${retrySeconds}`);
   }
 
   let pin: string;

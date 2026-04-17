@@ -18,7 +18,12 @@ if (error || !event) {
   return new Response(null, { status: 404, statusText: 'Not Found' });
 }
 
-const pinError = Astro.url.searchParams.get('error');
+const errorCode = Astro.url.searchParams.get('error');
+const retrySeconds = parseInt(Astro.url.searchParams.get('retry') || '0', 10);
+const pinError =
+  errorCode === 'rate_limited'
+    ? `Too many attempts. Try again in ${Math.ceil(retrySeconds / 60)} min.`
+    : errorCode;
 ---
 
 <Base title={`Door — ${event.title}`}>
@@ -27,7 +32,13 @@ const pinError = Astro.url.searchParams.get('error');
       <h1>{event.title}</h1>
       <p class="pin-subtitle">[Door PIN]</p>
 
-      {pinError && <div class="alert alert-error">{pinError}</div>}
+      {
+        pinError && (
+          <div class="alert alert-error" id="pin-error">
+            {pinError}
+          </div>
+        )
+      }
 
       <form method="POST" action={`/api/door/${slug}/auth`} class="pin-form">
         <input
