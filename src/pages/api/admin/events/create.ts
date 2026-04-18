@@ -5,7 +5,7 @@ import { withLogging } from '@/lib/api';
 import { trackCall } from '@/lib/track';
 import { easternToISO } from '@/lib/dates';
 
-export const POST = withLogging(async ({ request, cookies, redirect, log }) => {
+export const POST = withLogging(async ({ request, locals, redirect, log }) => {
   if (!supabaseAdmin) {
     log.error('supabase_admin_missing');
     return new Response(JSON.stringify({ error: 'Server configuration error' }), {
@@ -14,8 +14,7 @@ export const POST = withLogging(async ({ request, cookies, redirect, log }) => {
     });
   }
 
-  const accessToken = cookies.get('sb-access-token')?.value;
-  if (!accessToken) {
+  if (!locals.user) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
       headers: { 'Content-Type': 'application/json' },

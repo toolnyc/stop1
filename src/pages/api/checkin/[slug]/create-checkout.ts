@@ -32,7 +32,8 @@ export const POST = withLogging(async ({ params, request, log }) => {
 
   const { slug } = params;
   const body = await request.json();
-  const { rsvpId, simulate } = body as { rsvpId?: string; simulate?: string };
+  const { rsvpId, simulate: rawSimulate } = body as { rsvpId?: string; simulate?: string };
+  const simulate = import.meta.env.PROD ? undefined : rawSimulate;
 
   if (!rsvpId) {
     return new Response(JSON.stringify({ error: 'rsvpId required' }), {

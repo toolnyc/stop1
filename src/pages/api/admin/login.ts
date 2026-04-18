@@ -1,7 +1,26 @@
 import { supabaseAdmin } from '@/lib/supabase';
 import { withLogging } from '@/lib/api';
+import { RateLimiter, getClientIp } from '@/lib/rate-limit';
+
+const loginLimiter = new RateLimiter(5, 15 * 60 * 1000);
 
 export const POST = withLogging(async ({ request, cookies, redirect, log }) => {
+  const ip = getClientIp(request);
+  const rlCheck = loginLimiter.check(ip);
+  if (!rlCheck.allowed) {
+    log.warn('login.rate_limited', { ip });
+    const contentType = request.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      return new Response(JSON.stringify({ error: 'Too many login attempts. Try again later.' }), {
+        status: 429,
+        headers: {
+          'Content-Type': 'application/json',
+          'Retry-After': String(Math.ceil((rlCheck.retryAfterMs || 0) / 1000)),
+        },
+      });
+    }
+    return redirect('/admin/login?error=Too many login attempts. Try again later.');
+  }
   if (!supabaseAdmin) {
     log.error('supabase_admin_missing');
     return new Response(JSON.stringify({ error: 'Server configuration error' }), {
@@ -37,6 +56,7 @@ export const POST = withLogging(async ({ request, cookies, redirect, log }) => {
   const { data, error } = await supabaseAdmin.auth.signInWithPassword({ email, password });
 
   if (error || !data.session) {
+    loginLimiter.hit(ip);
     log.warn('login.failed', { email: email.split('@')[0] + '@***' });
     if (!contentType.includes('application/json')) {
       return redirect('/admin/login?error=Invalid email or password');

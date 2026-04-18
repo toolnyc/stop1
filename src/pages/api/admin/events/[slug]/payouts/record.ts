@@ -3,7 +3,7 @@ import { withLogging } from '@/lib/api';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
-export const POST = withLogging(async ({ params, request, cookies, redirect, log }) => {
+export const POST = withLogging(async ({ params, request, locals, redirect, log }) => {
   if (!supabaseAdmin) {
     log.error('supabase_admin_missing');
     return new Response(JSON.stringify({ error: 'Server configuration error' }), {
@@ -12,8 +12,7 @@ export const POST = withLogging(async ({ params, request, cookies, redirect, log
     });
   }
 
-  const accessToken = cookies.get('sb-access-token')?.value;
-  if (!accessToken) {
+  if (!locals.user) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
       headers: JSON_HEADERS,
@@ -42,12 +41,17 @@ export const POST = withLogging(async ({ params, request, cookies, redirect, log
 
   if (!collaboratorId || !amount || !method) {
     if (contentType.includes('application/json')) {
-      return new Response(JSON.stringify({ error: 'collaboratorId, amount, and method are required' }), {
-        status: 400,
-        headers: JSON_HEADERS,
-      });
+      return new Response(
+        JSON.stringify({ error: 'collaboratorId, amount, and method are required' }),
+        {
+          status: 400,
+          headers: JSON_HEADERS,
+        },
+      );
     }
-    return redirect(`/admin/events/${slug}/budget?error=${encodeURIComponent('Missing required fields')}`);
+    return redirect(
+      `/admin/events/${slug}/budget?error=${encodeURIComponent('Missing required fields')}`,
+    );
   }
 
   const { data: event } = await supabaseAdmin
@@ -85,7 +89,9 @@ export const POST = withLogging(async ({ params, request, cookies, redirect, log
         headers: JSON_HEADERS,
       });
     }
-    return redirect(`/admin/events/${slug}/budget?error=${encodeURIComponent('Failed to record payout')}`);
+    return redirect(
+      `/admin/events/${slug}/budget?error=${encodeURIComponent('Failed to record payout')}`,
+    );
   }
 
   log.info('payout.recorded', { slug, payoutId: data.id, collaboratorId, amount });

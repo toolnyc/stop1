@@ -4,7 +4,7 @@ import { withLogging } from '@/lib/api';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
-export const POST = withLogging(async ({ params, cookies, log }) => {
+export const POST = withLogging(async ({ params, locals, log }) => {
   if (!supabaseAdmin) {
     log.error('supabase_admin_missing');
     return new Response(JSON.stringify({ error: 'Server configuration error' }), {
@@ -13,8 +13,7 @@ export const POST = withLogging(async ({ params, cookies, log }) => {
     });
   }
 
-  const accessToken = cookies.get('sb-access-token')?.value;
-  if (!accessToken) {
+  if (!locals.user) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
       headers: JSON_HEADERS,

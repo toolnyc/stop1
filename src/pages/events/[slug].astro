@@ -227,11 +227,17 @@ const timeEnd = event.time_end
             onComplete: () => {
               step3.style.display = 'none';
               message.className = 'rsvp-message success-message';
-              message.innerHTML = `
-              <div class="success-check">&#10003;</div>
-              <div class="success-text">You're on the list, ${data.name}!</div>
-              <div class="success-sub">Check your texts for confirmation.</div>
-            `;
+              const checkDiv = document.createElement('div');
+              checkDiv.className = 'success-check';
+              checkDiv.textContent = '\u2713';
+              const textDiv = document.createElement('div');
+              textDiv.className = 'success-text';
+              textDiv.textContent = `You're on the list, ${data.name}!`;
+              const subDiv = document.createElement('div');
+              subDiv.className = 'success-sub';
+              subDiv.textContent = 'Check your texts for confirmation.';
+              message.innerHTML = '';
+              message.append(checkDiv, textDiv, subDiv);
               message.style.display = 'block';
               gsap.from('.success-check', {
                 duration: 0.6,

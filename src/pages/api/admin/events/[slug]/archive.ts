@@ -1,14 +1,13 @@
 import { supabaseAdmin } from '@/lib/supabase';
 import { withLogging } from '@/lib/api';
 
-export const POST = withLogging(async ({ params, cookies, redirect, log }) => {
+export const POST = withLogging(async ({ params, locals, redirect, log }) => {
   if (!supabaseAdmin) {
     log.error('supabase_admin_missing');
     return new Response('Server configuration error', { status: 500 });
   }
 
-  const accessToken = cookies.get('sb-access-token')?.value;
-  if (!accessToken) {
+  if (!locals.user) {
     return redirect('/admin/login');
   }
 

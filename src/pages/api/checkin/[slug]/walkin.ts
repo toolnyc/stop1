@@ -46,7 +46,8 @@ export const POST = withLogging(async ({ params, request, url, log }) => {
 
   const { slug } = params;
   const body = (await request.json()) as WalkinBody;
-  const { name, phone, email, simulate } = body;
+  const { name, phone, email, simulate: rawSimulate } = body;
+  const simulate = import.meta.env.PROD ? undefined : rawSimulate;
   const method = url.searchParams.get('method') ?? 'cash';
 
   if (!name?.trim()) {

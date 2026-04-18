@@ -1,7 +1,23 @@
 import { supabaseAdmin } from '@/lib/supabase';
+import { RateLimiter, getClientIp } from '@/lib/rate-limit';
 
-export const GET = async ({ params }: { params: { slug?: string } }) => {
+const limiter = new RateLimiter(20, 60_000);
+
+export const GET = async ({ params, request }: { params: { slug?: string }; request: Request }) => {
   const JSON_HEADERS = { 'Content-Type': 'application/json' };
+
+  const ip = getClientIp(request);
+  const { allowed, retryAfterMs } = limiter.check(ip);
+  if (!allowed) {
+    return new Response(JSON.stringify({ error: 'Too many requests' }), {
+      status: 429,
+      headers: {
+        ...JSON_HEADERS,
+        'Retry-After': String(Math.ceil((retryAfterMs ?? 60_000) / 1000)),
+      },
+    });
+  }
+  limiter.hit(ip);
 
   if (!supabaseAdmin) {
     return new Response(JSON.stringify({ error: 'Server configuration error' }), {
