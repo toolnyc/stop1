@@ -1,0 +1,282 @@
+---
+import Base from '@/layouts/Base.astro';
+import { supabaseAdmin } from '@/lib/supabase';
+import { stripe } from '@/lib/stripe';
+import { EVENT_TIMEZONE } from '@/lib/constants';
+
+if (!supabaseAdmin) {
+  return new Response('Server configuration error', { status: 500 });
+}
+
+const { slug } = Astro.params;
+
+const { data: event } = await supabaseAdmin
+  .from('events')
+  .select('id, title')
+  .eq('slug', slug!)
+  .eq('status', 'published')
+  .single();
+
+if (!event) return new Response(null, { status: 404 });
+
+const sessionId = Astro.url.searchParams.get('session_id');
+const rsvpId = Astro.url.searchParams.get('rsvp_id');
+const methodParam = Astro.url.searchParams.get('method');
+
+let guestName = '';
+let amount = 0;
+let method: 'cash' | 'card' | 'free' = 'free';
+let arrivedAt = '';
+let error = '';
+
+if (sessionId && stripe && rsvpId) {
+  // Card flow: returning from Stripe Checkout
+  try {
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    if (session.payment_status === 'paid') {
+      const totalAmount = Number(session.amount_total ?? 0) / 100;
+
+      // Prevent double-processing
+      const { count: existingCount } = await supabaseAdmin
+        .from('door_payments')
+        .select('id', { count: 'exact', head: true })
+        .eq('stripe_payment_intent_id', session.payment_intent as string);
+
+      if (!existingCount || existingCount === 0) {
+        await supabaseAdmin.from('door_payments').insert({
+          event_id: event.id,
+          rsvp_id: rsvpId,
+          amount: totalAmount,
+          method: 'card' as const,
+          stripe_payment_intent_id: session.payment_intent as string,
+        });
+
+        // Mark arrived
+        await supabaseAdmin
+          .from('rsvps')
+          .update({ arrived_at: new Date().toISOString() })
+          .eq('id', rsvpId)
+          .eq('event_id', event.id);
+      }
+
+      amount = totalAmount;
+      method = 'card';
+    } else {
+      error = 'Payment not completed';
+    }
+  } catch {
+    error = 'Could not verify payment';
+  }
+} else if (rsvpId && methodParam === 'cash') {
+  // Cash flow: already recorded by the cash API
+  method = 'cash';
+} else if (rsvpId && methodParam === 'free') {
+  method = 'free';
+} else {
+  error = 'Invalid check-in link';
+}
+
+// Load RSVP data for display
+if (!error && rsvpId) {
+  const { data: rsvp } = await supabaseAdmin
+    .from('rsvps')
+    .select('name, arrived_at')
+    .eq('id', rsvpId)
+    .eq('event_id', event.id)
+    .single();
+
+  if (rsvp) {
+    guestName = rsvp.name;
+    arrivedAt = rsvp.arrived_at ?? '';
+
+    // For cash, look up the payment amount
+    if (method === 'cash') {
+      const { data: payment } = await supabaseAdmin
+        .from('door_payments')
+        .select('amount')
+        .eq('rsvp_id', rsvpId)
+        .eq('event_id', event.id)
+        .eq('method', 'cash')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      amount = payment?.amount ?? 0;
+    }
+  } else {
+    error = 'Guest not found';
+  }
+}
+
+const timeFormatted = arrivedAt
+  ? new Intl.DateTimeFormat('en-US', {
+      timeZone: EVENT_TIMEZONE,
+      hour: 'numeric',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true,
+    }).format(new Date(arrivedAt))
+  : '';
+
+const isFree = method === 'free';
+const isPaid = method === 'card';
+const isCash = method === 'cash';
+
+const statusLabel = isPaid ? 'PAID' : isCash ? 'CASH — SHOW TO DOOR' : 'CONFIRMED';
+const statusClass = isPaid || isFree ? 'status-confirmed' : 'status-cash';
+---
+
+<Base title={`Check-in — ${event.title}`}>
+  <main class="confirm-page">
+    {
+      error ? (
+        <div class="confirm-card">
+          <div class="confirm-error">{error}</div>
+          <a href="/" class="btn btn-primary btn-block">
+            Back to home
+          </a>
+        </div>
+      ) : (
+        <div class="confirm-card">
+          <span class="confirm-event">{event.title}</span>
+
+          <h1 class="confirm-name">{guestName}</h1>
+
+          <div class={`confirm-status ${statusClass}`}>
+            <span class="status-dot" />
+            {statusLabel}
+          </div>
+
+          {amount > 0 && <span class="confirm-amount">${amount.toFixed(0)}</span>}
+
+          {timeFormatted && <span class="confirm-time">Arrived at {timeFormatted}</span>}
+
+          <div class="confirm-live" id="live-clock" />
+        </div>
+      )
+    }
+  </main>
+</Base>
+
+<script>
+  const clockEl = document.getElementById('live-clock');
+  if (clockEl) {
+    function updateClock() {
+      const now = new Date();
+      clockEl!.textContent = now.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true,
+      });
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+  }
+</script>
+
+<style>
+  .confirm-page {
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-lg);
+    background: var(--color-bg);
+  }
+
+  .confirm-card {
+    width: 100%;
+    max-width: 400px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: var(--space-md);
+    padding: var(--space-3xl) var(--space-xl);
+  }
+
+  .confirm-event {
+    font-size: 0.8125rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-muted);
+    font-weight: var(--weight-medium);
+  }
+
+  .confirm-name {
+    font-size: 2rem;
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-tight);
+    line-height: 1.1;
+    color: var(--color-fg);
+    margin: 0;
+  }
+
+  .confirm-status {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-lg);
+    font-size: 1rem;
+    font-weight: var(--weight-bold);
+    letter-spacing: 0.04em;
+    border-radius: 4px;
+    margin-top: var(--space-sm);
+  }
+
+  .status-confirmed {
+    background: var(--color-success);
+    color: #fff;
+  }
+
+  .status-cash {
+    background: var(--color-error);
+    color: #fff;
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.3;
+    }
+  }
+
+  .confirm-amount {
+    font-size: 2.5rem;
+    font-weight: var(--weight-bold);
+    color: var(--color-fg);
+    letter-spacing: var(--tracking-tight);
+    line-height: 1;
+  }
+
+  .confirm-time {
+    font-size: 0.875rem;
+    color: var(--color-muted);
+  }
+
+  .confirm-live {
+    font-size: 1.5rem;
+    font-weight: var(--weight-medium);
+    color: var(--color-fg);
+    font-variant-numeric: tabular-nums;
+    margin-top: var(--space-md);
+  }
+
+  .confirm-error {
+    font-size: 1.125rem;
+    color: var(--color-error);
+    font-weight: var(--weight-medium);
+    margin-bottom: var(--space-md);
+  }
+</style>

@@ -86,11 +86,19 @@ const doorPriceFormatted =
             <a href={`/events/${nextEvent.slug}`} class="action-btn">
               RSVP
             </a>
+            <button
+              type="button"
+              class="action-btn action-btn--here"
+              id="here-btn"
+              data-slug={nextEvent.slug}
+              data-door-price={nextEvent.door_price ?? 0}
+              data-early-price={nextEvent.early_price ?? ''}
+              data-early-cutoff={nextEvent.early_cutoff ?? ''}
+            >
+              I'm here
+            </button>
             <button type="button" class="action-btn" id="info-btn">
               Info
-            </button>
-            <button type="button" class="action-btn" id="gl-btn" data-slug={nextEvent.slug}>
-              List
             </button>
           </div>
         ) : null
@@ -176,28 +184,56 @@ const doorPriceFormatted =
       )
     }
 
-    {/* Guest list overlay */}
+    {/* Self-check-in overlay */}
     {
       nextEvent && (
-        <div class="gl-backdrop" id="gl-modal" aria-hidden="true">
-          <div class="gl-sheet" id="gl-sheet" role="dialog" aria-label="Guest list">
-            <div class="gl-header">
-              <span class="gl-title">guest list</span>
-              <span class="gl-count" id="gl-count" />
-              <button type="button" class="gl-close" id="gl-close" aria-label="Close">
+        <div class="ci-backdrop" id="ci-modal" aria-hidden="true">
+          <div class="ci-sheet" id="ci-sheet" role="dialog" aria-label="Check in">
+            <div class="ci-header">
+              <span class="ci-title">find your name</span>
+              <button type="button" class="ci-close" id="ci-close" aria-label="Close">
                 &times;
               </button>
             </div>
-            <div class="gl-body">
-              <ul class="gl-list" id="gl-list" />
+
+            {/* Step 1: Search */}
+            <div class="ci-step" id="ci-step-search">
+              <div class="ci-search-wrap">
+                <input
+                  type="text"
+                  id="ci-search"
+                  placeholder="Search your name..."
+                  autocomplete="off"
+                  class="ci-search"
+                />
+              </div>
+              <ul class="ci-results" id="ci-results" />
+            </div>
+
+            {/* Step 2: Payment */}
+            <div class="ci-step" id="ci-step-pay" style="display:none">
+              <h2 class="ci-selected-name" id="ci-selected-name" />
+              <p class="ci-price" id="ci-price" />
+              <div class="ci-pay-buttons" id="ci-pay-buttons">
+                <button type="button" class="btn ci-btn-pay" id="ci-btn-cash">
+                  <span class="ci-pay-icon">$</span>
+                  Cash
+                </button>
+                <button type="button" class="btn ci-btn-pay" id="ci-btn-card">
+                  <span class="ci-pay-icon">&#9909;</span>
+                  Card
+                </button>
+              </div>
+              <div class="ci-processing" id="ci-processing" style="display:none">
+                <div class="ci-spinner" />
+                <p>Processing...</p>
+              </div>
+              <p class="ci-error" id="ci-error" style="display:none" />
             </div>
           </div>
         </div>
       )
     }
-
-    {/* Toast notification */}
-    <div class="gl-toast" id="gl-toast" aria-live="polite" aria-atomic="true"></div>
 
     {/* Menu overlay with login */}
     <div class="menu-overlay" id="menu-overlay" aria-hidden="true">
@@ -232,10 +268,7 @@ const doorPriceFormatted =
   let _rafId: number | null = null;
   let _handleOrientation: ((e: DeviceOrientationEvent) => void) | null = null;
   let _phraseInterval: ReturnType<typeof setInterval> | null = null;
-  let _guestPollInterval: ReturnType<typeof setInterval> | null = null;
-  let _glObserver: IntersectionObserver | null = null;
-  let _knownGuests = new Set<string>();
-  let _toastTimeout: ReturnType<typeof setTimeout> | null = null;
+  let _ciDebounce: ReturnType<typeof setTimeout> | null = null;
 
   function cleanup() {
     if (_rafId) {
@@ -250,19 +283,10 @@ const doorPriceFormatted =
       clearInterval(_phraseInterval);
       _phraseInterval = null;
     }
-    if (_guestPollInterval) {
-      clearInterval(_guestPollInterval);
-      _guestPollInterval = null;
+    if (_ciDebounce) {
+      clearTimeout(_ciDebounce);
+      _ciDebounce = null;
     }
-    if (_glObserver) {
-      _glObserver.disconnect();
-      _glObserver = null;
-    }
-    if (_toastTimeout) {
-      clearTimeout(_toastTimeout);
-      _toastTimeout = null;
-    }
-    _knownGuests = new Set();
   }
 
   document.addEventListener('astro:before-swap', cleanup);
@@ -270,18 +294,18 @@ const doorPriceFormatted =
   document.addEventListener('astro:page-load', () => {
     cleanup();
     gsap.killTweensOf(
-      '.flyer-card, .wordmark, .actions, .landing-footer, .modal-backdrop, .modal-sheet, .menu-overlay, .menu-content, .footer-text, .footer-logo, .gl-backdrop, .gl-sheet',
+      '.flyer-card, .wordmark, .actions, .landing-footer, .modal-backdrop, .modal-sheet, .menu-overlay, .menu-content, .footer-text, .footer-logo, .ci-backdrop, .ci-sheet',
     );
 
     // Reset GSAP-animated elements to clean state (targeted, not nuclear)
     const gsapTargets =
-      '.flyer-card, .wordmark, .actions, .landing-footer, .modal-backdrop, .modal-sheet, .menu-overlay, .menu-content, .footer-item, .gl-backdrop, .gl-sheet';
+      '.flyer-card, .wordmark, .actions, .landing-footer, .modal-backdrop, .modal-sheet, .menu-overlay, .menu-content, .footer-item, .ci-backdrop, .ci-sheet';
     document.querySelectorAll<HTMLElement>(gsapTargets).forEach((el) => {
       if (el.style.length > 0) el.removeAttribute('style');
     });
 
     // Re-apply the initial display:none states that the server renders
-    const hiddenByDefault = ['#info-modal', '#menu-overlay', '#gl-modal'];
+    const hiddenByDefault = ['#info-modal', '#menu-overlay', '#ci-modal'];
     hiddenByDefault.forEach((sel) => {
       const el = document.querySelector<HTMLElement>(sel);
       if (el) {
@@ -475,201 +499,223 @@ const doorPriceFormatted =
       });
     }
 
-    // --- Guest list overlay ---
-    const glBtn = document.getElementById('gl-btn');
-    const glModal = document.getElementById('gl-modal');
-    const glSheet = document.getElementById('gl-sheet');
-    const glClose = document.getElementById('gl-close');
-    const glList = document.getElementById('gl-list');
-    const glCount = document.getElementById('gl-count');
-    const glToast = document.getElementById('gl-toast');
-    const eventSlug = (glBtn as HTMLElement | null)?.dataset.slug;
+    // --- Self-check-in overlay ---
+    const hereBtn = document.getElementById('here-btn') as HTMLButtonElement | null;
+    const ciModal = document.getElementById('ci-modal');
+    const ciSheet = document.getElementById('ci-sheet');
+    const ciClose = document.getElementById('ci-close');
+    const ciSearch = document.getElementById('ci-search') as HTMLInputElement | null;
+    const ciResults = document.getElementById('ci-results');
+    const ciStepSearch = document.getElementById('ci-step-search');
+    const ciStepPay = document.getElementById('ci-step-pay');
+    const ciSelectedName = document.getElementById('ci-selected-name');
+    const ciPrice = document.getElementById('ci-price');
+    const ciPayButtons = document.getElementById('ci-pay-buttons');
+    const ciProcessing = document.getElementById('ci-processing');
+    const ciError = document.getElementById('ci-error');
+    const ciSlug = hereBtn?.dataset.slug ?? '';
 
-    async function fetchGuests(): Promise<{ name: string }[]> {
-      if (!eventSlug) return [];
-      try {
-        const res = await fetch(`/api/guests/${eventSlug}`);
-        if (!res.ok) return [];
-        const data = (await res.json()) as { guests: { name: string }[] };
-        return data.guests;
-      } catch {
-        return [];
+    let _ciSelectedRsvpId = '';
+
+    function getEffectivePrice(): number {
+      if (!hereBtn) return 0;
+      const earlyPrice = hereBtn.dataset.earlyPrice;
+      const earlyCutoff = hereBtn.dataset.earlyCutoff;
+      const doorPrice = Number(hereBtn.dataset.doorPrice) || 0;
+      if (earlyPrice && earlyCutoff && new Date() < new Date(earlyCutoff)) {
+        return Number(earlyPrice);
       }
+      return doorPrice;
     }
 
-    function showToast(name: string) {
-      if (!glToast) return;
-      if (_toastTimeout) clearTimeout(_toastTimeout);
-      glToast.textContent = `${name} just RSVPd!`;
-      glToast.style.display = 'block';
-      gsap.killTweensOf(glToast);
+    function esc(s: string): string {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    function openCheckin() {
+      if (!ciModal || !ciSheet) return;
+      // Reset state
+      if (ciSearch) ciSearch.value = '';
+      if (ciResults) ciResults.innerHTML = '';
+      if (ciStepSearch) ciStepSearch.style.display = 'flex';
+      if (ciStepPay) ciStepPay.style.display = 'none';
+      if (ciError) ciError.style.display = 'none';
+      _ciSelectedRsvpId = '';
+
+      ciModal.setAttribute('aria-hidden', 'false');
+      ciModal.style.display = 'flex';
+      gsap.fromTo(ciModal, { opacity: 0 }, { duration: 0.25, opacity: 1, ease: 'power2.out' });
       gsap.fromTo(
-        glToast,
-        { y: -60, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.4, ease: 'power3.out' },
-      );
-      _toastTimeout = setTimeout(() => {
-        gsap.to(glToast, {
-          y: -60,
-          opacity: 0,
-          duration: 0.3,
-          ease: 'power2.in',
-          onComplete: () => {
-            glToast.style.display = 'none';
-          },
-        });
-        _toastTimeout = null;
-      }, 3500);
-    }
-
-    function setupScrollObserver() {
-      if (_glObserver) _glObserver.disconnect();
-      _glObserver = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry) => {
-            if (entry.isIntersecting) {
-              entry.target.classList.add('gl-item--visible');
-              _glObserver?.unobserve(entry.target);
-            }
-          });
-        },
-        { threshold: 0.15 },
-      );
-      document.querySelectorAll('.gl-item:not(.gl-item--visible)').forEach((el) => {
-        _glObserver?.observe(el);
-      });
-    }
-
-    async function pollGuests() {
-      const guests = await fetchGuests();
-      const newGuests = guests.filter((g) => !_knownGuests.has(g.name));
-      if (newGuests.length === 0) return;
-
-      newGuests.forEach((g) => _knownGuests.add(g.name));
-
-      // Always show toast for latest arrival
-      showToast(newGuests[newGuests.length - 1].name);
-
-      // If list is open, prepend new items
-      if (glList && glModal?.getAttribute('aria-hidden') === 'false') {
-        glCount && (glCount.textContent = `${guests.length}`);
-        [...newGuests].reverse().forEach((g) => {
-          const li = document.createElement('li');
-          li.className = 'gl-item gl-item--visible gl-item--new';
-          li.innerHTML = `<span class="gl-name">${g.name}</span><span class="gl-suffix"> is coming</span>`;
-          glList.prepend(li);
-          gsap.fromTo(
-            li,
-            { opacity: 0, y: -16 },
-            { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' },
-          );
-        });
-      }
-    }
-
-    async function openGuestList() {
-      if (!glModal || !glSheet) return;
-      glModal.setAttribute('aria-hidden', 'false');
-      glModal.style.display = 'flex';
-      gsap.fromTo(glModal, { opacity: 0 }, { duration: 0.25, opacity: 1, ease: 'power2.out' });
-      gsap.fromTo(
-        glSheet,
+        ciSheet,
         { y: '100%' },
         { duration: 0.4, y: '0%', ease: 'power3.out', delay: 0.05 },
       );
-
-      // Initial load
-      if (glList) {
-        glList.innerHTML = '<li class="gl-loading">loading\u2026</li>';
-      }
-      const guests = await fetchGuests();
-      _knownGuests = new Set(guests.map((g) => g.name));
-
-      if (glList) {
-        glList.innerHTML = '';
-        if (guests.length === 0) {
-          const empty = document.createElement('li');
-          empty.className = 'gl-empty';
-          empty.textContent = 'No RSVPs yet\u2014be first!';
-          glList.appendChild(empty);
-        } else {
-          guests.forEach((g) => {
-            const li = document.createElement('li');
-            li.className = 'gl-item';
-            li.innerHTML = `<span class="gl-name">${g.name}</span><span class="gl-suffix"> is coming</span>`;
-            glList.appendChild(li);
-          });
-          // Stagger in visible items, let IntersectionObserver handle the rest
-          gsap.fromTo(
-            '.gl-item',
-            { opacity: 0, y: 14 },
-            {
-              opacity: 1,
-              y: 0,
-              duration: 0.4,
-              stagger: 0.05,
-              ease: 'power2.out',
-              onComplete: () => {
-                document
-                  .querySelectorAll('.gl-item')
-                  .forEach((el) => el.classList.add('gl-item--visible'));
-                setupScrollObserver();
-              },
-            },
-          );
-        }
-      }
-
-      if (glCount) glCount.textContent = `${guests.length}`;
-
-      // Start polling for new RSVPs
-      if (_guestPollInterval) clearInterval(_guestPollInterval);
-      _guestPollInterval = setInterval(pollGuests, 15000);
+      setTimeout(() => ciSearch?.focus(), 300);
     }
 
-    function closeGuestList() {
-      if (_guestPollInterval) {
-        clearInterval(_guestPollInterval);
-        _guestPollInterval = null;
-      }
-      if (_glObserver) {
-        _glObserver.disconnect();
-        _glObserver = null;
-      }
-      if (!glModal || !glSheet) return;
-      gsap.to(glSheet, { y: '100%', duration: 0.35, ease: 'power2.in' });
-      gsap.to(glModal, {
+    function closeCheckin() {
+      if (!ciModal || !ciSheet) return;
+      gsap.to(ciSheet, { y: '100%', duration: 0.35, ease: 'power2.in' });
+      gsap.to(ciModal, {
         opacity: 0,
         duration: 0.25,
         delay: 0.1,
         ease: 'power2.in',
         onComplete: () => {
-          glModal.style.display = 'none';
-          glModal.setAttribute('aria-hidden', 'true');
+          ciModal.style.display = 'none';
+          ciModal.setAttribute('aria-hidden', 'true');
         },
       });
     }
 
-    if (glBtn && glModal && glClose) {
-      glBtn.addEventListener('click', openGuestList);
-      glClose.addEventListener('click', closeGuestList);
-      glModal.addEventListener('click', (e) => {
-        if (e.target === glModal) closeGuestList();
-      });
-      document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && glModal.getAttribute('aria-hidden') === 'false') closeGuestList();
-      });
+    async function doCheckinSearch() {
+      if (!ciSearch || !ciResults) return;
+      const q = ciSearch.value.trim();
+      if (!q) {
+        ciResults.innerHTML = '';
+        return;
+      }
+      try {
+        const res = await fetch(`/api/checkin/${ciSlug}/search?q=${encodeURIComponent(q)}`);
+        if (!res.ok) return;
+        const guests = (await res.json()) as { id: string; name: string }[];
+        if (guests.length === 0) {
+          ciResults.innerHTML = '<li class="ci-empty">No matches found</li>';
+          return;
+        }
+        ciResults.innerHTML = guests
+          .map(
+            (g) =>
+              `<li class="ci-result-item" data-id="${esc(g.id)}" data-name="${esc(g.name)}">${esc(g.name)}</li>`,
+          )
+          .join('');
+      } catch {
+        ciResults.innerHTML = '<li class="ci-empty">Search failed</li>';
+      }
     }
 
-    // Background poll (toast only) — active whenever the page is loaded with an event
-    if (eventSlug) {
-      // Seed known guests silently so first poll only toasts truly new arrivals
-      fetchGuests().then((guests) => {
-        guests.forEach((g) => _knownGuests.add(g.name));
-        // Start background poll at 30s so toasts fire even with list closed
-        _guestPollInterval = setInterval(pollGuests, 30000);
+    function selectGuest(id: string, name: string) {
+      _ciSelectedRsvpId = id;
+      const price = getEffectivePrice();
+
+      if (price === 0) {
+        // Free event: skip payment, check in directly
+        doFreeCashCheckin(id);
+        return;
+      }
+
+      // Show payment step
+      if (ciSelectedName) ciSelectedName.textContent = name;
+      if (ciPrice) ciPrice.textContent = `$${price.toFixed(0)}`;
+      if (ciStepSearch) ciStepSearch.style.display = 'none';
+      if (ciStepPay) ciStepPay.style.display = 'flex';
+      if (ciPayButtons) ciPayButtons.style.display = 'flex';
+      if (ciProcessing) ciProcessing.style.display = 'none';
+      if (ciError) ciError.style.display = 'none';
+    }
+
+    async function doFreeCashCheckin(rsvpId: string) {
+      showCiProcessing();
+      try {
+        const res = await fetch(`/api/checkin/${ciSlug}/cash`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rsvpId }),
+        });
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Check-in failed');
+        }
+        window.location.href = `/checkin/${ciSlug}/confirmed?rsvp_id=${rsvpId}&method=free`;
+      } catch (err) {
+        showCiError((err as Error).message || 'Something went wrong');
+      }
+    }
+
+    async function doCashCheckin() {
+      showCiProcessing();
+      try {
+        const res = await fetch(`/api/checkin/${ciSlug}/cash`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rsvpId: _ciSelectedRsvpId }),
+        });
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Check-in failed');
+        }
+        window.location.href = `/checkin/${ciSlug}/confirmed?rsvp_id=${_ciSelectedRsvpId}&method=cash`;
+      } catch (err) {
+        showCiError((err as Error).message || 'Something went wrong');
+      }
+    }
+
+    async function doCardCheckin() {
+      showCiProcessing();
+      try {
+        const res = await fetch(`/api/checkin/${ciSlug}/create-checkout`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rsvpId: _ciSelectedRsvpId }),
+        });
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Could not start payment');
+        }
+        const { url } = await res.json();
+        window.location.href = url;
+      } catch (err) {
+        showCiError((err as Error).message || 'Something went wrong');
+      }
+    }
+
+    function showCiProcessing() {
+      if (ciStepSearch) ciStepSearch.style.display = 'none';
+      if (ciStepPay) ciStepPay.style.display = 'flex';
+      if (ciPayButtons) ciPayButtons.style.display = 'none';
+      if (ciProcessing) ciProcessing.style.display = 'flex';
+      if (ciError) ciError.style.display = 'none';
+    }
+
+    function showCiError(msg: string) {
+      if (ciProcessing) ciProcessing.style.display = 'none';
+      if (ciPayButtons) ciPayButtons.style.display = 'flex';
+      if (ciError) {
+        ciError.textContent = msg;
+        ciError.style.display = 'block';
+      }
+    }
+
+    if (hereBtn) {
+      hereBtn.addEventListener('click', openCheckin);
+    }
+    if (ciClose) {
+      ciClose.addEventListener('click', closeCheckin);
+    }
+    if (ciModal) {
+      ciModal.addEventListener('click', (e) => {
+        if (e.target === ciModal) closeCheckin();
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && ciModal.getAttribute('aria-hidden') === 'false') closeCheckin();
       });
     }
+    if (ciSearch) {
+      ciSearch.addEventListener('input', () => {
+        if (_ciDebounce) clearTimeout(_ciDebounce);
+        _ciDebounce = setTimeout(doCheckinSearch, 300);
+      });
+    }
+    if (ciResults) {
+      ciResults.addEventListener('click', (e) => {
+        const item = (e.target as HTMLElement).closest('.ci-result-item') as HTMLElement | null;
+        if (item) selectGuest(item.dataset.id!, item.dataset.name!);
+      });
+    }
+    document.getElementById('ci-btn-cash')?.addEventListener('click', doCashCheckin);
+    document.getElementById('ci-btn-card')?.addEventListener('click', doCardCheckin);
 
     // --- Menu overlay (footer tap) ---
     const footerBar = document.getElementById('footer-bar');
@@ -1039,8 +1085,30 @@ const doorPriceFormatted =
     border-top: var(--border);
   }
 
-  /* ---- Guest list overlay ---- */
-  .gl-backdrop {
+  /* ---- "I'm here" button ---- */
+  .action-btn--here {
+    background: var(--color-error);
+    color: #fff;
+    border-color: var(--color-error);
+  }
+
+  .action-btn--here:hover {
+    background: #991b1b;
+    border-color: #991b1b;
+    color: #fff;
+    opacity: 1;
+  }
+
+  @media (hover: none) {
+    .action-btn--here:active {
+      background: #991b1b;
+      border-color: #991b1b;
+      color: #fff;
+    }
+  }
+
+  /* ---- Self-check-in overlay ---- */
+  .ci-backdrop {
     display: none;
     position: fixed;
     inset: 0;
@@ -1050,17 +1118,16 @@ const doorPriceFormatted =
     justify-content: flex-end;
   }
 
-  .gl-sheet {
+  .ci-sheet {
     background: var(--color-bg);
-    height: 82dvh;
+    height: 70dvh;
     display: flex;
     flex-direction: column;
     will-change: transform;
-    border-radius: 0;
     overflow: hidden;
   }
 
-  .gl-header {
+  .ci-header {
     display: flex;
     align-items: center;
     padding: var(--space-lg) var(--space-xl);
@@ -1069,7 +1136,7 @@ const doorPriceFormatted =
     gap: var(--space-sm);
   }
 
-  .gl-title {
+  .ci-title {
     font-size: 1rem;
     font-weight: var(--weight-medium);
     letter-spacing: -0.01em;
@@ -1077,14 +1144,7 @@ const doorPriceFormatted =
     color: var(--color-fg);
   }
 
-  .gl-count {
-    font-size: 0.875rem;
-    color: var(--color-muted);
-    font-weight: var(--weight-regular);
-    margin-left: 2px;
-  }
-
-  .gl-close {
+  .ci-close {
     margin-left: auto;
     background: none;
     border: none;
@@ -1098,87 +1158,168 @@ const doorPriceFormatted =
     -webkit-tap-highlight-color: transparent;
   }
 
-  .gl-close:hover {
+  .ci-close:hover {
     color: var(--color-fg);
   }
 
-  .gl-body {
+  .ci-step {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .ci-search-wrap {
+    padding: var(--space-md) var(--space-xl);
+    flex-shrink: 0;
+  }
+
+  .ci-search {
+    width: 100%;
+    padding: 14px var(--space-md);
+    background: var(--color-surface);
+    border: 2px solid var(--color-border);
+    color: var(--color-fg);
+    font-size: 1rem;
+    font-family: inherit;
+    transition: border-color 0.15s ease;
+  }
+
+  .ci-search:focus {
+    outline: none;
+    border-color: var(--color-fg);
+  }
+
+  .ci-results {
     flex: 1;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
-  }
-
-  .gl-list {
     list-style: none;
     margin: 0;
-    padding: var(--space-sm) 0 var(--space-3xl);
+    padding: 0;
   }
 
-  .gl-list :global(.gl-item) {
-    text-align: center;
+  .ci-results :global(.ci-result-item) {
     padding: var(--space-md) var(--space-xl);
     border-bottom: var(--border);
-    opacity: 0;
-    transform: translateY(12px);
-    transition:
-      opacity 0.35s ease,
-      transform 0.35s ease;
-  }
-
-  .gl-list :global(.gl-item:last-child) {
-    border-bottom: none;
-  }
-
-  .gl-list :global(.gl-item--visible) {
-    opacity: 1;
-    transform: none;
-  }
-
-  .gl-list :global(.gl-item--new) {
-    background: color-mix(in srgb, var(--color-fg) 4%, var(--color-bg));
-  }
-
-  .gl-list :global(.gl-name) {
-    font-size: 1.375rem;
+    font-size: 1.25rem;
     font-weight: var(--weight-medium);
-    letter-spacing: -0.01em;
     color: var(--color-fg);
     text-transform: capitalize;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
   }
 
-  .gl-list :global(.gl-suffix) {
-    font-size: 1.375rem;
-    font-weight: var(--weight-regular);
-    color: var(--color-muted);
+  .ci-results :global(.ci-result-item:active) {
+    background: var(--color-surface);
   }
 
-  .gl-list :global(.gl-empty),
-  .gl-list :global(.gl-loading) {
-    padding: var(--space-3xl) var(--space-xl);
+  .ci-results :global(.ci-empty) {
+    padding: var(--space-xl) var(--space-xl);
     text-align: center;
     color: var(--color-muted);
     font-size: 0.9375rem;
     list-style: none;
   }
 
-  /* ---- Toast notification ---- */
-  .gl-toast {
-    display: none;
-    position: fixed;
-    top: var(--space-lg);
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: var(--z-toast);
-    background: var(--color-fg);
-    color: var(--color-bg);
-    font-size: 0.875rem;
+  /* Payment step */
+  #ci-step-pay {
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-md);
+    padding: var(--space-xl);
+    text-align: center;
+  }
+
+  .ci-selected-name {
+    font-size: 1.5rem;
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-tight);
+    margin: 0;
+  }
+
+  .ci-price {
+    font-size: 2rem;
+    font-weight: var(--weight-bold);
+    color: var(--color-fg);
+    margin: 0;
+  }
+
+  .ci-pay-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    width: 100%;
+    max-width: 320px;
+  }
+
+  .ci-btn-pay {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-sm);
+    min-height: 60px;
+    font-size: 1.125rem;
     font-weight: var(--weight-medium);
-    padding: 10px var(--space-lg);
-    border-radius: 100px;
-    white-space: nowrap;
-    pointer-events: none;
-    letter-spacing: -0.01em;
+    background: var(--color-surface);
+    border: 2px solid var(--color-border);
+    color: var(--color-fg);
+    cursor: pointer;
+    font-family: inherit;
+    transition:
+      border-color 0.15s ease,
+      background 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .ci-btn-pay:hover {
+    border-color: var(--color-fg);
+  }
+
+  .ci-btn-pay:active {
+    background: var(--color-bg);
+  }
+
+  .ci-pay-icon {
+    font-size: 1.5rem;
+    line-height: 1;
+  }
+
+  .ci-processing {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-xl) 0;
+  }
+
+  .ci-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--color-border);
+    border-top-color: var(--color-fg);
+    border-radius: 50%;
+    animation: ci-spin 0.7s linear infinite;
+  }
+
+  @keyframes ci-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .ci-processing p {
+    color: var(--color-muted);
+    font-size: 0.9375rem;
+    margin: 0;
+  }
+
+  .ci-error {
+    color: var(--color-error);
+    font-size: 0.875rem;
+    margin: 0;
   }
 
   /* ---- Menu overlay ---- */
