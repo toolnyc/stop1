@@ -208,9 +208,53 @@ const doorPriceFormatted =
                 />
               </div>
               <ul class="ci-results" id="ci-results" />
+              <div class="ci-walkin-wrap">
+                <button type="button" class="ci-walkin-btn" id="ci-walkin-btn">
+                  I am a walk-in
+                </button>
+              </div>
             </div>
 
-            {/* Step 2: Payment */}
+            {/* Step 2: Walk-in info */}
+            <div class="ci-step" id="ci-step-walkin" style="display:none">
+              <div class="ci-walkin-form">
+                <h2 class="ci-walkin-heading">walk-in</h2>
+                <input
+                  type="text"
+                  id="ci-walkin-name"
+                  placeholder="Name"
+                  autocomplete="name"
+                  class="ci-search"
+                  enterkeyhint="next"
+                />
+                <input
+                  type="tel"
+                  id="ci-walkin-phone"
+                  placeholder="Phone (optional)"
+                  autocomplete="tel"
+                  class="ci-search"
+                  enterkeyhint="next"
+                />
+                <input
+                  type="email"
+                  id="ci-walkin-email"
+                  placeholder="Email (optional)"
+                  autocomplete="email"
+                  class="ci-search"
+                  enterkeyhint="done"
+                />
+                <button
+                  type="button"
+                  class="btn btn-primary btn-block ci-walkin-submit"
+                  id="ci-walkin-submit"
+                  disabled
+                >
+                  Continue
+                </button>
+              </div>
+            </div>
+
+            {/* Step 3: Payment */}
             <div class="ci-step" id="ci-step-pay" style="display:none">
               <h2 class="ci-selected-name" id="ci-selected-name" />
               <p class="ci-price" id="ci-price" />
@@ -507,6 +551,7 @@ const doorPriceFormatted =
     const ciSearch = document.getElementById('ci-search') as HTMLInputElement | null;
     const ciResults = document.getElementById('ci-results');
     const ciStepSearch = document.getElementById('ci-step-search');
+    const ciStepWalkin = document.getElementById('ci-step-walkin');
     const ciStepPay = document.getElementById('ci-step-pay');
     const ciSelectedName = document.getElementById('ci-selected-name');
     const ciPrice = document.getElementById('ci-price');
@@ -515,7 +560,15 @@ const doorPriceFormatted =
     const ciError = document.getElementById('ci-error');
     const ciSlug = hereBtn?.dataset.slug ?? '';
 
+    // Walk-in form elements
+    const ciWalkinBtn = document.getElementById('ci-walkin-btn');
+    const ciWalkinName = document.getElementById('ci-walkin-name') as HTMLInputElement | null;
+    const ciWalkinPhone = document.getElementById('ci-walkin-phone') as HTMLInputElement | null;
+    const ciWalkinEmail = document.getElementById('ci-walkin-email') as HTMLInputElement | null;
+    const ciWalkinSubmit = document.getElementById('ci-walkin-submit') as HTMLButtonElement | null;
+
     let _ciSelectedRsvpId = '';
+    let _ciIsWalkin = false;
 
     const _simulatePaid = new URLSearchParams(window.location.search).get('simulate') === 'paid';
 
@@ -543,7 +596,13 @@ const doorPriceFormatted =
       if (ciSearch) ciSearch.value = '';
       if (ciResults) ciResults.innerHTML = '';
       if (ciStepSearch) ciStepSearch.style.display = 'flex';
+      if (ciStepWalkin) ciStepWalkin.style.display = 'none';
       if (ciStepPay) ciStepPay.style.display = 'none';
+      if (ciWalkinName) ciWalkinName.value = '';
+      if (ciWalkinPhone) ciWalkinPhone.value = '';
+      if (ciWalkinEmail) ciWalkinEmail.value = '';
+      if (ciWalkinSubmit) ciWalkinSubmit.disabled = true;
+      _ciIsWalkin = false;
       if (ciError) ciError.style.display = 'none';
       _ciSelectedRsvpId = '';
 
@@ -721,8 +780,138 @@ const doorPriceFormatted =
         if (item) selectGuest(item.dataset.id!, item.dataset.name!);
       });
     }
-    document.getElementById('ci-btn-cash')?.addEventListener('click', doCashCheckin);
-    document.getElementById('ci-btn-card')?.addEventListener('click', doCardCheckin);
+    // --- Walk-in flow ---
+    if (ciWalkinBtn) {
+      ciWalkinBtn.addEventListener('click', () => {
+        if (ciStepSearch) ciStepSearch.style.display = 'none';
+        if (ciStepWalkin) ciStepWalkin.style.display = 'flex';
+        setTimeout(() => ciWalkinName?.focus(), 100);
+      });
+    }
+
+    if (ciWalkinName) {
+      ciWalkinName.addEventListener('input', () => {
+        if (ciWalkinSubmit) ciWalkinSubmit.disabled = !ciWalkinName.value.trim();
+      });
+    }
+
+    // Enter key navigation between walk-in fields
+    ciWalkinName?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && ciWalkinName.value.trim()) ciWalkinPhone?.focus();
+    });
+    ciWalkinPhone?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') ciWalkinEmail?.focus();
+    });
+    ciWalkinEmail?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && ciWalkinName?.value.trim()) submitWalkin();
+    });
+
+    if (ciWalkinSubmit) {
+      ciWalkinSubmit.addEventListener('click', submitWalkin);
+    }
+
+    async function submitWalkin() {
+      const wName = ciWalkinName?.value.trim();
+      if (!wName) return;
+
+      _ciIsWalkin = true;
+      const price = getEffectivePrice();
+
+      if (price === 0) {
+        // Free: create walk-in and go straight to confirmed
+        showCiProcessing();
+        try {
+          const res = await fetch(`/api/checkin/${ciSlug}/walkin`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: _ciBody({
+              name: wName,
+              phone: ciWalkinPhone?.value.trim() || undefined,
+              email: ciWalkinEmail?.value.trim() || undefined,
+            }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Walk-in failed');
+          window.location.href = `/checkin/${ciSlug}/confirmed?rsvp_id=${data.rsvpId}&method=free`;
+        } catch (err) {
+          showCiError((err as Error).message || 'Something went wrong');
+        }
+        return;
+      }
+
+      // Paid: show payment step
+      if (ciSelectedName) ciSelectedName.textContent = wName;
+      if (ciPrice) ciPrice.textContent = `$${price.toFixed(0)}`;
+      if (ciStepWalkin) ciStepWalkin.style.display = 'none';
+      if (ciStepPay) ciStepPay.style.display = 'flex';
+      if (ciPayButtons) ciPayButtons.style.display = 'flex';
+      if (ciProcessing) ciProcessing.style.display = 'none';
+      if (ciError) ciError.style.display = 'none';
+    }
+
+    async function doWalkinCash() {
+      const wName = ciWalkinName?.value.trim();
+      if (!wName) return;
+      showCiProcessing();
+      try {
+        const res = await fetch(`/api/checkin/${ciSlug}/walkin?method=cash`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: _ciBody({
+            name: wName,
+            phone: ciWalkinPhone?.value.trim() || undefined,
+            email: ciWalkinEmail?.value.trim() || undefined,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Walk-in failed');
+        window.location.href = `/checkin/${ciSlug}/confirmed?rsvp_id=${data.rsvpId}&method=cash`;
+      } catch (err) {
+        showCiError((err as Error).message || 'Something went wrong');
+      }
+    }
+
+    async function doWalkinCard() {
+      const wName = ciWalkinName?.value.trim();
+      if (!wName) return;
+      showCiProcessing();
+      try {
+        // First create the RSVP without marking arrived (card pending)
+        const walkinRes = await fetch(`/api/checkin/${ciSlug}/walkin?method=pending`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: _ciBody({
+            name: wName,
+            phone: ciWalkinPhone?.value.trim() || undefined,
+            email: ciWalkinEmail?.value.trim() || undefined,
+          }),
+        });
+        const walkinData = await walkinRes.json();
+        if (!walkinRes.ok) throw new Error(walkinData.error || 'Walk-in failed');
+
+        // Then create checkout session with the new RSVP ID
+        const checkoutRes = await fetch(`/api/checkin/${ciSlug}/create-checkout`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: _ciBody({ rsvpId: walkinData.rsvpId }),
+        });
+        const checkoutData = await checkoutRes.json();
+        if (!checkoutRes.ok) throw new Error(checkoutData.error || 'Could not start payment');
+        window.location.href = checkoutData.url;
+      } catch (err) {
+        showCiError((err as Error).message || 'Something went wrong');
+      }
+    }
+
+    // Cash/card buttons route to walk-in or RSVP handler
+    document.getElementById('ci-btn-cash')?.addEventListener('click', () => {
+      if (_ciIsWalkin) doWalkinCash();
+      else doCashCheckin();
+    });
+    document.getElementById('ci-btn-card')?.addEventListener('click', () => {
+      if (_ciIsWalkin) doWalkinCard();
+      else doCardCheckin();
+    });
 
     // --- Menu overlay (footer tap) ---
     const footerBar = document.getElementById('footer-bar');
@@ -1327,6 +1516,51 @@ const doorPriceFormatted =
     color: var(--color-error);
     font-size: 0.875rem;
     margin: 0;
+  }
+
+  /* ---- Walk-in button & form ---- */
+  .ci-walkin-wrap {
+    padding: 0 var(--space-xl) var(--space-md);
+    flex-shrink: 0;
+  }
+
+  .ci-walkin-btn {
+    width: 100%;
+    padding: 14px var(--space-md);
+    background: transparent;
+    border: 1px dashed var(--color-border);
+    color: var(--color-muted);
+    font-size: 1rem;
+    font-family: inherit;
+    cursor: pointer;
+    transition:
+      border-color 0.15s ease,
+      color 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .ci-walkin-btn:hover {
+    border-color: var(--color-muted);
+    color: var(--color-fg);
+  }
+
+  .ci-walkin-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+    padding: var(--space-md) var(--space-xl);
+  }
+
+  .ci-walkin-heading {
+    font-size: 1rem;
+    font-weight: var(--weight-medium);
+    letter-spacing: -0.01em;
+    color: var(--color-fg);
+    margin: 0;
+  }
+
+  .ci-walkin-submit {
+    margin-top: var(--space-sm);
   }
 
   /* ---- Menu overlay ---- */
