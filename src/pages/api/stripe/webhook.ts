@@ -37,6 +37,9 @@ export const POST: APIRoute = async ({ request }) => {
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session;
     await handleCheckoutCompleted(session);
+  } else if (event.type === 'charge.refunded') {
+    const charge = event.data.object as Stripe.Charge;
+    await handleChargeRefunded(charge);
   }
 
   return new Response('ok', { status: 200 });
@@ -86,6 +89,43 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   });
 
   if (payError) {
+    // FK violation (23503) means the RSVP was deleted between checkout creation
+    // and webhook delivery. Record the payment without the rsvp link so revenue
+    // is never lost — it can be reconciled manually.
+    if (payError.code === '23503') {
+      log.warn('stripe_webhook.rsvp_missing_fallback', { slug, rsvpId });
+      const { error: retryError } = await supabaseAdmin!.from('door_payments').insert({
+        event_id: eventId,
+        rsvp_id: null,
+        amount: totalAmount,
+        method: 'card' as const,
+        stripe_payment_intent_id: paymentIntentId,
+        name: `[orphaned rsvp ${rsvpId}]`,
+      });
+
+      if (retryError) {
+        log.error('stripe_webhook.payment_insert_retry_failed', {
+          slug,
+          rsvpId,
+          error: retryError.message,
+          code: retryError.code,
+        });
+      } else {
+        await sendDiscordAlert({
+          title: '⚠️ Orphaned Payment Recorded',
+          message: `Payment saved without RSVP link (RSVP was deleted)`,
+          fields: [
+            { name: 'Event', value: slug },
+            { name: 'Amount', value: `$${totalAmount.toFixed(2)}` },
+            { name: 'Original RSVP', value: rsvpId },
+            { name: 'Source', value: source },
+          ],
+          level: 'warn',
+        });
+      }
+      return;
+    }
+
     log.error('stripe_webhook.payment_insert_failed', {
       slug,
       rsvpId,
@@ -143,6 +183,113 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       { name: 'Event', value: slug },
       { name: 'Amount', value: `$${totalAmount.toFixed(2)}` },
       { name: 'Source', value: source },
+    ],
+    level: 'warn',
+  });
+}
+
+async function handleChargeRefunded(charge: Stripe.Charge) {
+  const paymentIntentId =
+    typeof charge.payment_intent === 'string'
+      ? charge.payment_intent
+      : (charge.payment_intent?.id ?? null);
+
+  if (!paymentIntentId) {
+    log.warn('stripe_webhook.refund_no_pi', { chargeId: charge.id });
+    return;
+  }
+
+  // Find the original door_payment to get event_id and rsvp_id
+  const { data: original } = await supabaseAdmin!
+    .from('door_payments')
+    .select('event_id, rsvp_id, name, amount')
+    .eq('stripe_payment_intent_id', paymentIntentId)
+    .eq('method', 'card')
+    .single();
+
+  if (!original) {
+    log.warn('stripe_webhook.refund_no_original', { paymentIntentId });
+    return;
+  }
+
+  const refundedAmount = Number(charge.amount_refunded) / 100;
+
+  // Check if we already recorded a refund for this PI
+  const { data: existingRefund } = await supabaseAdmin!
+    .from('door_payments')
+    .select('id, amount')
+    .eq('stripe_payment_intent_id', paymentIntentId)
+    .eq('method', 'refund' as const)
+    .single();
+
+  if (existingRefund) {
+    // Update existing refund row for partial→full refund scenarios
+    const existingAbs = Math.abs(Number(existingRefund.amount));
+    if (existingAbs >= refundedAmount) {
+      log.info('stripe_webhook.refund_already_recorded', { paymentIntentId });
+      return;
+    }
+    await supabaseAdmin!
+      .from('door_payments')
+      .update({ amount: -refundedAmount })
+      .eq('id', existingRefund.id);
+  } else {
+    // Insert negative-amount adjustment row
+    const { error: refundError } = await supabaseAdmin!.from('door_payments').insert({
+      event_id: original.event_id,
+      rsvp_id: original.rsvp_id,
+      amount: -refundedAmount,
+      method: 'refund' as const,
+      stripe_payment_intent_id: paymentIntentId,
+      name: original.name,
+    });
+
+    if (refundError) {
+      log.error('stripe_webhook.refund_insert_failed', {
+        paymentIntentId,
+        error: refundError.message,
+        code: refundError.code,
+      });
+      return;
+    }
+  }
+
+  // Look up event slug for alert
+  const { data: evt } = await supabaseAdmin!
+    .from('events')
+    .select('slug')
+    .eq('id', original.event_id)
+    .single();
+
+  // Look up guest name
+  let guestName = original.name ?? 'Unknown';
+  if (!original.name && original.rsvp_id) {
+    const { data: rsvp } = await supabaseAdmin!
+      .from('rsvps')
+      .select('name')
+      .eq('id', original.rsvp_id)
+      .single();
+    guestName = rsvp?.name ?? 'Unknown';
+  }
+
+  const isPartial = refundedAmount < Number(original.amount);
+
+  log.info('stripe_webhook.refund_recorded', {
+    slug: evt?.slug,
+    paymentIntentId,
+    refundedAmount,
+    originalAmount: original.amount,
+    partial: isPartial,
+  });
+
+  await sendDiscordAlert({
+    title: `💸 ${isPartial ? 'Partial ' : ''}Refund Processed`,
+    message: `Card payment refunded via Stripe`,
+    fields: [
+      { name: 'Name', value: guestName },
+      { name: 'Event', value: evt?.slug ?? 'unknown' },
+      { name: 'Refund', value: `$${refundedAmount.toFixed(2)}` },
+      ...(isPartial ? [{ name: 'Original', value: `$${Number(original.amount).toFixed(2)}` }] : []),
     ],
     level: 'warn',
   });

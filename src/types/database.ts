@@ -316,7 +316,7 @@ export type Database = {
     };
     Enums: {
       event_status: 'draft' | 'published' | 'archived';
-      payment_method: 'cash' | 'card';
+      payment_method: 'cash' | 'card' | 'refund';
       payout_method: 'cash' | 'venmo' | 'zelle' | 'bank_transfer' | 'other';
     };
     CompositeTypes: {
@@ -444,7 +444,7 @@ export const Constants = {
   public: {
     Enums: {
       event_status: ['draft', 'published', 'archived'],
-      payment_method: ['cash', 'card'],
+      payment_method: ['cash', 'card', 'refund'],
       payout_method: ['cash', 'venmo', 'zelle', 'bank_transfer', 'other'],
     },
   },

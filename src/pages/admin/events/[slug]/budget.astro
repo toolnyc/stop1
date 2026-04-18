@@ -44,7 +44,10 @@ const cashTotal = paymentList
 const cardTotal = paymentList
   .filter((p) => p.method === 'card')
   .reduce((s, p) => s + Number(p.amount), 0);
-const revenue = cashTotal + cardTotal;
+const refundTotal = paymentList
+  .filter((p) => p.method === 'refund')
+  .reduce((s, p) => s + Number(p.amount), 0);
+const revenue = cashTotal + cardTotal + refundTotal;
 
 const collabList = collaborators ?? [];
 
@@ -120,6 +123,16 @@ function fmt(n: number) {
         <div class="data-table">
           <div class="data-row"><span>Cash</span><span>{fmt(cashTotal)}</span></div>
           <div class="data-row"><span>Card</span><span>{fmt(cardTotal)}</span></div>
+          {
+            refundTotal !== 0 && (
+              <div class="data-row">
+                <>
+                  <span>Refunds</span>
+                  <span>{fmt(refundTotal)}</span>
+                </>
+              </div>
+            )
+          }
           <div class="data-row total"><span>Door Revenue</span><span>{fmt(revenue)}</span></div>
         </div>
       </section>
