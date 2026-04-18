@@ -3,7 +3,7 @@ import { withLogging } from '@/lib/api';
 import { RateLimiter, getClientIp } from '@/lib/rate-limit';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
-const limiter = new RateLimiter(30, 60_000);
+const limiter = new RateLimiter(120, 60_000);
 
 function escapeIlike(str: string): string {
   return str.replace(/[%_\\]/g, '\\$&');

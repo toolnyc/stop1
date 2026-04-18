@@ -6,7 +6,7 @@ import { getEffectivePrice } from '@/lib/pricing';
 import { RateLimiter, getClientIp } from '@/lib/rate-limit';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
-const limiter = new RateLimiter(5, 60_000);
+const limiter = new RateLimiter(30, 60_000);
 
 export const POST = withLogging(async ({ params, request, log }) => {
   if (!supabaseAdmin || !stripe) {

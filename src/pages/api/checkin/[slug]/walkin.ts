@@ -5,7 +5,7 @@ import { getEffectivePrice } from '@/lib/pricing';
 import { RateLimiter, getClientIp } from '@/lib/rate-limit';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
-const limiter = new RateLimiter(5, 60_000);
+const limiter = new RateLimiter(60, 60_000);
 
 interface WalkinBody {
   name?: string;
