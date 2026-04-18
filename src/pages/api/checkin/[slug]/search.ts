@@ -54,14 +54,20 @@ export const GET = withLogging(async ({ params, url, request, log }) => {
     return new Response(JSON.stringify([]), { status: 200, headers: JSON_HEADERS });
   }
 
-  const { data, error } = await supabaseAdmin
+  // Split into tokens so "Jo Sm" matches "John Smith"
+  const tokens = trimmed.split(/\s+/).filter(Boolean);
+
+  let query = supabaseAdmin
     .from('rsvps')
     .select('id, name')
     .eq('event_id', event.id)
-    .is('arrived_at', null)
-    .ilike('name', `%${escapeIlike(trimmed)}%`)
-    .order('name')
-    .limit(20);
+    .is('arrived_at', null);
+
+  for (const token of tokens) {
+    query = query.ilike('name', `%${escapeIlike(token)}%`);
+  }
+
+  const { data, error } = await query.order('name').limit(20);
 
   if (error) {
     log.error('search.failed', { slug, error: error.message });

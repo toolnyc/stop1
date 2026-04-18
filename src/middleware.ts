@@ -72,52 +72,6 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return context.redirect('/admin/login');
   }
 
-  // Door auth: guard /door/[slug]/checkin and /door/[slug]/summary
-  const doorMatch = pathname.match(/^\/door\/([^/]+)\/(checkin|summary)/);
-  if (doorMatch) {
-    const doorSlug = doorMatch[1];
-    const cookieSecret = import.meta.env.COOKIE_SECRET;
-    const sig = context.cookies.get(`door_session_${doorSlug}`)?.value;
-
-    if (!cookieSecret || !sig) {
-      return context.redirect(`/door/${doorSlug}/pin`);
-    }
-
-    const expected = createHmac('sha256', cookieSecret).update(doorSlug).digest('hex');
-    if (sig !== expected) {
-      log.warn('door.invalid_signature', { slug: doorSlug });
-      return context.redirect(`/door/${doorSlug}/pin`);
-    }
-
-    context.locals.doorSlug = doorSlug;
-  }
-
-  // Door API auth: guard /api/door/[slug]/* except /api/door/[slug]/auth
-  const doorApiMatch = pathname.match(/^\/api\/door\/([^/]+)\/(?!auth(?:$|\/))(.*)/);
-  if (doorApiMatch) {
-    const doorSlug = doorApiMatch[1];
-    const cookieSecret = import.meta.env.COOKIE_SECRET;
-    const sig = context.cookies.get(`door_session_${doorSlug}`)?.value;
-
-    if (!cookieSecret || !sig) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-
-    const expected = createHmac('sha256', cookieSecret).update(doorSlug).digest('hex');
-    if (sig !== expected) {
-      log.warn('door.api_invalid_signature', { slug: doorSlug, path: pathname });
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-
-    context.locals.doorSlug = doorSlug;
-  }
-
   // Collaborator auth: guard /collaborate/*/expenses
   const collabMatch = pathname.match(/^\/collaborate\/([^/]+)\/expenses/);
   if (collabMatch) {

@@ -517,11 +517,14 @@ const doorPriceFormatted =
 
     let _ciSelectedRsvpId = '';
 
+    const _simulatePaid = new URLSearchParams(window.location.search).get('simulate') === 'paid';
+
     function getEffectivePrice(): number {
       if (!hereBtn) return 0;
+      const doorPrice = Number(hereBtn.dataset.doorPrice) || 0;
+      if (_simulatePaid) return doorPrice || 10;
       const earlyPrice = hereBtn.dataset.earlyPrice;
       const earlyCutoff = hereBtn.dataset.earlyCutoff;
-      const doorPrice = Number(hereBtn.dataset.doorPrice) || 0;
       if (earlyPrice && earlyCutoff && new Date() < new Date(earlyCutoff)) {
         return Number(earlyPrice);
       }
@@ -616,13 +619,18 @@ const doorPriceFormatted =
       if (ciError) ciError.style.display = 'none';
     }
 
+    function _ciBody(extra: Record<string, unknown>) {
+      if (_simulatePaid) extra.simulate = 'paid';
+      return JSON.stringify(extra);
+    }
+
     async function doFreeCashCheckin(rsvpId: string) {
       showCiProcessing();
       try {
         const res = await fetch(`/api/checkin/${ciSlug}/cash`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ rsvpId }),
+          body: _ciBody({ rsvpId }),
         });
         if (!res.ok) {
           const data = await res.json();
@@ -640,7 +648,7 @@ const doorPriceFormatted =
         const res = await fetch(`/api/checkin/${ciSlug}/cash`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ rsvpId: _ciSelectedRsvpId }),
+          body: _ciBody({ rsvpId: _ciSelectedRsvpId }),
         });
         if (!res.ok) {
           const data = await res.json();
@@ -658,14 +666,13 @@ const doorPriceFormatted =
         const res = await fetch(`/api/checkin/${ciSlug}/create-checkout`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ rsvpId: _ciSelectedRsvpId }),
+          body: _ciBody({ rsvpId: _ciSelectedRsvpId }),
         });
+        const data = await res.json();
         if (!res.ok) {
-          const data = await res.json();
           throw new Error(data.error || 'Could not start payment');
         }
-        const { url } = await res.json();
-        window.location.href = url;
+        window.location.href = data.url;
       } catch (err) {
         showCiError((err as Error).message || 'Something went wrong');
       }

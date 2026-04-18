@@ -30,7 +30,7 @@ export const POST = withLogging(async ({ params, request, log }) => {
 
   const { slug } = params;
   const body = await request.json();
-  const { rsvpId } = body as { rsvpId?: string };
+  const { rsvpId, simulate } = body as { rsvpId?: string; simulate?: string };
 
   if (!rsvpId) {
     return new Response(JSON.stringify({ error: 'rsvpId required' }), {
@@ -76,7 +76,9 @@ export const POST = withLogging(async ({ params, request, log }) => {
     });
   }
 
-  const { price: effectivePrice } = getEffectivePrice(event);
+  const { price: realPrice } = getEffectivePrice(event);
+  const effectivePrice =
+    simulate === 'paid' && realPrice === 0 ? (event.door_price ?? 10) : realPrice;
   const now = new Date().toISOString();
 
   // Record payment if price > 0
