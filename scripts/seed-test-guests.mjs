@@ -19,7 +19,7 @@ const envPath = resolve(import.meta.dirname, '..', '.env.local');
 const envText = readFileSync(envPath, 'utf-8');
 for (const line of envText.split('\n')) {
   const match = line.match(/^([A-Z_]+)=(.+)/);
-  if (match) process.env[match[1]] = match[2].trim();
+  if (match) process.env[match[1]] = match[2].trim().replace(/^["']|["']$/g, '');
 }
 
 const supabaseUrl = process.env.PUBLIC_SUPABASE_URL;
@@ -84,7 +84,13 @@ async function main() {
     return;
   }
 
-  // Upsert test guests
+  // Clean existing test guests first, then insert fresh
+  await supabase
+    .from('rsvps')
+    .delete()
+    .eq('event_id', event.id)
+    .ilike('email', `%@${TEST_EMAIL_DOMAIN}`);
+
   const rows = TEST_GUESTS.map((g) => ({
     event_id: event.id,
     name: g.name,
@@ -97,10 +103,7 @@ async function main() {
     plus_ones_arrived: 0,
   }));
 
-  const { data, error } = await supabase
-    .from('rsvps')
-    .upsert(rows, { onConflict: 'event_id,email' })
-    .select('id, name, email');
+  const { data, error } = await supabase.from('rsvps').insert(rows).select('id, name, email');
 
   if (error) {
     console.error('Upsert failed:', error.message);
