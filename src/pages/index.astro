@@ -812,15 +812,19 @@ const doorPriceFormatted =
       ciWalkinSubmit.addEventListener('click', submitWalkin);
     }
 
+    let _walkinSubmitting = false;
+
     async function submitWalkin() {
       const wName = ciWalkinName?.value.trim();
-      if (!wName) return;
+      if (!wName || _walkinSubmitting) return;
 
       _ciIsWalkin = true;
       const price = getEffectivePrice();
 
       if (price === 0) {
         // Free: create walk-in and go straight to confirmed
+        _walkinSubmitting = true;
+        if (ciWalkinSubmit) ciWalkinSubmit.disabled = true;
         showCiProcessing();
         try {
           const res = await fetch(`/api/checkin/${ciSlug}/walkin`, {
@@ -836,6 +840,8 @@ const doorPriceFormatted =
           if (!res.ok) throw new Error(data.error || 'Walk-in failed');
           window.location.href = `/checkin/${ciSlug}/confirmed?rsvp_id=${data.rsvpId}&method=free`;
         } catch (err) {
+          _walkinSubmitting = false;
+          if (ciWalkinSubmit) ciWalkinSubmit.disabled = false;
           showCiError((err as Error).message || 'Something went wrong');
         }
         return;
@@ -853,7 +859,8 @@ const doorPriceFormatted =
 
     async function doWalkinCash() {
       const wName = ciWalkinName?.value.trim();
-      if (!wName) return;
+      if (!wName || _walkinSubmitting) return;
+      _walkinSubmitting = true;
       showCiProcessing();
       try {
         const res = await fetch(`/api/checkin/${ciSlug}/walkin?method=cash`, {
@@ -869,13 +876,15 @@ const doorPriceFormatted =
         if (!res.ok) throw new Error(data.error || 'Walk-in failed');
         window.location.href = `/checkin/${ciSlug}/confirmed?rsvp_id=${data.rsvpId}&method=cash`;
       } catch (err) {
+        _walkinSubmitting = false;
         showCiError((err as Error).message || 'Something went wrong');
       }
     }
 
     async function doWalkinCard() {
       const wName = ciWalkinName?.value.trim();
-      if (!wName) return;
+      if (!wName || _walkinSubmitting) return;
+      _walkinSubmitting = true;
       showCiProcessing();
       try {
         // First create the RSVP without marking arrived (card pending)
@@ -901,6 +910,7 @@ const doorPriceFormatted =
         if (!checkoutRes.ok) throw new Error(checkoutData.error || 'Could not start payment');
         window.location.href = checkoutData.url;
       } catch (err) {
+        _walkinSubmitting = false;
         showCiError((err as Error).message || 'Something went wrong');
       }
     }

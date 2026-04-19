@@ -96,8 +96,40 @@ export const POST = withLogging(async ({ params, request, url, log }) => {
     .select('id, name')
     .single();
 
-  if (insertError || !rsvp) {
-    log.error('walkin.insert_failed', { slug, error: insertError?.message });
+  if (insertError) {
+    // If this phone already has an RSVP for this event, return the existing one (idempotent)
+    if (insertError.code === '23505' && normalizedPhone) {
+      const { data: existing } = await supabaseAdmin
+        .from('rsvps')
+        .select('id, name')
+        .eq('event_id', event.id)
+        .eq('phone', normalizedPhone)
+        .single();
+
+      if (existing) {
+        log.info('walkin.duplicate_resolved', { slug, rsvpId: existing.id });
+        return new Response(
+          JSON.stringify({
+            success: true,
+            rsvpId: existing.id,
+            guestName: existing.name,
+            amount: effectivePrice,
+            method: isFree ? 'free' : method,
+          }),
+          { status: 200, headers: JSON_HEADERS },
+        );
+      }
+    }
+
+    log.error('walkin.insert_failed', { slug, error: insertError.message });
+    return new Response(JSON.stringify({ error: 'Failed to create walk-in' }), {
+      status: 500,
+      headers: JSON_HEADERS,
+    });
+  }
+
+  if (!rsvp) {
+    log.error('walkin.insert_failed', { slug, error: 'No data returned' });
     return new Response(JSON.stringify({ error: 'Failed to create walk-in' }), {
       status: 500,
       headers: JSON_HEADERS,
