@@ -3,14 +3,16 @@ import Base from '@/layouts/Base.astro';
 import { supabase } from '@/lib/supabase';
 import { EVENT_TIMEZONE } from '@/lib/constants';
 
-// Get next upcoming published event
+// Get next upcoming published event (stay visible until 12 hours after end time)
+const now = new Date();
+const cutoff = new Date(now.getTime() - 12 * 60 * 60 * 1000).toISOString();
 const { data: events } = await supabase
   .from('events')
   .select(
     'title, slug, date, time_end, flyer_url, venue_name, venue_address, description, door_price, early_price, early_cutoff',
   )
   .eq('status', 'published')
-  .gte('date', new Date().toISOString())
+  .or(`time_end.gte.${cutoff},and(time_end.is.null,date.gte.${cutoff})`)
   .order('date', { ascending: true })
   .limit(1);
 
