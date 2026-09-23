@@ -18,17 +18,17 @@
   },
   "dependencies": {
     "@astrojs/vercel": "^11.0.10",
-    "@stripe/stripe-js": "^9.15.0",
-    "@supabase/supabase-js": "^2.115.0",
+    "@stripe/stripe-js": "^9.16.0",
+    "@supabase/supabase-js": "^2.116.0",
     "@vercel/blob": "^2.8.0",
-    "astro": "^7.3.1",
+    "astro": "^7.3.3",
     "bcryptjs": "^3.0.3",
     "gsap": "^3.15.0",
-    "libphonenumber-js": "^1.13.12",
-    "resend": "^6.26.0",
-    "stripe": "^22.6.1",
+    "libphonenumber-js": "^1.13.13",
+    "resend": "^6.28.1",
+    "stripe": "^22.6.2",
     "tslib": "^2.8.1",
-    "twilio": "^6.1.0"
+    "twilio": "^6.1.1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
